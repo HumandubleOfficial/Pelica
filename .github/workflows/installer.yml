@@ -2,10 +2,12 @@ name: Windows installer
 
 # Builds desktop/release/Pelica-Setup-<version>.exe on a Windows runner (the
 # installer needs Windows' own C# compiler and electron.exe). Publishing a
-# release attaches the installer to it; a manual run keeps it as an artifact.
+# release attaches the installer to it; pull requests and manual runs keep it
+# as an artifact.
 on:
   release:
     types: [published]
+  pull_request:
   workflow_dispatch:
 
 permissions:
