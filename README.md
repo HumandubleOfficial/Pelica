@@ -600,6 +600,34 @@ Tuning hooks: `PELICA_TC=q8,gu,down` (which products use the tensor cores),
 through the decode kernels), `PELICA_PROF=1 PELICA_PROF_BATCH=512` (per-stage
 GPU times of a prompt pass), `PELICA_DRAFT=0` (no drafting).
 
+### DeepSeek V4 (`deepseek4` GGUF)
+
+DeepSeek V4 files are far larger than VRAM + RAM, so they get an engine of
+their own (`src/ds4.rs`, with `ds4_gpu.rs`, `ds4_io.rs`, `ds4_cpu.rs`) that
+brings the tiers back to GGUF: the dense weights (attention, shared experts,
+compressors, indexers, the head) sit in VRAM; routed experts sit in VRAM (the
+most used, moved in as heat changes), in a RAM cache kept by heat, or on the
+drive, read unbuffered when picked. The CLI and the app pick it up from the
+file's architecture.
+
+```bash
+./target/release/pelica --model D:/Models/DeepSeek-V4/DeepSeek-V4-Q4_K_M.gguf -p "Why is the sky blue?" -n 128
+```
+
+* The math follows llama.cpp's `deepseek4` graph: 4 hyper-connection streams
+  with Sinkhorn mixing, a sliding window of raw positions plus compressed
+  entries (groups of 4 picked top-k by the indexer, or of 128, all of them),
+  per-head sinks, the grouped low-rank output, sqrt(softplus) routing with
+  hash-routed early layers, and clamped SwiGLU.
+* The GPU does the matrix products; the CPU does the mixing, norms, rotary,
+  compression, the indexer and attention (the cache lives in RAM), plus
+  Q4_K experts from RAM that only a few tokens of a pass use.
+* `PELICA_EXPERTS_GB` caps the VRAM for experts, `PELICA_RAM_GB` the RAM
+  cache. Use history goes to `<model>.gguf.pelica-usage`.
+* Status: it builds, and the kernels pass their tests, but it has not yet
+  been run against a real DeepSeek V4 file or compared with llama.cpp's
+  tokens. The MTP block, if the file has one, is skipped.
+
 ## Roadmap
 
 1. ~~**GPU tier (wgpu)**~~ — done: dense weights and hot experts in VRAM.

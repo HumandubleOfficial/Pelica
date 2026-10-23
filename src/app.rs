@@ -315,7 +315,7 @@ fn ui_kind_read(p: &Path) -> (&'static str, Option<usize>) {
         _ => match crate::gguf::Gguf::open(p) {
             Ok(g) => {
                 let max = g.u(&format!("{}.context_length", g.arch())).ok();
-                (if crate::moe::handles(&g) { "moe" } else { "gpu" }, max)
+                (if crate::moe::handles(&g) || crate::ds4::handles(&g) { "moe" } else { "gpu" }, max)
             }
             Err(_) => ("gpu", None),
         },
@@ -357,8 +357,73 @@ struct Glm {
     conv: Vec<(String, String)>,
 }
 
+/// A mixture-of-experts GGUF: the general engine, or DeepSeek V4's (whose
+/// experts can also stream from the drive). Both take the same calls.
+enum MoeEng {
+    Gen(crate::moe::Engine),
+    Ds4(crate::ds4::Engine),
+}
+
+impl MoeEng {
+    fn cfg(&self) -> &crate::moe::Cfg {
+        match self {
+            MoeEng::Gen(e) => &e.cfg,
+            MoeEng::Ds4(e) => &e.cfg,
+        }
+    }
+
+    fn eos(&self) -> &[u32] {
+        match self {
+            MoeEng::Gen(e) => &e.eos,
+            MoeEng::Ds4(e) => &e.eos,
+        }
+    }
+
+    fn reusable(&self, cached: &[u32], prompt: &[u32]) -> usize {
+        match self {
+            MoeEng::Gen(e) => e.reusable(cached, prompt),
+            MoeEng::Ds4(e) => e.reusable(cached, prompt),
+        }
+    }
+
+    fn generate_with(&self, prompt: &[u32], n: usize, reuse: usize, on_token: impl FnMut(u32) -> bool, on_prefill: impl FnMut(usize, usize) -> bool) -> Result<oss::Stats> {
+        match self {
+            MoeEng::Gen(e) => e.generate_with(prompt, n, reuse, on_token, on_prefill),
+            MoeEng::Ds4(e) => e.generate_with(prompt, n, reuse, on_token, on_prefill),
+        }
+    }
+
+    fn trace(&self, toks: &[u32]) -> Result<Vec<Vec<Vec<(u32, f32)>>>> {
+        match self {
+            MoeEng::Gen(e) => e.trace(toks),
+            MoeEng::Ds4(e) => e.trace(toks),
+        }
+    }
+
+    fn save_usage(&self) -> Result<()> {
+        match self {
+            MoeEng::Gen(e) => e.save_usage(),
+            MoeEng::Ds4(e) => e.save_usage(),
+        }
+    }
+
+    fn activity(&self, prev: &mut Vec<u32>) -> Result<Vec<u32>> {
+        match self {
+            MoeEng::Gen(e) => e.activity(prev),
+            MoeEng::Ds4(e) => e.activity(prev),
+        }
+    }
+
+    fn expert_grid(&self) -> (usize, usize) {
+        match self {
+            MoeEng::Gen(e) => e.expert_grid(),
+            MoeEng::Ds4(e) => e.expert_grid(),
+        }
+    }
+}
+
 struct Moe {
-    eng: crate::moe::Engine,
+    eng: MoeEng,
     tok: Arc<tokenizers::Tokenizer>,
     template: Option<crate::chat_template::ChatTemplate>,
     /// the template has a thinking switch (`enable_thinking`)
@@ -443,10 +508,22 @@ fn load(path: &Path, ctx: usize) -> Result<(Backend, Value)> {
     match kind_of(path) {
         Some(Kind::Gguf) => {
             let g = crate::gguf::Gguf::open(path)?;
-            if let Some(why) = crate::moe::unsupported(&g) {
-                bail!("{why}");
-            }
             let tok = Arc::new(crate::gguf::tokenizer(&g)?);
+            if crate::ds4::handles(&g) {
+                let template = crate::chat_template::ChatTemplate::from_gguf(&g);
+                let think = g.s("tokenizer.chat_template").is_some_and(|t| t.contains("enable_thinking"));
+                drop(g);
+                let eng = crate::ds4::Engine::load(path, ctx)?;
+                let total = eng.vram_experts + eng.host_experts;
+                // (the cache sits in RAM, read by the CPU: no VRAM / RAM / drive split to show)
+                let st = json!({
+                    "kind": "moe", "ctx": eng.cfg.ctx, "max_ctx": eng.max_ctx, "gpu": eng.name, "arch": eng.cfg.arch,
+                    "experts": total, "experts_ram": eng.host_experts, "ram_gb": eng.host_bytes as f64 / 1e9,
+                    "efforts": if think { json!(["off", "on"]) } else { json!([]) }, "effort": if think { "on" } else { "" },
+                    "note": "Experts that aren't in VRAM or RAM stream from the drive: expect a few tokens per second.",
+                });
+                return Ok((Backend::Moe(Box::new(Moe { eng: MoeEng::Ds4(eng), tok, template, think, cached: Vec::new() })), st));
+            }
             if crate::moe::handles(&g) {
                 let template = crate::chat_template::ChatTemplate::from_gguf(&g);
                 let think = g.s("tokenizer.chat_template").is_some_and(|t| t.contains("enable_thinking"));
@@ -459,7 +536,7 @@ fn load(path: &Path, ctx: usize) -> Result<(Backend, Value)> {
                     "kv_vram": eng.kv_vram.min(eng.cfg.ctx), "kv_ram": eng.kv_ram, "kv_drive": eng.cfg.ctx.saturating_sub(eng.kv_vram + eng.kv_ram),
                     "efforts": if think { json!(["off", "on"]) } else { json!([]) }, "effort": if think { "on" } else { "" },
                 });
-                return Ok((Backend::Moe(Box::new(Moe { eng, tok, template, think, cached: Vec::new() })), st));
+                return Ok((Backend::Moe(Box::new(Moe { eng: MoeEng::Gen(eng), tok, template, think, cached: Vec::new() })), st));
             }
             drop(g);
             let eng = Engine::load(path, ctx)?;
@@ -863,9 +940,9 @@ fn chat_moe(m: &mut Moe, req: &Value, tx: &Sender<Value>, stop: &AtomicBool) -> 
     if native {
         extra.insert("tools".into(), crate::web::tool_specs());
     }
-    let ctx = m.eng.cfg.ctx;
+    let ctx = m.eng.cfg().ctx;
     let tok = m.tok.clone();
-    let eos = m.eng.eos.clone();
+    let eos = m.eng.eos().to_vec();
     let t0 = Instant::now();
     let (mut think_t0, mut think_t1, mut first) = (None::<Instant>, None::<Instant>, None::<Instant>);
     let (mut think_n, mut answer_n, mut gen_n, mut dec_n) = (0usize, 0usize, 0usize, 0usize);

@@ -322,13 +322,6 @@ pub struct Mat {
     pub wpr: u32,
 }
 
-impl Mat {
-    /// rows [a, a + n) of this matrix
-    pub fn rows(&self, a: usize, n: usize) -> Mat {
-        Mat { base: self.base + (a as u32) * self.wpr, rows: n, ..*self }
-    }
-}
-
 struct Op {
     pipe: wgpu::ComputePipeline,
     group: usize,
@@ -345,7 +338,7 @@ pub struct Batch<'a> {
     read_bytes: u64,
 }
 
-impl Batch<'_> {
+impl<'a> Batch<'a> {
     fn push(&mut self, pipe: wgpu::ComputePipeline, group: usize, args: &[u32], grid: [u32; 3]) {
         assert!(self.ops.len() < SLOTS, "too many dispatches in one batch");
         let at = self.args.len();
@@ -405,6 +398,13 @@ impl Batch<'_> {
 
     /// Runs the batch; returns the readbacks in the order asked.
     pub fn run(self) -> Result<Vec<Vec<f32>>> {
+        self.submit().wait()
+    }
+
+    /// Starts the batch on the GPU; `wait` on the result for the readbacks.
+    /// Nothing else may use the GPU until then (the readback buffer is
+    /// shared).
+    pub fn submit(self) -> Pending<'a> {
         let g = self.g;
         if !self.args.is_empty() {
             g.queue.write_buffer(&g.params, 0, &self.args);
@@ -424,13 +424,30 @@ impl Batch<'_> {
             at += n as u64 * 4;
         }
         let idx = g.queue.submit([enc.finish()]);
+        if !self.reads.is_empty() {
+            g.rb.slice(..at).map_async(wgpu::MapMode::Read, |_| {});
+        }
+        Pending { g, idx, reads: self.reads, at }
+    }
+}
+
+/// A submitted batch whose readbacks are not in yet.
+pub struct Pending<'a> {
+    g: &'a Gpu,
+    idx: wgpu::SubmissionIndex,
+    reads: Vec<(u32, usize)>,
+    at: u64,
+}
+
+impl Pending<'_> {
+    /// Waits for the batch; returns the readbacks in the order asked.
+    pub fn wait(self) -> Result<Vec<Vec<f32>>> {
+        let g = self.g;
+        g.device.poll(wgpu::PollType::Wait { submission_index: Some(self.idx), timeout: None }).map_err(|e| anyhow::anyhow!("GPU poll: {e}"))?;
         if self.reads.is_empty() {
-            g.device.poll(wgpu::PollType::Wait { submission_index: Some(idx), timeout: None }).map_err(|e| anyhow::anyhow!("GPU poll: {e}"))?;
             return Ok(Vec::new());
         }
-        let slice = g.rb.slice(..at);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        g.device.poll(wgpu::PollType::Wait { submission_index: Some(idx), timeout: None }).map_err(|e| anyhow::anyhow!("GPU poll: {e}"))?;
+        let slice = g.rb.slice(..self.at);
         let mut out = Vec::with_capacity(self.reads.len());
         {
             let v = slice.get_mapped_range().context("mapping the readback")?;

@@ -229,7 +229,7 @@ pub(super) fn chat_moe(m: &mut Moe, req: &Value, tx: &Sender<Value>, stop: &Atom
     }
     let text = moe_prompt(m, &conv, &sys, &extra)?;
     let ids = m.tok.encode(text.as_str(), false).map_err(|e| anyhow::anyhow!("tokenizing: {e}"))?.get_ids().to_vec();
-    let ctx = m.eng.cfg.ctx;
+    let ctx = m.eng.cfg().ctx;
     if ids.len() + 8 > ctx {
         return Err(too_long(ids.len(), ctx));
     }
@@ -245,7 +245,7 @@ pub(super) fn chat_moe(m: &mut Moe, req: &Value, tx: &Sender<Value>, stop: &Atom
     }
 
     let tok = m.tok.clone();
-    let eos = m.eng.eos.clone();
+    let eos = m.eng.eos().to_vec();
     let mut split = ThinkSplit { think: text.trim_end().ends_with("<think>"), buf: String::new(), answered: false };
     let mut gate = ToolGate::new();
     let use_gate = !tools.is_empty();

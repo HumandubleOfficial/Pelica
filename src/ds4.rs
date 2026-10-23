@@ -106,8 +106,12 @@ struct Hp {
     k: usize,
     ff: usize,
     w_scale: f32,
+    /// routed weights divided by their sum
+    norm_w: bool,
     hash: usize,
+    /// SwiGLU limits per layer: routed experts, shared expert (0: none)
     clamp: Vec<f32>,
+    clamp_sh: Vec<f32>,
     hc: usize,
     iters: usize,
     hc_eps: f32,
@@ -336,12 +340,24 @@ impl Engine {
         }
         let key = |s: &str| format!("deepseek4.{s}");
         let ints = |s: &str| -> Result<Vec<usize>> { Ok(g.ints(&key(s))?.into_iter().map(|v| v as usize).collect()) };
-        let n_layer = g.u(&key("block_count"))?;
-        let clamp: Vec<f32> = match g.meta.get(&key("swiglu_clamp_exp")) {
-            Some(crate::gguf::Val::Arr(v)) => v.iter().map(|x| x.as_f64().unwrap_or(0.0) as f32).collect(),
-            Some(v) => vec![v.as_f64().unwrap_or(0.0) as f32; n_layer],
-            None => vec![0.0; n_layer],
+        // the next-token-prediction block(s) at the end aren't part of the
+        // main stack (if the file has them at all)
+        let all = g.u(&key("block_count"))?;
+        let nextn = g.u(&key("nextn_predict_layers")).unwrap_or(0).min(all);
+        let n_layer = if nextn > 0 && g.tensors.contains_key(&format!("blk.{}.nextn.eh_proj.weight", all - nextn)) { all - nextn } else { all };
+        // a value per layer, or one for all of them
+        let per_layer = |s: &str| -> Option<Vec<f32>> {
+            match g.meta.get(&key(s))? {
+                crate::gguf::Val::Arr(v) => Some(v.iter().map(|x| x.as_f64().unwrap_or(0.0) as f32).collect()),
+                v => Some(vec![v.as_f64().unwrap_or(0.0) as f32; all]),
+            }
         };
+        let clamp = per_layer("swiglu_clamp_exp").unwrap_or_else(|| vec![0.0; all]);
+        let clamp_sh = per_layer("swiglu_clamp_shexp").unwrap_or_else(|| clamp.clone());
+        let ffs = per_layer("expert_feed_forward_length").context("GGUF key deepseek4.expert_feed_forward_length missing")?;
+        if clamp.len() < n_layer || clamp_sh.len() < n_layer || ffs.len() < n_layer || ffs[..n_layer].iter().any(|&f| f != ffs[0]) {
+            bail!("unsupported DeepSeek V4 shape (per-layer metadata)");
+        }
         let hp = Hp {
             n_layer,
             d: g.u(&key("embedding_length"))?,
@@ -358,17 +374,19 @@ impl Engine {
             topk: g.u(&key("attention.indexer.top_k"))?,
             ne: g.u(&key("expert_count"))?,
             k: g.u(&key("expert_used_count"))?,
-            ff: g.u(&key("expert_feed_forward_length"))?,
+            ff: ffs[0] as usize,
             w_scale: g.f(&key("expert_weights_scale")).unwrap_or(1.0),
+            norm_w: g.b(&key("expert_weights_norm")).unwrap_or(true),
             hash: g.u(&key("hash_layer_count")).unwrap_or(0),
             clamp,
+            clamp_sh,
             hc: g.u(&key("hyper_connection.count"))?,
             iters: g.u(&key("hyper_connection.sinkhorn_iterations"))?,
             hc_eps: g.f(&key("hyper_connection.epsilon"))?,
             eps: g.f(&key("attention.layer_norm_rms_epsilon"))?,
             vocab: g.tensor("token_embd.weight")?.dims[1],
         };
-        if hp.ratios.len() < n_layer || hp.hc != 4 || hp.hd != g.u(&key("attention.value_length"))? || hp.nh % hp.og != 0 || hp.d % 256 != 0 || hp.ff % 256 != 0 || hp.win + TB > RING {
+        if hp.ratios.len() < n_layer || hp.hc != 4 || hp.k > 8 || hp.hd != g.u(&key("attention.value_length"))? || hp.nh % hp.og != 0 || hp.d % 256 != 0 || hp.ff % 256 != 0 || hp.win + TB > RING {
             bail!("unsupported DeepSeek V4 shape");
         }
         if g.u(&key("expert_gating_func")).unwrap_or(0) != 4 {
@@ -468,7 +486,7 @@ impl Engine {
             at = end;
         }
         let mut cursor = vec![0u64; gpu.bufs.len()];
-        let mut put = |gpu: &Gpu, cursor: &mut Vec<u64>, arena: usize, bytes: &[u8]| -> u32 {
+        let put = |gpu: &Gpu, cursor: &mut Vec<u64>, arena: usize, bytes: &[u8]| -> u32 {
             let w = cursor[arena];
             gpu.write(arena, w, bytes);
             cursor[arena] += (bytes.len() as u64).div_ceil(16) * 4;
@@ -685,7 +703,7 @@ impl Engine {
             ctx,
             rot: hp.rot,
             neox: false,
-            norm_w: true,
+            norm_w: hp.norm_w,
             w_scale: hp.w_scale,
             sigmoid: false,
         };
@@ -743,8 +761,6 @@ impl Engine {
         for p in 0..3 {
             let b = pin.piece(p);
             let ty = ex.ty[p];
-            let words = if p < 2 { ex.wpr_g as u64 * (b.len() / ty.bytes(ty.block().0) * ty.block().0) as u64 / (ex.wpr_g as u64 * ty.gpu_values() as u64 / ty.gpu_words().unwrap() as u64) } else { 0 };
-            let _ = words;
             if ty.gpu_words().unwrap() * 4 == ty.block().1 || matches!(ty, Ty::F32 | Ty::F16 | Ty::BF16) {
                 gpu.write(arena, w, b);
                 w += (b.len() / 4) as u64;
@@ -1163,13 +1179,13 @@ impl Engine {
             }
         }
         let mut w = [0f32; 8];
-        let mut sum = 0f32;
         for j in 0..k {
             w[j] = sc[ids[j] as usize];
-            sum += w[j];
         }
+        // (the sum floored at f16's smallest normal, as llama.cpp does)
+        let div = if hp.norm_w { w[..k].iter().sum::<f32>().max(6.103515625e-5) } else { 1.0 };
         for v in w[..k].iter_mut() {
-            *v = *v / sum * hp.w_scale;
+            *v = *v / div * hp.w_scale;
         }
         (ids, w)
     }
@@ -1313,7 +1329,7 @@ impl Engine {
             let mut b = self.gpu.batch();
             b.upload(r.f, &f[s * d..(s + n) * d]);
             b.mv(&ly.sgu, r.f, d as u32, r.sgu, (2 * ff) as u32, n, false, None);
-            b.swiglu(ff, r.sgu, r.sgu + ff as u32, r.sh, (2 * ff) as u32, ff as u32, None, n, lim);
+            b.swiglu(ff, r.sgu, r.sgu + ff as u32, r.sh, (2 * ff) as u32, ff as u32, None, n, hp.clamp_sh[l]);
             b.mv(&ly.sd, r.sh, ff as u32, r.sy, d as u32, n, false, None);
             b.read(r.sy, n * d);
             let at = match first_group.take() {

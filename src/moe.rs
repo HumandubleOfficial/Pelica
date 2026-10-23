@@ -538,9 +538,10 @@ impl Kernels {
     }
 }
 
-/// Is this GGUF file a model this engine runs (a MoE that isn't gpt-oss)?
+/// Is this GGUF file a model this engine runs (a MoE that isn't gpt-oss, or
+/// DeepSeek V4, which has an engine of its own in `ds4`)?
 pub fn handles(g: &Gguf) -> bool {
-    g.arch() != "gpt-oss" && g.tensors.keys().any(|n| n.ends_with("ffn_gate_exps.weight"))
+    !matches!(g.arch(), "gpt-oss" | "deepseek4") && g.tensors.keys().any(|n| n.ends_with("ffn_gate_exps.weight"))
 }
 
 /// The tokens that end a reply: the file's end-of-sequence and end-of-turn
@@ -564,27 +565,10 @@ pub fn stop_tokens(g: &Gguf) -> Vec<u32> {
     v
 }
 
-/// Why a mixture-of-experts GGUF can't run here yet, said plainly (checked
-/// before anything is read into memory).
-pub fn unsupported(g: &Gguf) -> Option<String> {
-    match g.arch() {
-        "deepseek4" => Some(
-            "DeepSeek V4 (architecture deepseek4) isn't supported yet. It uses compressed sparse attention with an indexer, \
-             sliding-window attention with sinks, hyper-connections and hash-routed experts, which this engine doesn't implement. \
-             Pick another model for now."
-                .into(),
-        ),
-        _ => None,
-    }
-}
-
 impl Engine {
     pub fn load(path: &Path, ctx: usize) -> Result<Engine> {
         let t0 = Instant::now();
         let g = Gguf::open(path)?;
-        if let Some(why) = unsupported(&g) {
-            bail!("{why}");
-        }
         let file = std::fs::File::open(path)?;
         let a = g.arch().to_string();
         if !handles(&g) {
