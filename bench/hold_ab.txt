@@ -1,0 +1,6 @@
+PELICA_AIO_HOLD=1 | 2.864 tok/s | disk 4.49 GB/s, busy 95% at 4.74 GB/s | tokens same
+PELICA_AIO_HOLD=2 | 2.760 tok/s | disk 4.36 GB/s, busy 95% at 4.58 GB/s | tokens same
+PELICA_AIO_HOLD=1 | 2.904 tok/s | disk 4.58 GB/s, busy 95% at 4.85 GB/s | tokens same
+PELICA_AIO_HOLD=2 | 2.756 tok/s | disk 4.36 GB/s, busy 95% at 4.58 GB/s | tokens same
+PELICA_AIO_HOLD=1 | 2.934 tok/s | disk 4.62 GB/s, busy 95% at 4.89 GB/s | tokens same
+PELICA_AIO_HOLD=2 | 2.958 tok/s | disk 4.70 GB/s, busy 95% at 4.96 GB/s | tokens same

@@ -1,0 +1,15 @@
+/target
+/target-alt
+*.log
+
+# Local Claude Code settings
+/.claude/
+
+# Frontend dependencies and installer output (desktop/)
+node_modules/
+desktop/release/
+
+# Pelica runtime data
+.pelica_usage
+*.pelica-usage
+pelica_scales.bin

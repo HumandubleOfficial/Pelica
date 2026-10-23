@@ -1,0 +1,30 @@
+[pelica] tiers: VRAM 8.1 GB dense + 336 expert slots | RAM 0.4 GB dense + 23.0 GB experts (~1772) | SSD the rest
+[pelica] decode 48 tokens in 17.8s: 2.692 tok/s (0.37 s/token)
+[pelica] decode time: attention 2.4s, ffn 14.4s (blocked on SSD 9.6s), mhc 0.8s, head 0.1s
+[pelica] decode profile: kda gpu 1.8s, mla gpu 0.6s, route 0.7s, moe gpu 2.0s, moe cpu 13.4s, promote 0.0s
+[pelica] decode waits: 6.0s on demand reads (1729 of them), 3.6s on prefetches in flight; disk 4.49 GB/s, busy 93% at 4.84 GB/s
+tokens: identical
+[pelica] decode expert uses: 30.2% VRAM (GPU), 38.0% RAM, 21.0% prefetched, 10.7% read from SSD on demand
+[pelica] expert tier: 1771 resident (23.0 GB); decode read 1.46 GB/token, 5730 prefetches issued, 2064 cancelled, 273 wasted
+[pelica] disk idle: 0.01s at token boundaries, 1.29s between layers
+=== vs colibri
+prompt ids: 154822,154824,154826,25062,287,29905,371,25,12035,154827,7984,264,2805,14301,911,1246,85613,65878,19511,13,154828,154841,154842
+== colibri
+greedy 48215 5311 65878 19511 1526 264 10966 16934 4911 4221 19617 13 25967 1429 19617 11 892 6923 11887 15491 389 279 1495 28144 315 862 26123 11 85613 65878 16900 862 26123 304 264 7071 69196 5383 11 6825 11887 389 2176 279 4637 323 27463 52128
+decode 48 token in 70.3s = 0.683 tok/s (1.5 s/token)
+== pelica
+[pelica] prefill 23 tokens in 10.5s (2.20 tok/s)
+greedy 48215 5311 65878 19511 1526 264 22743 10966 16934 429 7289 1105 10742 504 7009 678 1008 19617 13 5976 1429 19617 6923 11887 1172 389 279 1495 28144 315 862 26123 11 85613 65878 16900 862 26123 304 264 7071 69196 5383 11 64193 1105 35662 1495
+[pelica] decode 48 tokens in 16.9s: 2.836 tok/s (0.35 s/token)
+[pelica] tiers: VRAM 8.1 GB dense + 350 expert slots | RAM 0.4 GB dense + 24.1 GB experts (~1856) | SSD the rest
+[pelica] expert tier: 1855 resident (24.1 GB); decode read 1.40 GB/token, 5601 prefetches issued, 2114 cancelled, 194 wasted
+[pelica] decode waits: 5.9s on demand reads (1697 of them), 3.6s on prefetches in flight; disk 4.61 GB/s, busy 94% at 4.89 GB/s
+=== fridge
+[pelica] tiers: VRAM 8.1 GB dense + 305 expert slots | RAM 0.4 GB dense + 19.0 GB experts (~1463) | SSD the rest
+[pelica] decode 160 tokens in 60.5s: 2.646 tok/s (0.38 s/token)
+[pelica] decode expert uses: 26.4% VRAM (GPU), 38.9% RAM, 22.3% prefetched, 12.4% read from SSD on demand
+[pelica] VRAM tier: 305/305 slots filled, 426 promotions from RAM
+[pelica] expert tier: 1463 resident (19.0 GB); decode read 1.57 GB/token, 20893 prefetches issued, 8183 cancelled, 695 wasted
+[pelica] decode time: attention 6.4s, ffn 51.2s (blocked on SSD 35.6s), mhc 2.4s, head 0.3s
+[pelica] decode profile: kda gpu 4.6s, mla gpu 1.7s, route 2.1s, moe gpu 4.8s, moe cpu 48.3s, promote 0.1s
+[pelica] decode waits: 22.7s on demand reads (6651 of them), 12.9s on prefetches in flight; disk 4.76 GB/s, busy 96% at 4.97 GB/s

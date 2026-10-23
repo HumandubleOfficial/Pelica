@@ -1,0 +1,27 @@
+<|channel|>analysis<|message|>We need to write a Python function that parses a CSV file into a list of dictionaries, with error handling and docstrings. The function should read a CSV file, parse each row into a dictionary mapping column names to values. It should handle errors like file not found, CSV errors, etc. Provide docstrings explaining usage. Also maybe include optional parameters like delimiter, quotechar, etc. Provide robust error handling: try/except for FileNotFoundError, csv.Error, etc. Return list of dicts. Provide example usage. Also maybe include type hints. Provide docstring with description, parameters, returns, exceptions. Provide code. Also maybe include a test case. The user just wants the function. So we can provide a function parse_csv_to_dicts(file_path: str, delimiter: str = ',', quotechar: str = '"', encoding: str = 'utf-8') -> List[Dict[str, str]].
+
+We can also include optional skip_header, etc. But keep simple.
+
+We need to include error handling: FileNotFoundError, PermissionError, csv.Error, UnicodeDecodeError. We can raise custom exceptions or just re-raise with more context. Provide docstring.
+
+Also mention that the function returns list of dictionaries, each dictionary mapping column names to values. Provide example usage.
+
+We can also include a small test snippet.
+
+We can also mention that the function uses csv.DictReader.
+
+We can also mention that if the file is empty, returns empty list.
+
+We can also mention that if the file has no header, we can raise ValueError.
+
+We can also mention that if the file has inconsistent number of fields, csv.DictReader will handle.
+
+We can also mention that we can optionally pass fieldnames.
+
+We can also mention that we can optionally skip rows with missing values.
+
+But keep simple.
+
+We can also mention that the function uses context manager to open file.
+
+We can also mention that we catch csv.Error and raise ValueError with message

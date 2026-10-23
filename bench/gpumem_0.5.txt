@@ -1,0 +1,190 @@
+Cannot convert argument "val2", with value: "2966110208", for "Max" to type "System.Int32": "Cannot convert value 
+"2966110208" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "3771424768", for "Max" to type "System.Int32": "Cannot convert value 
+"3771424768" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "4845174784", for "Max" to type "System.Int32": "Cannot convert value 
+"4845174784" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "5918924800", for "Max" to type "System.Int32": "Cannot convert value 
+"5918924800" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "6992674816", for "Max" to type "System.Int32": "Cannot convert value 
+"6992674816" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "8066424832", for "Max" to type "System.Int32": "Cannot convert value 
+"8066424832" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15143321600", for "Max" to type "System.Int32": "Cannot convert value 
+"15143321600" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15143321600", for "Max" to type "System.Int32": "Cannot convert value 
+"15143321600" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15143321600", for "Max" to type "System.Int32": "Cannot convert value 
+"15143321600" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15143321600", for "Max" to type "System.Int32": "Cannot convert value 
+"15143321600" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15143321600", for "Max" to type "System.Int32": "Cannot convert value 
+"15143321600" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15143321600", for "Max" to type "System.Int32": "Cannot convert value 
+"15143321600" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15143321600", for "Max" to type "System.Int32": "Cannot convert value 
+"15143321600" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15680196608", for "Max" to type "System.Int32": "Cannot convert value 
+"15680196608" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15680196608", for "Max" to type "System.Int32": "Cannot convert value 
+"15680196608" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15680196608", for "Max" to type "System.Int32": "Cannot convert value 
+"15680196608" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15680196608", for "Max" to type "System.Int32": "Cannot convert value 
+"15680196608" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15680196608", for "Max" to type "System.Int32": "Cannot convert value 
+"15680196608" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15680196608", for "Max" to type "System.Int32": "Cannot convert value 
+"15680196608" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15680196608", for "Max" to type "System.Int32": "Cannot convert value 
+"15680196608" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+Cannot convert argument "val2", with value: "15680196608", for "Max" to type "System.Int32": "Cannot convert value 
+"15680196608" to type "System.Int32". Error: "Value was either too large or too small for an Int32.""
+At C:\Users\Humanduble\AppData\Local\Temp\claude\C--Users-Humanduble-Desktop-Pelica\2012601d-3d0c-4fa0-a7bf-62ef73423cb
+8\scratchpad\gpumem.ps1:11 char:16
++         else { $maxDed = [Math]::Max($maxDed, $c.CookedValue) }
++                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+max GPU dedicated 1.76 GB, max shared 0.07 GB, min free RAM 2.22 GB

@@ -1,0 +1,32 @@
+{
+  "name": "pelica-desktop",
+  "productName": "Pelica",
+  "version": "0.2.0",
+  "description": "Pelica Desktop: local models with tools, files, commands and a browser",
+  "private": true,
+  "main": "build/electron/main.js",
+  "scripts": {
+    "build:ui": "vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build": "npm run build:ui && npm run build:electron",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
+    "start": "npm run build && electron .",
+    "app": "electron .",
+    "installer": "npm run build && node installer/make.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^37.2.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.6"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "marked": "^16.1.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}

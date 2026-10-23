@@ -1,0 +1,22 @@
+== PELICA_GROW=1 round 1
+[pelica] tiers: VRAM 8.1 GB dense + 461 expert slots | RAM 0.3 GB dense + 25.1 GB experts (~1930) | SSD the rest
+[pelica] 41 more VRAM expert slots after prefill (502 in all)
+[pelica] decode 48 tokens in 15.2s: 3.161 tok/s (0.32 s/token)
+[pelica] decode waits: 4.6s on demand reads (1589 of them), 3.9s on prefetches in flight; disk 4.54 GB/s, busy 94% at 4.84 GB/s
+tokens: identical
+== PELICA_GROW=0 round 1
+[pelica] tiers: VRAM 8.1 GB dense + 464 expert slots | RAM 0.3 GB dense + 25.2 GB experts (~1940) | SSD the rest
+[pelica] decode 48 tokens in 15.5s: 3.107 tok/s (0.32 s/token)
+[pelica] decode waits: 4.6s on demand reads (1612 of them), 4.0s on prefetches in flight; disk 4.54 GB/s, busy 94% at 4.83 GB/s
+tokens: identical
+== PELICA_GROW=1 round 2
+[pelica] tiers: VRAM 8.1 GB dense + 464 expert slots | RAM 0.3 GB dense + 25.3 GB experts (~1949) | SSD the rest
+[pelica] 41 more VRAM expert slots after prefill (505 in all)
+[pelica] decode 48 tokens in 15.1s: 3.170 tok/s (0.32 s/token)
+[pelica] decode waits: 4.6s on demand reads (1581 of them), 3.8s on prefetches in flight; disk 4.55 GB/s, busy 94% at 4.85 GB/s
+tokens: identical
+== PELICA_GROW=0 round 2
+[pelica] tiers: VRAM 8.1 GB dense + 464 expert slots | RAM 0.3 GB dense + 25.3 GB experts (~1951) | SSD the rest
+[pelica] decode 48 tokens in 15.4s: 3.126 tok/s (0.32 s/token)
+[pelica] decode waits: 4.7s on demand reads (1617 of them), 3.9s on prefetches in flight; disk 4.56 GB/s, busy 94% at 4.85 GB/s
+tokens: identical
