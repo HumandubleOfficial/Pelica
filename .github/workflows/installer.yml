@@ -1,10 +1,15 @@
 name: Windows installer
 
 # Builds desktop/release/Pelica-Setup-<version>.exe on a Windows runner (the
-# installer needs Windows' own C# compiler and electron.exe) and keeps it as
-# an artifact. Run it from the Actions tab, or: gh workflow run installer.yml
+# installer needs Windows' own C# compiler and electron.exe). Publishing a
+# release attaches the installer to it; a manual run keeps it as an artifact.
 on:
+  release:
+    types: [published]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   installer:
@@ -37,3 +42,9 @@ jobs:
           name: installer
           path: desktop/release/Pelica-Setup-*.exe
           if-no-files-found: error
+      - name: Attach it to the release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" desktop/release/Pelica-Setup-*.exe --repo "${{ github.repository }}"
