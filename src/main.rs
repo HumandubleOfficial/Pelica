@@ -6,6 +6,10 @@ mod app;
 mod chat_template;
 mod config;
 mod cpu_attn;
+mod ds4;
+mod ds4_cpu;
+mod ds4_gpu;
+mod ds4_io;
 mod experts;
 mod forward;
 mod gguf;
@@ -525,6 +529,9 @@ fn main() -> Result<()> {
         return bench_disk(&args.model);
     }
     if args.model.extension().is_some_and(|e| e.eq_ignore_ascii_case("gguf")) {
+        if gguf::Gguf::open(&args.model).is_ok_and(|g| ds4::handles(&g)) {
+            return ds4::run(&args.model, &args.prompt, args.ids.as_deref(), args.raw, args.max_tokens, args.ctx, args.teacher, args.ignore_eos);
+        }
         if gguf::Gguf::open(&args.model).is_ok_and(|g| moe::handles(&g)) {
             return moe::run(&args.model, &args.prompt, args.ids.as_deref(), args.raw, args.max_tokens, args.ctx, args.teacher, args.ignore_eos);
         }

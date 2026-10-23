@@ -197,11 +197,6 @@ impl Store {
         self.sh.st.lock().unwrap().heat.clone()
     }
 
-    /// Whether the expert is in RAM now (read or being read).
-    pub fn has(&self, key: u32) -> bool {
-        self.sh.st.lock().unwrap().map.contains_key(&key)
-    }
-
     /// (reads from the drive, requests served from RAM)
     pub fn counts(&self) -> (u64, u64) {
         let st = self.sh.st.lock().unwrap();
@@ -270,21 +265,6 @@ impl Store {
         }
     }
 
-    /// Whether the pinned expert is ready (without waiting).
-    pub fn is_ready(&self, pin: &Pin) -> bool {
-        self.sh.st.lock().unwrap().slots[pin.slot].fill == Fill::Ready
-    }
-
-    /// Reads one expert into a new buffer, outside the cache (warm-up).
-    pub fn read_now(&self, key: u32) -> Result<Vec<u8>> {
-        let pins = self.request(&[key])?;
-        self.wait(&pins[0])?;
-        let mut v = Vec::new();
-        for p in 0..3 {
-            v.extend_from_slice(pins[0].piece(p));
-        }
-        Ok(v)
-    }
 }
 
 impl Drop for Store {

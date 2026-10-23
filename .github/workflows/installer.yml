@@ -1,0 +1,52 @@
+name: Windows installer
+
+# Builds desktop/release/Pelica-Setup-<version>.exe on a Windows runner (the
+# installer needs Windows' own C# compiler and electron.exe). Publishing a
+# release attaches the installer to it; pull requests and manual runs keep it
+# as an artifact.
+on:
+  release:
+    types: [published]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Build the engine
+        # Tuned for Zen 4 (the dev machine), as target-cpu=native is there. An
+        # explicit --target keeps these flags off build scripts, which run on
+        # the runner's own CPU.
+        env:
+          RUSTFLAGS: -C target-cpu=znver4
+        shell: bash
+        run: |
+          cargo build --release --target x86_64-pc-windows-msvc
+          mkdir -p target/release
+          cp target/x86_64-pc-windows-msvc/release/pelica.exe target/release/pelica.exe
+      - name: Build the installer
+        working-directory: desktop
+        run: |
+          npm ci
+          npm run installer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: desktop/release/Pelica-Setup-*.exe
+          if-no-files-found: error
+      - name: Attach it to the release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" desktop/release/Pelica-Setup-*.exe --repo "${{ github.repository }}"
