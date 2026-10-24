@@ -2,7 +2,7 @@
 
 A tiered **GPU + RAM + SSD** inference engine for giant Mixture-of-Experts
 models, written in Rust. The aim is to run frontier-scale MoE checkpoints on a
-mid-range gaming PC faster than [Colibrì](https://github.com/JustVugg/colibri).
+mid-range gaming PC faster than [Colibrì](https://github.com/JustVugg/colibri).(pretty sure pelica is faster by like 4x on some things)
 
 The idea is the same one Colibrì proved: an MoE token only touches a few
 experts, so the dense part of the model can stay resident while the experts
