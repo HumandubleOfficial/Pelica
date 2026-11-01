@@ -1,0 +1,31 @@
+# How Hash Maps Work
+
+A hash map (also called hash table or dictionary) is a data structure that stores key-value pairs and provides fast insertion, deletion, and lookup operations. Here's how it works:
+
+## Core Concepts
+
+### 1. **Hash Function**
+The hash function takes a key and converts it into an integer index. This function must:
+- Be deterministic (same key always produces same hash)
+- Distribute keys uniformly across the array
+- Be fast to compute
+
+### 2. **Array Storage**
+The hash map uses an array (or vector) as its underlying storage. The hash value determines which array index (bucket) a key-value pair goes into.
+
+### 3. **Collision Handling**
+When two different keys hash to the same index, we have a collision. Common solutions:
+- **Chaining**: Each bucket contains a linked list or tree of entries
+- **Open Addressing**: Find the next available slot using probing techniques
+
+### 4. **Load Factor and Resizing**
+The load factor (entries/buckets) determines when to resize. When it exceeds a threshold (typically 0.75), the array is doubled in size and all entries are rehashed.
+
+## Operation Complexity
+- **Average case**: O(1) for get, put, delete
+- **Worst case**: O(n) when many collisions occur
+- **Space**: O(n) where n is number of entries
+
+---
+
+# Complete Rust Implementation

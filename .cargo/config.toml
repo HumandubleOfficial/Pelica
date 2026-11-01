@@ -1,0 +1,4 @@
+# Build for the machine it runs on (AVX2/AVX-512 on Zen 4). Kernels also
+# check features at runtime, so a portable build only loses speed.
+[build]
+rustflags = ["-C", "target-cpu=native"]

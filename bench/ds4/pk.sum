@@ -1,0 +1,2 @@
+[PELICA_PICKS=picks_a.bin] r1 prefill 25 tokens in 6.9s (3.65 tok/s) | decode 299 tokens in 69.2s: 4.32 tok/s | read 278.0 GB (4.84 GB/s while busy), guesses never used 2434
+[PELICA_PICKS=picks_b.bin] r1 prefill 23 tokens in 6.8s (3.36 tok/s) | decode 299 tokens in 62.9s: 4.76 tok/s | read 235.7 GB (4.81 GB/s while busy), guesses never used 2098

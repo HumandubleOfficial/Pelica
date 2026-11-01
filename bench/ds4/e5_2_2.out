@@ -1,0 +1,30 @@
+# How Hash Maps Work: A Detailed Explanation
+
+## Core Concept
+
+A hash map (also called hash table or dictionary) is a data structure that stores key-value pairs and provides fast insertion, deletion, and lookup operations. The average time complexity for these operations is O(1), making it one of the most efficient data structures for associative data storage.
+
+## The Fundamental Idea
+
+The key insight behind hash maps is using a **hash function** to transform keys into array indices. Instead of searching through a list to find a value, we can directly compute where the value should be stored.
+
+## Key Components
+
+### 1. **Hash Function**
+- Takes a key as input and produces an integer (the hash code)
+- Must be deterministic: same key always produces same hash
+- Should distribute keys uniformly across the hash table
+- Common examples: MD5, SHA-1, or simpler custom functions for specific types
+
+### 2. **Array (Bucket Array)**
+- The underlying storage structure
+- Each position in the array is called a "bucket"
+- Size is typically a power of 2 for efficient modulo operations
+
+### 3. **Collision Resolution**
+When two different keys hash to the same index, we have a collision. There are two main approaches:
+
+#### **Chaining (Separate Chaining)**
+- Each bucket contains a linked list (or other collection) of entries
+- When collision occurs, we add to the linked list
+- Simple to

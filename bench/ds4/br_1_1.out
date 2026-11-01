@@ -1,0 +1,14 @@
+# How Hash Maps Work: A Detailed Explanation
+
+## Core Concept
+
+A hash map (also called hash table or dictionary) is a data structure that stores key-value pairs and provides fast insertion, deletion, and lookup operations. The average time complexity for these operations is O(1), making it one of the most efficient data structures for associative data storage.
+
+## The Fundamental Idea
+
+The key insight behind hash maps is using a **hash function** to transform keys into array indices. Instead of searching through a list to find a value, we can directly compute where the value should be stored.
+
+## How It Works Step-by-Step
+
+### 1. **Hash Function**
+The hash function takes a key and produces a fixed-size integer (the hash code

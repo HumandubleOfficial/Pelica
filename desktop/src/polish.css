@@ -1,0 +1,1980 @@
+/* Claude's look, sampled from its desktop app: surfaces, edges, corners,
+   fades, blur and motion. Loaded last, so these win over earlier rules. */
+
+/* ---------- colors (Dark: measured from Claude's window) ---------- */
+:root,
+:root[data-theme="dark"] {
+  --side: #1f1f1f; /* sidebar */
+  --edge: #303030; /* the sidebar's edge, the message box */
+  --rule: #353535; /* the line under the title bar */
+  --sel: #404040; /* the open chat in the sidebar */
+  --hover: color-mix(in srgb, var(--text) 8%, transparent);
+  --rim: #404040; /* the message box's lighter rim (Claude's) */
+  --glass: color-mix(in srgb, #262626 86%, transparent);
+}
+:root[data-theme="light"] {
+  --edge: #e3e0d8;
+  --rule: #e6e3db;
+  --sel: #e8e5dc;
+  --rim: #dcd8ce;
+  --glass: color-mix(in srgb, #ffffff 86%, transparent);
+}
+:root[data-theme="warm"],
+:root[data-theme="midnight"],
+:root[data-theme="neural"] {
+  --side: color-mix(in srgb, var(--bg) 88%, #fff 3%);
+  --edge: var(--line-2);
+  --rule: var(--line-2);
+  --sel: var(--panel-2);
+  --rim: var(--line-2);
+  --glass: color-mix(in srgb, var(--raised) 86%, transparent);
+}
+
+/* ---------- edges ---------- */
+.sidebar {
+  background: var(--side);
+  border-right: 1px solid var(--edge);
+}
+.titlebar {
+  border-bottom-color: var(--rule);
+}
+.sp-card {
+  background: transparent;
+}
+
+/* ---------- the sidebar: rows, the open chat, folder groups ---------- */
+.nav-item,
+.chat-row {
+  border-radius: 9px;
+}
+.chat-row:hover {
+  background: var(--hover);
+}
+.chat-row.active {
+  background: var(--sel);
+}
+.nav-item.active {
+  background: var(--sel);
+}
+.side-group {
+  margin-top: 10px;
+}
+.side-group-head {
+  display: flex;
+  align-items: center;
+  padding: 4px 4px 2px 10px;
+}
+.side-group-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 0.8em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.side-group-name:hover {
+  color: var(--text-2);
+}
+.side-group.folded .sp-caret {
+  transform: rotate(-90deg);
+}
+.side-group-new {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--muted);
+  opacity: 0;
+}
+.side-group-head:hover .side-group-new {
+  opacity: 1;
+}
+.side-group-new:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* ---------- the message box: a lighter rim and a soft shadow ---------- */
+.composer {
+  background: var(--input-bg, var(--panel));
+  border: 1px solid var(--rim);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
+}
+/* (no glow when it's focused: it looks the same as at rest) */
+.composer:focus-within {
+  border-color: var(--rim);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+/* ---------- fades: messages fade out under the title bar and behind the message box ---------- */
+.chat-scroll {
+  mask-image: linear-gradient(to bottom, transparent 0, #000 22px);
+}
+.composer-dock {
+  position: relative;
+}
+.composer-dock::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -26px;
+  height: 26px;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+  z-index: 1;
+}
+/* (the plan panel sits right above the box: no fade over it) */
+.center-pane:has(.todo-panel) .composer-dock::before {
+  display: none;
+}
+
+/* ---------- glass: menus and tooltips blur what's behind them ---------- */
+.popover,
+.ctx-menu,
+.tooltip {
+  background: var(--glass);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  border-color: color-mix(in srgb, var(--text) 12%, transparent);
+}
+.popover,
+.ctx-menu {
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.modal-back {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ---------- corners: one family of radii ---------- */
+.tool-group,
+.todo-panel,
+.chg-file {
+  border-radius: 12px;
+}
+.diff,
+.tool-cmd,
+.tool-pre,
+.code-preview .diff {
+  border-radius: 9px;
+}
+.ghost-btn,
+.sp-link,
+.foot-btn,
+.chip,
+.dock-tab {
+  border-radius: 8px;
+}
+
+/* ---------- motion: soft color changes, things that appear rise in gently
+   (menus still open at once) ---------- */
+.ghost-btn,
+.sp-link,
+.foot-btn,
+.chip,
+.nav-item,
+.chat-row,
+.side-group-new,
+.sp-row,
+.tool-sum,
+.tool-head,
+.dock-tab,
+.files-row,
+.ctx-row,
+.menu-row,
+.plus-btn,
+.send-btn,
+.sp-grip {
+  transition: background-color 0.14s ease, color 0.14s ease, opacity 0.14s ease;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.tool-sum-wrap .tool-group,
+.tool-body,
+.user-row,
+.sp-card .sp-body {
+  animation: rise 0.22s cubic-bezier(0.2, 0, 0, 1);
+}
+.no-anim .tool-sum-wrap .tool-group,
+.no-anim .tool-body,
+.no-anim .user-row,
+.no-anim .sp-card .sp-body {
+  animation: none;
+}
+
+/* ---------- the reply mark: four warm balls ---------- */
+@property --orbit {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 5px;
+}
+.orbs {
+  position: relative;
+  display: inline-block;
+  --orbit: 5px;
+}
+.orbs i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: #d97757;
+  transform: rotate(var(--a)) translateY(calc(-1 * var(--orbit)));
+}
+.orbs i:nth-child(1) {
+  --a: 0deg;
+  background: #e0896a;
+}
+.orbs i:nth-child(2) {
+  --a: 90deg;
+  background: #d97757;
+}
+.orbs i:nth-child(3) {
+  --a: 180deg;
+  background: #c8654a;
+}
+.orbs i:nth-child(4) {
+  --a: 270deg;
+  background: #eba184;
+}
+.orbs.live {
+  animation: orbit-spin 1.8s linear infinite, orbit-breathe 1.1s ease-in-out infinite alternate;
+}
+.orbs.live i {
+  animation: orb-pulse 0.9s ease-in-out infinite alternate;
+}
+.orbs.live i:nth-child(2) {
+  animation-delay: -0.22s;
+}
+.orbs.live i:nth-child(3) {
+  animation-delay: -0.45s;
+}
+.orbs.live i:nth-child(4) {
+  animation-delay: -0.67s;
+}
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes orbit-breathe {
+  from {
+    --orbit: 4.8px;
+  }
+  to {
+    --orbit: 7.5px;
+  }
+}
+@keyframes orb-pulse {
+  from {
+    width: 5.5px;
+    height: 5.5px;
+    margin: -2.75px 0 0 -2.75px;
+  }
+  to {
+    width: 7px;
+    height: 7px;
+    margin: -3.5px 0 0 -3.5px;
+  }
+}
+.no-anim .orbs.live,
+.no-anim .orbs.live i {
+  animation: none;
+}
+.turn-avatar {
+  display: flex;
+  justify-content: center;
+  width: 22px;
+}
+
+/* ---------- the small arrows (▾ ▸): a rounded triangle, not a sharp CSS one ---------- */
+.sp-caret,
+.tool-tri,
+.tool-tri.open {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border: 0;
+  margin-top: 0;
+  background: var(--muted);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.4 3.3h5.2L5 6.9z' fill='black' stroke='black' stroke-width='1.7' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.4 3.3h5.2L5 6.9z' fill='black' stroke='black' stroke-width='1.7' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.tool-tri {
+  transform: rotate(-90deg);
+}
+.tool-tri.open {
+  transform: none;
+}
+.sp-title:hover .sp-caret,
+.side-group-name:hover .sp-caret,
+.tool-sum:hover .tool-tri,
+.tool-head:hover .tool-tri {
+  background: var(--text-2);
+}
+.exit.ok {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: -2px;
+}
+
+/* ---------- the prompt maker's steps: plain words, no pills ---------- */
+.pm-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 6px;
+  font-size: 0.8em;
+}
+.pm-steps .pm-step,
+.pm-steps .pm-step.cur,
+.pm-steps .pm-step.done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+}
+.pm-steps .pm-step.done {
+  color: var(--text-2);
+}
+.pm-steps .pm-step.done svg {
+  color: var(--ok);
+}
+.pm-steps .pm-step.cur {
+  color: var(--text);
+  font-weight: 600;
+}
+.pm-step-sep {
+  color: var(--dim);
+}
+
+/* ---------- small badges: rounded rectangles, like Claude's "Beta" ---------- */
+.sp-new,
+.pill,
+.pill-btn,
+.approval-chat,
+.nmap-size,
+.chat-row-folder {
+  border-radius: 6px;
+}
+
+/* ---------- a chat's "…": bigger, brighter, a real button ---------- */
+.chat-row-more {
+  width: 28px;
+  height: 28px;
+  margin-right: 3px;
+  padding: 0;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--text-2);
+  opacity: 0;
+}
+.chat-row:hover .chat-row-more,
+.chat-row.active .chat-row-more,
+.chat-row-more.open,
+.chat-row-more:focus-visible {
+  opacity: 1;
+}
+.chat-row-more:hover,
+.chat-row-more.open {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+/* ---------- the model library's uninstall button: red only on hover ---------- */
+.lib-uninstall:hover:not(:disabled) {
+  color: var(--del);
+  background: color-mix(in srgb, var(--del) 12%, transparent);
+}
+
+/* ---------- menus (Menu.tsx), sampled from Claude's: solid #303030, a #383838 rim
+   and inset lines, grey letters on the right, Delete in red, a blue check ---------- */
+:root,
+:root[data-theme="dark"] {
+  --menu: #303030;
+  --menu-rim: #383838;
+  --menu-hover: #3b3b3b;
+  --menu-key: #a5a5a5;
+  --menu-red: #f17778;
+  --check: #338ced;
+}
+:root[data-theme="light"] {
+  --menu: #ffffff;
+  --menu-rim: #e6e3db;
+  --menu-hover: #f1efe9;
+  --menu-key: #85827a;
+  --menu-red: #cf222e;
+  --check: #2a74d6;
+}
+:root[data-theme="warm"],
+:root[data-theme="midnight"],
+:root[data-theme="neural"] {
+  --menu: var(--raised);
+  --menu-rim: var(--line-2);
+  --menu-hover: var(--hover);
+  --menu-key: var(--muted);
+  --menu-red: var(--bad);
+  --check: var(--accent);
+}
+.popover.menu {
+  width: max-content;
+  min-width: 170px;
+  max-width: 360px;
+  padding: 5px;
+  background: var(--menu);
+  border: 1px solid var(--menu-rim);
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  animation: none;
+}
+.menu-at {
+  position: fixed;
+  z-index: 1000;
+}
+.menu-at > .popover.menu {
+  position: static;
+}
+.menu .mi-wrap {
+  position: relative;
+}
+.menu .mi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--text);
+  text-align: left;
+}
+.menu .mi:hover:not(:disabled),
+.menu .mi.open {
+  background: var(--menu-hover);
+}
+.menu .mi:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.menu .mi > svg:first-child {
+  flex: none;
+  color: var(--text-2);
+}
+.mi-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.mi-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mi-desc {
+  font-size: 12.5px;
+  color: var(--menu-key);
+  white-space: nowrap;
+}
+.mi-text:has(.mi-desc) {
+  padding: 2px 0;
+}
+.mi-text:has(.mi-desc) .mi-label {
+  font-weight: 500;
+}
+.mi-key {
+  min-width: 10px;
+  margin-left: 22px;
+  text-align: right;
+  font-size: 12.5px;
+  color: var(--menu-key);
+}
+.mi-more {
+  margin-left: 22px;
+  color: var(--menu-key);
+}
+.mi-check {
+  margin-left: 18px;
+  color: var(--check);
+}
+.mi-check + .mi-key {
+  margin-left: 10px;
+}
+.menu .mi.danger {
+  color: var(--menu-red);
+}
+.menu .mi.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--menu-red) 12%, transparent);
+}
+.menu .mi .toggle {
+  flex: none;
+  margin-left: 22px;
+  transform: scale(0.8);
+}
+.menu .menu-sep {
+  height: 1px;
+  margin: 5px 11px;
+  background: var(--menu-rim);
+}
+.menu-head {
+  padding: 6px 10px 4px;
+  font-size: 12.5px;
+  color: var(--menu-key);
+}
+.popover.menu.menu-sub {
+  top: -6px;
+  left: calc(100% + 4px);
+  bottom: auto;
+}
+.popover.menu.menu-sub.flip {
+  left: auto;
+  right: calc(100% + 4px);
+}
+.popover.menu.perm-pop {
+  width: max-content;
+  min-width: 290px;
+}
+.popover.menu.tb-pop {
+  width: max-content;
+  min-width: 250px;
+}
+.foot-btn.perm-chip.open {
+  background: var(--press);
+}
+
+/* ---------- the chat's name in the title bar: a button with a chevron, renamed in place ---------- */
+.title-text.chat-title {
+  display: flex;
+  justify-content: center;
+  overflow: visible;
+}
+.title-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+.title-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 8px 4px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+.title-btn svg {
+  flex: none;
+  color: var(--muted);
+}
+.title-btn:hover,
+.title-btn.open {
+  background: var(--hover);
+}
+.title-btn:hover svg,
+.title-btn.open svg {
+  color: var(--text);
+}
+.title-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.popover.menu.title-pop {
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+/* the rename box: a thin blue frame, the name selected (as in Claude) */
+.title-edit,
+.chat-row-edit {
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid #257de0;
+  border-radius: 4px;
+  outline: none;
+  padding: 1px 3px;
+}
+.title-edit {
+  field-sizing: content;
+  min-width: 120px;
+  max-width: 480px;
+  margin: 3px 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: center;
+}
+.title-edit::selection,
+.chat-row-edit::selection {
+  background: #0b47b3;
+  color: #fff;
+}
+.chat-row.menu-open {
+  background: var(--hover);
+}
+.chat-row.menu-open .chat-row-more {
+  opacity: 1;
+}
+
+/* ---------- icon buttons, as bright as Claude's (sampled ~#efefef at rest): the
+   icon never changes on hover, only a grey box appears behind it; a button that's
+   on keeps the box (#2a2a2a), and hovering it lifts the box a shade ---------- */
+:root {
+  --icon: var(--text);
+  --btn-on: color-mix(in srgb, var(--text) 8%, transparent);
+  --btn-on-hover: color-mix(in srgb, var(--text) 13%, transparent);
+}
+.ghost-btn,
+.ghost-btn:hover:not(:disabled),
+.plus-btn,
+.plus-btn:hover,
+.plus-btn.open,
+.send-btn:not(.ready):not(.stop):not(:disabled),
+.composer-row .chip.mic:not(.on),
+.composer-row .chip.mic:not(.on):hover,
+.win-btns button,
+.win-btns button:hover,
+.chat-row-more,
+.chat-row-more:hover,
+.chat-row-more.open,
+.side-group-new,
+.side-group-new:hover,
+.msg-actions button,
+.msg-actions button:hover,
+.code-head .ghost-btn {
+  color: var(--icon);
+}
+.ghost-btn.on,
+.tb-tools .ghost-btn.on,
+.msg-actions .ghost-btn.on,
+.code-head .ghost-btn.on,
+.chat-row-more.open,
+.plus-btn.open {
+  color: var(--icon);
+  background: var(--btn-on);
+}
+.ghost-btn.on:hover:not(:disabled),
+.tb-tools .ghost-btn.on:hover,
+.msg-actions .ghost-btn.on:hover,
+.chat-row-more.open:hover,
+.plus-btn.open:hover {
+  background: var(--btn-on-hover);
+}
+.ghost-btn:disabled {
+  color: var(--muted);
+}
+
+/* ---------- the session rail, measured against Claude's: transparent cards on a
+   #222 line, larger type, grey icons and legend (only the percentages bright),
+   a bar with gaps between its parts, a small "Compact session" ---------- */
+.sp-card,
+.sp-card.folded {
+  background: transparent;
+  border-radius: 12px;
+  padding: 13px 9px 10px;
+}
+.sp-card.folded {
+  padding-bottom: 13px;
+}
+.sp-head {
+  min-height: 22px;
+  padding: 0 9px 6px;
+}
+.sp-title {
+  font-size: 14px;
+  font-weight: 600;
+  gap: 8px;
+}
+.sp-row {
+  min-height: 34px;
+  gap: 12px;
+  padding: 0 9px;
+  font-size: 14.5px;
+}
+.sp-row > svg:first-child,
+.sp-file-open > svg,
+.sp-conn-ico {
+  color: #9c9c9c;
+}
+:root[data-theme="light"] .sp-row > svg:first-child,
+:root[data-theme="light"] .sp-file-open > svg,
+:root[data-theme="light"] .sp-conn-ico {
+  color: var(--muted);
+}
+.sp-conn-ico {
+  background: none;
+}
+.sp-meta,
+.sp-sum,
+.sp-more,
+.sp-empty {
+  font-size: 13px;
+  color: var(--muted);
+}
+.sp-file-open {
+  height: 34px;
+  gap: 12px;
+  font-size: 14.5px;
+}
+.sp-ctx-top {
+  padding: 0 9px 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.sp-ctx-top b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.sp-ctx-bar {
+  height: 4px;
+  margin: 0 9px 12px;
+  gap: 2px;
+  border-radius: 2px;
+  overflow: visible;
+  background: transparent;
+}
+.sp-ctx-bar span {
+  border-radius: 2px;
+}
+.sp-ctx-bar span:empty:last-child,
+.sp-ctx-bar .track {
+  flex: 1;
+  background: var(--track, #2b2b2b);
+}
+.sp-ctx-rows {
+  gap: 0;
+  padding: 0 9px;
+}
+.sp-ctx-row {
+  grid-template-columns: 10px 1fr auto 52px;
+  gap: 12px;
+  min-height: 24px;
+  font-size: 13px;
+}
+.sp-ctx-row > span:nth-child(2),
+.sp-ctx-row > span.muted {
+  color: var(--muted);
+}
+.sp-ctx-row b {
+  color: var(--text);
+}
+.sp-ctx-row i.free {
+  background: var(--track, #2b2b2b);
+}
+.sp-ctx-foot {
+  padding: 12px 9px 2px;
+  font-size: 13px;
+}
+.sp-ctx-foot .btn {
+  height: auto;
+  padding: 4px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #2b2b2b;
+}
+.sp-ctx-foot .btn:hover:not(:disabled) {
+  background: #343434;
+}
+:root[data-theme="light"] .sp-ctx-foot .btn {
+  background: var(--panel-2);
+}
+
+/* ---------- the rail's grip: compact dots, there when the card is hovered ---------- */
+.sp-grip {
+  width: 16px;
+  height: 20px;
+  margin: -1px -5px -1px 6px;
+  border-radius: 5px;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.18s ease, background-color 0.14s ease, color 0.14s ease;
+}
+.sp-card:hover .sp-grip,
+.sp-card.lifted .sp-grip,
+.sp-grip:focus-visible {
+  opacity: 1;
+}
+.sp-grip:hover,
+.sp-card.lifted .sp-grip {
+  color: var(--text);
+  background: var(--hover);
+}
+
+/* ---------- a card being dragged: it lifts a little and casts a soft shadow ---------- */
+.sp-card {
+  transition: box-shadow 0.25s ease, background-color 0.25s ease;
+}
+.sp-card.lifted {
+  z-index: 5;
+  background: var(--bg);
+  border-color: var(--line-2);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5), 0 3px 10px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.25s ease, background-color 0.25s ease;
+  will-change: transform;
+}
+.sp-card .sp-ctx-foot .btn {
+  padding: 3px 9px;
+  line-height: 16px;
+  border: 0;
+  border-radius: 6px;
+}
+.sp-ctx-foot .small {
+  font-size: 13px;
+}
+.sp-ctx-row {
+  gap: 10px;
+  grid-template-columns: 10px 1fr auto 46px;
+}
+
+/* ---------- pressing: the grey box appears at once on hover (no fade in or
+   out), lightens while the button is held down ---------- */
+:root {
+  --press: color-mix(in srgb, var(--text) 16%, transparent);
+  --press-on: color-mix(in srgb, var(--text) 20%, transparent);
+}
+.ghost-btn,
+.sp-link,
+.foot-btn,
+.chip,
+.nav-item,
+.chat-row,
+.chat-row-more,
+.side-group-new,
+.title-btn,
+.plus-btn,
+.send-btn,
+.composer-row .chip.mic,
+.win-btns button,
+.dock-tab,
+.tool-view,
+.tool-sum,
+.tool-head,
+.sp-grip,
+.sp-row.click,
+.files-row,
+.ctx-row,
+.popover .menu-row,
+.popover > button,
+.menu .mi,
+.msg-actions button,
+.idea,
+.user-chip,
+.btn {
+  transition: color 0.14s ease, opacity 0.14s ease, border-color 0.14s ease;
+}
+/* held down: lighter, with no delay */
+.ghost-btn:active:not(:disabled),
+.sp-link:active:not(:disabled),
+.foot-btn:active:not(:disabled),
+.chip:not(.on):active:not(:disabled),
+.nav-item:not(.active):active,
+.chat-row:not(.active):has(.chat-row-main:active),
+.chat-row-more:active,
+.side-group-new:active,
+.title-btn:active,
+.plus-btn:active,
+.send-btn:not(.ready):not(.stop):not(.busy):active:not(:disabled),
+.composer-row .chip.mic:not(.on):active,
+.win-btns button:not(.close):active,
+.dock-tab:active,
+.tool-view:active,
+.tool-sum:active,
+.tool-head:active,
+.sp-grip:active,
+.sp-row.click:active,
+.files-row:active,
+.ctx-row:active,
+.popover .menu-row:active:not(:disabled),
+.popover > button:active:not(:disabled),
+.msg-actions button:active,
+.idea:active,
+.user-chip:active {
+  background: var(--press);
+  transition-duration: 0s;
+}
+/* a button that's already on, or the open chat: a step lighter again */
+.ghost-btn.on:active:not(:disabled),
+.tb-tools .ghost-btn.on:active,
+.msg-actions .ghost-btn.on:active,
+.chat-row-more.open:active,
+.plus-btn.open:active,
+.title-btn.open:active,
+.foot-btn.open:active {
+  background: var(--press-on);
+  transition-duration: 0s;
+}
+.chat-row.active:has(.chat-row-main:active),
+.nav-item.active:active {
+  background: color-mix(in srgb, var(--text) 9%, var(--sel));
+  transition-duration: 0s;
+}
+.menu .mi:active:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 9%, var(--menu-hover));
+  transition-duration: 0s;
+}
+.menu .mi.danger:active:not(:disabled) {
+  background: color-mix(in srgb, var(--menu-red) 20%, transparent);
+}
+.btn:active:not(:disabled):not(.primary) {
+  background: color-mix(in srgb, var(--text) 16%, var(--button, var(--panel-2)));
+  transition-duration: 0s;
+}
+.btn.primary:active:not(:disabled) {
+  filter: brightness(1.12);
+}
+.send-btn.ready:active:not(:disabled) {
+  filter: brightness(1.12);
+}
+.win-btns .close:active {
+  background: #a8261a;
+}
+
+/* ---------- a button whose menu is open stays at its pressed shade until the
+   menu closes ---------- */
+.menu-open,
+.menu-open:hover,
+.ghost-btn.menu-open:hover:not(:disabled),
+.foot-btn.menu-open,
+.chip.menu-open,
+.plus-btn.menu-open,
+.plus-btn.menu-open:hover,
+.title-btn.menu-open,
+.chat-row-more.menu-open,
+.chat-row-more.menu-open:hover,
+.ctx-ring.menu-open {
+  background: var(--press);
+  color: var(--icon, var(--text));
+}
+.ctx-ring {
+  border-radius: 8px;
+  transition: background-color 0.14s ease;
+}
+.ctx-ring:hover {
+  background: var(--hover);
+}
+
+/* ---------- the thin line after the rail toggle in the title bar (Claude's:
+   1px, #222, 16px tall) ---------- */
+.tb-sep {
+  position: relative;
+  top: 0.5px; /* (on a whole pixel: sharp) */
+  flex: none;
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: #222222;
+}
+:root[data-theme="light"] .tb-sep,
+:root[data-theme="warm"] .tb-sep,
+:root[data-theme="midnight"] .tb-sep,
+:root[data-theme="neural"] .tb-sep {
+  background: var(--line-2);
+}
+
+/* ---------- the chat stays one centred column (as in Claude): its width counts
+   the right sidebar's room whether that's open or not, so closing the sidebar
+   only re-centres the column; no line re-wraps, nothing changes size ---------- */
+:root {
+  --left-w: 272px; /* the sidebar (settings.sideWidth) */
+  --rail-w: 290px; /* the session rail */
+}
+/* (worked out on the shell, so it sees a sidebar being dragged or hidden) */
+.shell {
+  --col: min(780px, calc(100vw - var(--left-w) - var(--rail-w)));
+}
+.shell.no-side {
+  --left-w: 0px;
+}
+/* (where the rail can't show at all, nothing is kept for it) */
+@media (max-width: 1080px) {
+  :root {
+    --rail-w: 0px;
+  }
+}
+.chat-col {
+  width: min(var(--col), 100%);
+}
+.composer-dock {
+  width: min(var(--col), 100%);
+}
+.todo-panel {
+  width: min(calc(var(--col) - 48px), calc(100% - 48px));
+}
+
+/* ---------- stop: Claude's plain light rounded square (~12px), no circle behind
+   it; the usual grey box on hover, lighter while pressed ---------- */
+.send-btn.stop {
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--icon, var(--text));
+}
+.send-btn.stop:hover {
+  background: var(--hover);
+  color: var(--icon, var(--text));
+}
+.send-btn.stop:active {
+  background: var(--press);
+  transform: none;
+  transition-duration: 0s;
+}
+
+/* ---------- the message box, as slim as Claude's: 44px for one line (4px in,
+   34px buttons and line), 12px corners, a #404040 rim, a soft shadow ---------- */
+.composer.slim,
+.composer.slim.big {
+  padding: 4px 5px;
+  border-radius: 12px;
+}
+.composer.slim {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+.composer.slim:focus-within {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+.composer.slim textarea,
+.composer.slim.big textarea {
+  padding: 6px 4px;
+  line-height: 22px;
+}
+
+/* ---------- the sidebar's width follows --left-w; its right edge drags it ---------- */
+.sidebar {
+  position: relative;
+  width: var(--left-w);
+}
+.side-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -4px;
+  width: 8px;
+  z-index: 20;
+  cursor: col-resize;
+  -webkit-app-region: no-drag;
+}
+.side-resize::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+.side-resize:hover::after,
+body.resizing-side .side-resize::after {
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+}
+body.resizing-side,
+body.resizing-side * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+/* ---- menus and app chrome: their text can't be selected ----
+   (text fields inside them stay editable and selectable) */
+.popover,
+.menu,
+.menu-sub,
+.ctx-menu,
+.slash-menu,
+.palette,
+.tb-pop,
+.title-pop,
+.titlebar,
+.sidebar,
+.composer-foot,
+.thinking-head,
+.tooltip,
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.popover :is(input, textarea),
+.menu :is(input, textarea),
+.palette :is(input, textarea),
+.sidebar :is(input, textarea),
+.titlebar :is(input, textarea) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* ---------- compact mode (window under 820 px, like Claude's small window):
+   the sidebar is a drawer over the chat, the chat and message box fill the
+   width, the title bar keeps the essentials ---------- */
+.shell.compact {
+  --left-w: 0px;
+}
+.shell.compact .sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 60;
+  width: min(300px, 86vw);
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5);
+  -webkit-app-region: no-drag;
+  animation: drawer-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.shell.compact .side-resize {
+  display: none;
+}
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  background: rgba(0, 0, 0, 0.4);
+  -webkit-app-region: no-drag;
+  animation: scrim-in 0.2s ease-out;
+}
+@keyframes drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+.shell.compact .titlebar {
+  gap: 2px;
+  padding-left: 8px;
+}
+.shell.compact .title-text {
+  padding: 0 6px;
+}
+.shell.compact .chat-col {
+  padding: 14px 18px 0;
+}
+.shell.compact .turn {
+  gap: 10px;
+}
+.shell.compact .composer-dock {
+  padding: 0 14px 8px;
+}
+.shell.compact .todo-panel {
+  width: calc(100% - 28px);
+}
+/* narrower still: only the view options stay on the right */
+@media (max-width: 560px) {
+  .shell.compact .tb-tools .dock-btn {
+    display: none;
+  }
+}
+
+/* ---------- hover boxes on every button-like control switch on and off at
+   once: no background fades anywhere ---------- */
+button,
+[role="button"],
+[role="menuitem"],
+.pill-btn,
+.model-row,
+.conn-tile,
+.nmap-btn,
+.ctx-ring,
+.sp-grip,
+.send {
+  transition-property: color, opacity, border-color, transform, filter, box-shadow !important;
+}
+
+/* ---------- thinking: markdown, small and quiet ---------- */
+.thinking-body {
+  white-space: normal;
+}
+.md.md-think {
+  font-family: inherit;
+  font-size: 1em;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.md.md-think p,
+.md.md-think ul,
+.md.md-think ol {
+  margin: 0 0 0.55em;
+}
+.md.md-think h1,
+.md.md-think h2,
+.md.md-think h3,
+.md.md-think h4 {
+  font-size: 1em;
+  margin: 0.8em 0 0.3em;
+  padding: 0;
+  border: 0;
+  color: var(--text-2);
+}
+.md.md-think strong {
+  color: var(--text-2);
+  font-weight: 600;
+}
+.md.md-think .code {
+  font-size: 0.92em;
+}
+
+/* ---------- replies: clean lists and spacing, as in Claude ---------- */
+.md > .md-block:last-child > :last-child {
+  margin-bottom: 0;
+}
+.md p {
+  margin: 0 0 0.85em;
+}
+.md ul,
+.md ol {
+  margin: 0 0 0.85em;
+  padding-left: 1.55em;
+}
+.md ul {
+  list-style: disc;
+}
+.md ul ul {
+  list-style: circle;
+}
+.md ul ul ul {
+  list-style: square;
+}
+.md li {
+  margin: 0.3em 0;
+  padding-left: 0.2em;
+}
+.md li > ul,
+.md li > ol {
+  margin: 0.3em 0 0.1em;
+}
+.md li > p {
+  margin: 0 0 0.3em;
+}
+.md li > p:last-child {
+  margin-bottom: 0;
+}
+.md li::marker {
+  color: color-mix(in srgb, var(--text) 72%, transparent);
+}
+.md ol li::marker {
+  color: var(--muted);
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  margin: 1.35em 0 0.5em;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.md h1 {
+  font-size: 1.32em;
+}
+.md h2 {
+  font-size: 1.16em;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.md h3 {
+  font-size: 1.04em;
+}
+.md h4 {
+  font-size: 1em;
+  color: var(--text-2);
+}
+.md > .md-block:first-child > h1:first-child,
+.md > .md-block:first-child > h2:first-child,
+.md > .md-block:first-child > h3:first-child {
+  margin-top: 0.2em;
+}
+.md hr {
+  margin: 1.4em 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.md blockquote {
+  margin: 0 0 0.85em;
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--line-2);
+  background: none;
+  color: var(--text-2);
+}
+.md :not(pre) > code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.86em;
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+.md table {
+  margin: 0.2em 0 1em;
+}
+.serif-replies .turn-body .md.md-think {
+  font-family: inherit;
+  font-size: 1em;
+  line-height: 1.55;
+}
+
+/* ---------- GitHub safety check under a tool row ---------- */
+.repo-safety {
+  margin: 2px 0 4px 2px;
+  font-size: 0.86em;
+}
+.repo-safety-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.repo-safety-head:hover {
+  background: var(--hover);
+}
+.repo-safety-word {
+  font-weight: 600;
+}
+.repo-safety.ok .repo-safety-word,
+.repo-safety.ok svg {
+  color: var(--add);
+}
+.repo-safety.caution .repo-safety-word,
+.repo-safety.caution svg {
+  color: #e2b340;
+}
+.repo-safety.risky .repo-safety-word,
+.repo-safety.risky svg {
+  color: var(--del);
+}
+.repo-safety-list {
+  margin: 2px 0 4px 8px;
+  padding-left: 22px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.repo-safety-list li {
+  margin: 2px 0;
+}
+
+/* Settings → Devices */
+.dev-list { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 4px; border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+.dev-row { display: flex; align-items: center; gap: 10px; padding: 8px 8px; border-radius: 7px; }
+.dev-row:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
+.dev-main { flex: 1; min-width: 0; }
+.dev-name { font-weight: 550; }
+.dev-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: color-mix(in srgb, var(--text) 30%, transparent); }
+.dev-dot.connected { background: var(--add); }
+.dev-dot.connecting { background: #e2b340; }
+.dev-dot.error { background: var(--del); }
+.dev-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dev-add .text-input { flex: 1; min-width: 180px; }
+.dev-add .dev-code { flex: 0 0 120px; min-width: 0; font-variant-numeric: tabular-nums; letter-spacing: .08em; }
+.dev-found { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.dev-found-item { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 7px; text-align: left; }
+.dev-found-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.dev-steps { margin: 6px 0 10px; padding-left: 1.3em; line-height: 1.6; }
+.dev-steps li { margin: .3em 0; }
+.dev-steps code { font-size: .9em; padding: 1px 5px; border-radius: 4px; background: color-mix(in srgb, var(--text) 9%, transparent); }
+
+/* What's new (release notes): opens without animation */
+.whatsnew-back, .whatsnew { animation: none !important; }
+.whatsnew { width: min(620px, 92vw); max-height: min(640px, 86vh); display: flex; flex-direction: column; overflow: hidden; }
+.whatsnew-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 6px; }
+.whatsnew-head h2 { margin: 0; font-size: 1.15em; font-weight: 600; }
+.whatsnew-body { padding: 4px 20px 8px; overflow-y: auto; }
+.whatsnew-foot { display: flex; justify-content: flex-end; padding: 10px 20px 16px; }
+.release + .release { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.release-head { display: flex; align-items: baseline; gap: 10px; }
+.release-title { margin: 3px 0 4px; color: var(--muted, inherit); opacity: .85; }
+.release-notes .md ul { margin-top: .3em; }
+.about .release-notes { margin-top: 8px; }
+
+/* words fading in as a reply streams (Markdown.tsx useFadeIn) */
+.tok-in {
+  animation: tok-in 450ms ease-out both;
+}
+@keyframes tok-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+.no-anim .tok-in {
+  animation: none;
+}
+/* a reply carrying on the turn above (after tool calls): no gap, no orbs of its own */
+.turn.draft.cont {
+  margin-top: -14px;
+}
+
+/* ---------- Brain and Models: the app's quiet greys (cards with a thin
+   rim, grey hover boxes, the open row a shade lighter, colour only where it
+   means something) ---------- */
+.brain-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  max-width: 340px;
+  padding: 0 10px 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--edge);
+  color: var(--text);
+  font-size: 0.9em;
+}
+.brain-pick span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.brain-pick:hover:not(:disabled) {
+  background: var(--hover);
+}
+.popover.menu.brain-pop {
+  right: 0;
+  left: auto;
+  width: max-content;
+  min-width: 260px;
+  max-width: 420px;
+}
+/* the map: a dark grey stage instead of a purple nebula */
+.nmap,
+.nmap.grand-1,
+.nmap.grand-2,
+.nmap.grand-3 {
+  background: radial-gradient(ellipse 70% 60% at 50% 46%, rgba(255, 255, 255, 0.035), transparent 70%), #141414;
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+  box-shadow: none;
+  color: var(--text);
+}
+.nmap.grand-2::before,
+.nmap.grand-3::before {
+  display: none;
+}
+.nmap-title,
+.nmap .seg,
+.nmap-btn,
+.nmap-caption,
+.nmap-tip {
+  background: var(--glass);
+  border-color: #383838;
+  color: var(--text);
+}
+.nmap .seg button {
+  color: var(--text-2);
+}
+.nmap .seg button.sel {
+  background: var(--sel);
+  color: var(--text);
+}
+.nmap-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, #262626 86%, #fff 8%);
+  border-color: #383838;
+}
+.nmap-btn:active:not(:disabled) {
+  transform: none;
+}
+.nmap-btn.wide {
+  background: var(--glass);
+  border-color: #383838;
+}
+.nmap-size,
+.nmap.grand-0 .nmap-size {
+  color: var(--text-2);
+  background: var(--hover);
+  border-color: transparent;
+}
+.nmap-legend,
+.nmap-legend .muted {
+  color: var(--muted);
+}
+.nmap-legend i {
+  box-shadow: none;
+}
+.nmap-labels span {
+  color: var(--muted);
+}
+/* cards under the map */
+.stat,
+.trace-card,
+.tensor-detail {
+  background: none;
+  border: 1px solid var(--edge);
+}
+.stat {
+  border-radius: 10px;
+}
+.trace-card {
+  border-radius: 12px;
+}
+.trace-toks .tok {
+  background: var(--hover);
+}
+.trace-toks .tok:hover {
+  transform: none;
+  border-color: transparent;
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+}
+.trace-toks .tok.sel {
+  background: var(--sel);
+  border-color: transparent;
+}
+.arch {
+  gap: 2px;
+}
+.arch-block {
+  border: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--text);
+}
+.arch-block svg {
+  color: var(--text-2);
+}
+.arch-block:hover {
+  background: var(--hover);
+}
+.arch-block.sel {
+  background: var(--sel);
+}
+.arch-layer input,
+.spark rect,
+.expert-bars .bars span {
+  accent-color: var(--text-2);
+}
+.expert-bars .bars span {
+  background: var(--text-2);
+}
+.tensor-row {
+  border: 0;
+  border-radius: 8px;
+}
+.tensor-row:hover {
+  background: var(--hover);
+}
+.tensor-row.sel {
+  background: var(--sel);
+}
+.heat {
+  border-color: var(--edge);
+}
+
+/* ---------- Models (on this PC, and Discover) ---------- */
+.lib-list {
+  gap: 10px;
+}
+.lib-card {
+  background: none;
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.lib-card.sel {
+  border-color: #4a4a4a;
+}
+.lib-card .mono {
+  font-size: 0.8em;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.lib-tags {
+  margin-top: 8px;
+}
+.lib-tags .pill,
+.file-row .pill {
+  background: var(--hover);
+  color: var(--text-2);
+}
+/* what a pill means is a small dot, not coloured text */
+.pill.fit-fits,
+.pill.fit-split,
+.pill.fit-big,
+.pill.on {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  background: var(--hover);
+}
+.pill.fit-fits::before,
+.pill.fit-split::before,
+.pill.fit-big::before,
+.pill.on::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.pill.fit-split::before {
+  background: var(--warn);
+}
+.pill.fit-big::before {
+  background: var(--bad);
+}
+.lib-actions .btn:not(.ghost) {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+  font-weight: 500;
+}
+.lib-actions .btn:not(.ghost):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 86%, var(--bg));
+  border-color: transparent;
+}
+.lib-actions .btn:not(.ghost):disabled {
+  background: var(--hover);
+  border-color: transparent;
+  color: var(--muted);
+}
+.lib-actions .btn.ghost {
+  border-color: var(--edge);
+}
+.lib-actions .btn.ghost:hover:not(:disabled) {
+  background: var(--hover);
+  border-color: var(--edge);
+}
+/* Discover: the search box looks like the message box */
+.lib-search {
+  background: var(--edge);
+  border: 1px solid var(--rim);
+  border-radius: 14px;
+  padding: 6px 6px 6px 14px;
+}
+.lib-search .btn {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+.lib-suggest {
+  gap: 6px;
+  margin: 12px 0 6px;
+}
+.lib-suggest .chip {
+  height: 28px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  font-size: 0.85em;
+}
+.lib-suggest .chip:hover {
+  background: var(--hover);
+}
+.discover .switch-row {
+  margin: 4px 0 2px;
+}
+.lib-split .lib-list {
+  gap: 0;
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 4px;
+  align-self: start;
+}
+.repo-row {
+  width: 100%;
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+.repo-row:hover {
+  background: var(--hover);
+}
+.repo-row.sel {
+  background: var(--sel);
+}
+.repo-id {
+  font-weight: 500;
+}
+.lib-files {
+  border: 1px solid var(--edge);
+  padding: 14px 16px;
+}
+.file-row {
+  border-bottom-color: var(--edge);
+  padding: 9px 0;
+}
+.file-row:last-child {
+  border-bottom: 0;
+}
+.downloads .dl-row {
+  background: none;
+  border: 1px solid var(--edge);
+}
+.dl-bar {
+  background: var(--hover);
+}
+.dl-bar span,
+.dl-row.done .dl-bar span {
+  background: var(--text-2);
+}
+.toggle.small {
+  width: 30px;
+  height: 18px;
+  flex: none;
+}
+.toggle.small::after {
+  width: 12px;
+  height: 12px;
+}
+.toggle.small.on::after {
+  transform: translateX(12px);
+}
+.discover .switch-row {
+  gap: 9px;
+  cursor: pointer;
+}
+
+/* ---------- speed: the tok/s pill while writing, and each reply's graph ---------- */
+.tps-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 22px;
+  padding: 0 9px 0 7px;
+  border-radius: 999px;
+  background: var(--hover);
+  color: var(--text-2);
+  font-size: 0.82em;
+  font-variant-numeric: tabular-nums;
+}
+.tween {
+  display: inline-block;
+  min-width: 2.6ch;
+  text-align: right;
+  transition: color 0.35s;
+}
+.tween.up {
+  color: var(--text);
+}
+.tween.down {
+  color: var(--muted);
+}
+.speed-graph {
+  display: block;
+  overflow: visible;
+}
+.speed-graph .sg-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+.speed-graph .sg-fill {
+  fill: currentColor;
+  opacity: 0.12;
+}
+.speed-graph .sg-dot {
+  fill: currentColor;
+}
+.speed-graph.live .sg-dot {
+  fill: var(--text);
+  animation: sg-pulse 1.2s ease-in-out infinite;
+}
+@keyframes sg-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.no-anim .speed-graph.live .sg-dot {
+  animation: none;
+}
+.stats-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- find in chat (Ctrl+F) ---------- */
+.find-wrap {
+  position: sticky;
+  top: 10px;
+  height: 0;
+  z-index: 6;
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 18px;
+}
+.find-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 6px 0 12px;
+  border-radius: 12px;
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  border: 1px solid #383838;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  color: var(--muted);
+}
+.find-bar input {
+  width: 200px;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--text);
+}
+.find-count {
+  min-width: 70px;
+  font-size: 0.8em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.flip-y {
+  transform: scaleY(-1);
+}
+::highlight(find) {
+  background-color: rgba(245, 165, 36, 0.28);
+}
+::highlight(find-cur) {
+  background-color: #f5a524;
+  color: #191919;
+}
+
+/* ---------- 0.6: queued message, jump to latest, message search, shortcuts, usage ---------- */
+.queued { display: flex; align-items: center; gap: 8px; margin: 2px 4px 6px; padding: 6px 6px 6px 10px; border-radius: 10px; background: color-mix(in srgb, var(--text) 5%, transparent); font-size: .9em; }
+.queued-tag { flex: none; font-size: .78em; color: var(--muted); padding: 1px 7px; border-radius: 6px; border: 1px solid var(--line-2); }
+.queued-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.queued-btn { flex: none; font-size: .85em; padding: 3px 8px; height: auto; width: auto; }
+
+.jump-wrap { position: sticky; bottom: 14px; height: 0; display: flex; justify-content: center; pointer-events: none; z-index: 3; }
+.jump-latest { pointer-events: auto; transform: translateY(-100%); display: inline-flex; align-items: center; gap: 6px; height: 32px; min-width: 32px; padding: 0 9px; justify-content: center; border-radius: 16px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); font-size: .85em; box-shadow: 0 4px 16px rgba(0, 0, 0, .28); cursor: pointer; }
+.jump-latest:hover { background: color-mix(in srgb, var(--text) 10%, var(--panel-2)); }
+.jump-latest span { padding-right: 3px; }
+
+.msg-hit { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 6px 10px; border-radius: 9px; border: 0; background: transparent; color: var(--text); cursor: pointer; }
+.msg-hit:hover { background: var(--hover); }
+.msg-hit-title { font-size: .9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-hit-snip { font-size: .78em; color: var(--muted); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.msg-hit-snip mark { background: color-mix(in srgb, var(--accent) 28%, transparent); color: var(--text); border-radius: 3px; padding: 0 1px; }
+
+.keys-sheet { width: min(560px, 92vw); max-height: min(680px, 88vh); display: flex; flex-direction: column; overflow: hidden; animation: none !important; }
+.keys-body { padding: 0 20px 18px; overflow-y: auto; }
+.keys-body .set-section { margin-top: 14px; }
+.keys-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: .92em; }
+.keys-row:last-child { border-bottom: 0; }
+.keys-keys { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.keys-alt { display: inline-flex; align-items: center; gap: 3px; }
+.keys-keys kbd { min-width: 22px; text-align: center; font-family: inherit; }
+
+.usage-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 4px; }
+.usage-card { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-2); }
+.usage-v { font-size: 1.25em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.usage-k { font-size: .8em; color: var(--muted); }
+.usage-days { display: flex; align-items: flex-end; gap: 3px; height: 72px; margin-top: 8px; }
+.usage-day { flex: 1; height: 100%; display: flex; align-items: flex-end; border-radius: 3px; }
+.usage-day:hover { background: var(--hover); }
+.usage-bar { width: 100%; border-radius: 3px; background: var(--accent); opacity: .85; }
+.usage-bar.zero { height: 2px !important; background: var(--line-2); opacity: 1; }
+.usage-axis { display: flex; justify-content: space-between; margin-top: 4px; }
+.usage-table-wrap { overflow-x: auto; margin-top: 6px; }
+.usage-table { width: 100%; border-collapse: collapse; font-size: .88em; font-variant-numeric: tabular-nums; }
+.usage-table th { text-align: right; font-weight: 500; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line-2); white-space: nowrap; }
+.usage-table td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.usage-table th:first-child, .usage-table td:first-child { text-align: left; padding-left: 0; }
+.usage-model { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) { .usage-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- 0.7: undo toast, quote, day lines, saved prompts, backup ---------- */
+.toast { display: flex; align-items: center; gap: 12px; }
+.toast-action { border: 0; background: transparent; color: var(--accent-2); font: inherit; font-weight: 600; padding: 2px 4px; margin: -2px -6px -2px 0; border-radius: 6px; cursor: pointer; }
+.toast-action:hover { background: var(--hover); }
+
+.quote-btn { position: fixed; z-index: 60; transform: translate(-50%, calc(-100% - 8px)); display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); font-size: .85em; box-shadow: 0 6px 20px rgba(0, 0, 0, .3); cursor: pointer; }
+.quote-btn.below { transform: translate(-50%, 8px); }
+.quote-btn:hover { background: color-mix(in srgb, var(--text) 10%, var(--panel-2)); }
+
+.day-sep { display: flex; align-items: center; gap: 12px; margin: 18px 0 10px; color: var(--muted); font-size: .78em; }
+.day-sep::before, .day-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+.prompt-edit { width: min(560px, 92vw); display: flex; flex-direction: column; animation: none !important; }
+.prompt-edit-body { padding: 4px 20px 4px; display: flex; flex-direction: column; gap: 14px; }
+.prompt-edit-body .field { display: flex; flex-direction: column; gap: 6px; }
+.prompt-edit-body .field > span { font-size: .85em; color: var(--text-2); }
+.prompt-edit-body .field small { font-size: .78em; min-height: 1.2em; }
+.prompt-edit-body .text-input { width: 100%; box-sizing: border-box; }
+.prompt-edit-body textarea.text-input { resize: vertical; min-height: 120px; font: inherit; line-height: 1.45; }
+.prompt-edit-foot { gap: 8px; align-items: center; }
+.btn:disabled { opacity: .45; cursor: default; }
+.danger-text { color: var(--del) !important; }
+
+.prompt-list { display: flex; flex-direction: column; gap: 2px; margin: 6px 0 4px; }
+.prompt-item { display: flex; align-items: center; gap: 10px; padding: 5px 4px 5px 8px; border-radius: 8px; }
+.prompt-item:hover { background: var(--hover); }
+.prompt-slug { flex: none; font-size: .85em; color: var(--text-2); }
+.prompt-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: .88em; }
+.prompt-list .small-btn { align-self: flex-start; margin-top: 6px; padding: 5px 10px; font-size: .85em; }
+.slash-menu .slash-prompt { display: flex; align-items: center; gap: 6px; }
+.plus-prompts { max-height: 260px; overflow-y: auto; }
+.plus-prompts .menu-row .mono { margin-left: auto; padding-left: 10px; }
+.backup-btns { display: flex; gap: 8px; }
+/* Settings → Models → Local API */
+.text-input.narrow { min-width: 0; width: 72px; }
+.api-url { font-family: var(--mono, monospace); font-size: .9em; padding: 4px 8px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line-2); user-select: all; }
+
+/* the speed panel (click a reply's tok/s) */
+.stats-line { position: relative; }
+.stats-line.open { opacity: 1; }
+.stats-speed.clickable { cursor: pointer; border-radius: 5px; }
+.stats-speed.clickable:hover { color: var(--text-2); }
+.speed-panel { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 30; width: 300px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 10px; box-shadow: var(--shadow); color: var(--text-2); font-size: 12.5px; display: flex; flex-direction: column; gap: 8px; cursor: default; }
+.speed-panel.below { bottom: auto; top: calc(100% + 8px); }
+.speed-panel .sp-head b { color: var(--text); font-size: 14px; font-weight: 600; }
+.speed-panel .sp-line { line-height: 1.45; }
+.speed-panel .sp-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--track); }
+.speed-panel .sp-bar span { display: block; height: 100%; }
+.speed-panel .sp-legend { display: grid; grid-template-columns: 1fr; gap: 3px; }
+.speed-panel .sp-legend div { display: flex; align-items: center; gap: 7px; }
+.speed-panel .sp-legend div span:nth-child(2) { flex: 1; }
+.speed-panel .sp-legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.speed-panel .sp-gpu { background: #338ced; }
+.speed-panel .sp-att { background: #8b6fe0; }
+.speed-panel .sp-vram { background: #56c271; }
+.speed-panel .sp-cpu { background: #d28e05; }
+.speed-panel .sp-drive { background: #e76624; }
+.speed-panel .sp-other { background: #959595; }
+
+/* Scheduled tasks */
+.modal.tasks { width: min(620px, 92vw); max-height: 84vh; display: flex; flex-direction: column; }
+.tasks-body, .task-edit { padding: 4px 20px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.tasks-empty { padding: 18px 0; text-align: center; }
+.task-row { display: flex; align-items: center; gap: 6px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; }
+.task-row.off { opacity: .6; }
+.task-main { flex: 1; min-width: 0; cursor: pointer; }
+.task-name { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-edit label { display: flex; flex-direction: column; gap: 5px; font-size: .9em; color: var(--text-2); }
+.task-edit textarea { resize: vertical; font: inherit; line-height: 1.45; }
+.task-when, .task-folder { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.task-when .text-input { min-width: 0; }
+.task-folder span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 380px; font-size: .9em; }
+.task-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }

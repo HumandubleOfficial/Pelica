@@ -1,0 +1,2 @@
+[PELICA_MARGINS=marg_a.csv] r1 prefill 25 tokens in 6.9s (3.61 tok/s) | decode 299 tokens in 69.0s: 4.34 tok/s | read 277.0 GB (4.84 GB/s while busy), guesses never used 2425
+[PELICA_MARGINS=marg_b.csv] r1 prefill 23 tokens in 6.8s (3.37 tok/s) | decode 299 tokens in 62.7s: 4.77 tok/s | read 235.7 GB (4.83 GB/s while busy), guesses never used 2095

@@ -1,0 +1,1 @@
+[PELICA_DEVICES=127.0.0.1:8650/123456] r1 prefill 25 tokens in 8.8s (2.85 tok/s) | decode 119 tokens in 35.2s: 3.38 tok/s | read 110.8 GB (3.82 GB/s while busy), guesses never used 689

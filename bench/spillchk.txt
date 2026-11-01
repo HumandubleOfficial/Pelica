@@ -1,0 +1,5 @@
+[pelica] tiers: VRAM 8.1 GB dense + 463 expert slots | RAM 0.3 GB dense + 23.7 GB experts (~1829) | SSD the rest
+[pelica] 40 more VRAM expert slots after prefill (503 in all)
+[pelica] decode 48 tokens in 15.7s: 3.059 tok/s (0.33 s/token)
+[pelica] decode waits: 4.7s on demand reads (1622 of them), 4.0s on prefetches in flight; disk 4.52 GB/s, busy 94% at 4.82 GB/s
+tokens: identical

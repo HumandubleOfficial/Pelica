@@ -1,0 +1,34 @@
+# How Hash Maps Work
+
+A hash map (also called hash table or dictionary) is a data structure that stores key-value pairs and provides fast insertion, deletion, and lookup operations. Here's how it works:
+
+## Core Concepts
+
+### 1. **Hash Function**
+The hash function takes a key and converts it into an integer (the hash code). This function must be:
+- **Deterministic**: Same key always produces the same hash
+- **Fast**: Should compute quickly
+- **Uniform**: Should distribute keys evenly across the hash table
+
+### 2. **Array Storage**
+The hash map uses an array (bucket array) to store entries. The hash code is used to determine which bucket (array index) to use.
+
+### 3. **Index Calculation**
+The hash code is typically mapped to an array index using modulo operation:
+```
+index = hash(key) % array_size
+```
+
+### 4. **Collision Handling**
+When two different keys produce the same index, we have a collision. Common solutions:
+
+#### **Chaining (Separate Chaining)**
+- Each bucket contains a linked list or other collection
+- When collision occurs, add the new entry to the list at that bucket
+- Lookup requires traversing the list
+
+#### **Open Addressing**
+- If a bucket is occupied, probe for the next available slot
+- Common probing methods: linear probing, quadratic probing, double hashing
+
+### 5. **Load Factor and Resizing

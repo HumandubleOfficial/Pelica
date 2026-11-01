@@ -1,0 +1,8 @@
+[PELICA_X=0] r1 prefill 25 tokens in 6.8s (3.65 tok/s) | decode 299 tokens in 68.8s: 4.34 tok/s | read 276.5 GB (4.84 GB/s while busy), guesses never used 2423
+[PELICA_EARLY_M=0.1 PELICA_LATE_M=0.24] r1 prefill 25 tokens in 7.0s (3.56 tok/s) | decode 299 tokens in 68.7s: 4.35 tok/s | read 280.2 GB (4.82 GB/s while busy), guesses never used 2715
+[PELICA_EARLY_M=0.12 PELICA_LATE_M=0.2] r1 prefill 25 tokens in 6.9s (3.62 tok/s) | decode 299 tokens in 68.1s: 4.39 tok/s | read 277.4 GB (4.84 GB/s while busy), guesses never used 2607
+[PELICA_EARLY_M=0.08 PELICA_LATE_M=0.2] r1 prefill 25 tokens in 7.0s (3.57 tok/s) | decode 299 tokens in 68.8s: 4.34 tok/s | read 284.7 GB (4.84 GB/s while busy), guesses never used 2932
+[PELICA_X=0] r2 prefill 25 tokens in 7.0s (3.58 tok/s) | decode 299 tokens in 68.7s: 4.35 tok/s | read 274.3 GB (4.83 GB/s while busy), guesses never used 2384
+[PELICA_EARLY_M=0.1 PELICA_LATE_M=0.24] r2 prefill 25 tokens in 6.9s (3.61 tok/s) | decode 299 tokens in 68.4s: 4.37 tok/s | read 279.2 GB (4.84 GB/s while busy), guesses never used 2722
+[PELICA_EARLY_M=0.12 PELICA_LATE_M=0.2] r2 prefill 25 tokens in 6.9s (3.62 tok/s) | decode 299 tokens in 68.3s: 4.38 tok/s | read 278.4 GB (4.83 GB/s while busy), guesses never used 2611
+[PELICA_EARLY_M=0.08 PELICA_LATE_M=0.2] r2 prefill 25 tokens in 7.1s (3.52 tok/s) | decode 299 tokens in 68.9s: 4.34 tok/s | read 284.5 GB (4.84 GB/s while busy), guesses never used 2932

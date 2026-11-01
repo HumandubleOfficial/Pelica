@@ -1,0 +1,10 @@
+[PELICA_X=0] r1 prefill 25 tokens in 6.9s (3.63 tok/s) | decode 299 tokens in 66.8s: 4.47 tok/s | read 268.7 GB (4.83 GB/s while busy), guesses never used 2579
+[PELICA_READERS=4 PELICA_EARLY_K=3 PELICA_CPU_BATCH=0 PELICA_EARLY_M=0 PELICA_LATE_M=0 PELICA_HALF_LIFE=16 PELICA_SLOW_MIX=0] r1 prefill 25 tokens in 6.9s (3.63 tok/s) | decode 299 tokens in 69.0s: 4.33 tok/s | read 257.7 GB (4.83 GB/s while busy), guesses never used 1491
+[PELICA_X=0] r2 prefill 25 tokens in 7.0s (3.57 tok/s) | decode 299 tokens in 67.0s: 4.46 tok/s | read 268.4 GB (4.82 GB/s while busy), guesses never used 2571
+[PELICA_READERS=4 PELICA_EARLY_K=3 PELICA_CPU_BATCH=0 PELICA_EARLY_M=0 PELICA_LATE_M=0 PELICA_HALF_LIFE=16 PELICA_SLOW_MIX=0] r2 prefill 25 tokens in 6.9s (3.62 tok/s) | decode 299 tokens in 69.4s: 4.31 tok/s | read 257.3 GB (4.81 GB/s while busy), guesses never used 1487
+[PELICA_X=0] r3 prefill 25 tokens in 7.0s (3.60 tok/s) | decode 299 tokens in 66.9s: 4.47 tok/s | read 268.2 GB (4.82 GB/s while busy), guesses never used 2573
+[PELICA_READERS=4 PELICA_EARLY_K=3 PELICA_CPU_BATCH=0 PELICA_EARLY_M=0 PELICA_LATE_M=0 PELICA_HALF_LIFE=16 PELICA_SLOW_MIX=0] r3 prefill 25 tokens in 6.9s (3.60 tok/s) | decode 299 tokens in 69.2s: 4.32 tok/s | read 257.4 GB (4.81 GB/s while busy), guesses never used 1491
+[PELICA_X=0] r1 prefill 23 tokens in 6.8s (3.37 tok/s) | decode 299 tokens in 59.2s: 5.05 tok/s | read 223.1 GB (4.83 GB/s while busy), guesses never used 2393
+[PELICA_READERS=4 PELICA_EARLY_K=3 PELICA_CPU_BATCH=0 PELICA_EARLY_M=0 PELICA_LATE_M=0 PELICA_HALF_LIFE=16 PELICA_SLOW_MIX=0] r1 prefill 23 tokens in 6.7s (3.43 tok/s) | decode 299 tokens in 63.5s: 4.71 tok/s | read 214.5 GB (4.77 GB/s while busy), guesses never used 1205
+[PELICA_X=0] r1 prefill 1404 tokens in 33.2s (42.29 tok/s) | decode 41 tokens in 10.8s: 3.81 tok/s | read 45.2 GB (4.81 GB/s while busy), guesses never used 460
+[PELICA_READERS=4 PELICA_EARLY_K=3 PELICA_CPU_BATCH=0 PELICA_EARLY_M=0 PELICA_LATE_M=0 PELICA_HALF_LIFE=16 PELICA_SLOW_MIX=0] r1 prefill 1404 tokens in 33.4s (41.99 tok/s) | decode 41 tokens in 10.9s: 3.76 tok/s | read 43.1 GB (4.81 GB/s while busy), guesses never used 327

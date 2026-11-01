@@ -1,0 +1,27 @@
+[pelica] device 127.0.0.1:8650 connected: 3.0 GB to lend, 0 experts already there
+[pelica] DeepSeek V4: 43 layers, dense 7.36 GB in VRAM; experts 155.8 GB: 446 in VRAM, 1605 cache slots in RAM (22.8 GB), the rest read from the drive; warmed 1987 from use history; loaded in 12.1s
+  prompt pass: 9.4s, drive busy 8.4s, read 29.4 GB; drive idle: attention 0.0s, routing 0.0s, experts 0.0s, after experts 0.0s, other 0.0s
+  early guess hit rate by rank: 97% 93% 83% 71% 56% 40%; late guess hits 5.05/6 (100% 98% 93% 86% 74% 55%)
+  VRAM experts also held in RAM: 0 of 1605 RAM slots
+  drive time by reads in flight: 0: 12.9s, 1: 15.5s, 2: 10.1s, 3: 4.8s, 4+: 4.7s
+  drive idle: attention 6.4s, routing 1.2s, experts 4.2s, after experts 0.1s, between tokens 1.0s
+  drive busy 35.0s, read 163.6 GB (4.67 GB/s while busy), guesses never used 965
+  devices: 1014 experts worked there (all passes), 211 held now; [{"addr":"127.0.0.1:8650","name":"DESKTOP-TFB0NEE","state":"connected","error":"","kernel":"AVX-512 VNNI","threads":12,"lend_gb":3.0,"used_gb":2.986868736,"experts":211,"full":true,"runs":946,"experts_run":1014,"avg_ms":4.191146088794926}]
+  GPU batches 25870 on NVIDIA GeForce RTX 5060 Ti (Vulkan): building+submitting 2.55s, waiting 5.02s
+  hc+norm (attn)                 0.63s
+  GPU projections                4.69s
+  cache+compress                 0.11s
+  CPU attention                  1.30s
+  GPU output proj                3.82s
+  hc+route (ffn)                 2.82s
+  shared+VRAM experts            1.72s
+  CPU experts (+drive)          32.09s
+  VRAM expert groups             0.11s
+  staged experts (+drive)        7.68s
+  hc_post                        0.08s
+  head                           0.40s
+    staged: drive wait           0.00s
+    staged: upload               0.00s
+    staged: GPU                  0.00s
+  devices (waiting)              0.02s
+[pelica] prefill 25 tokens in 9.4s (2.67 tok/s); decode 199 tokens in 47.9s: 4.15 tok/s; expert reads 15618 (read-ahead 6343), RAM hits 25361, moved to VRAM 648

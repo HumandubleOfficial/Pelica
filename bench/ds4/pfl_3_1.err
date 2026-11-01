@@ -1,0 +1,23 @@
+[pelica] DeepSeek V4: 43 layers, dense 7.36 GB in VRAM; experts 155.8 GB: 440 in VRAM, 1498 cache slots in RAM (21.2 GB), the rest read from the drive; warmed 1874 from use history; loaded in 14.1s
+  prompt pass: 53.2s, drive busy 28.3s, read 109.6 GB; drive idle: attention 20.9s, routing 1.1s, experts 0.0s, after experts 2.1s, other 0.0s
+  early guess hit rate by rank: 93% 83% 82% 61% 55% 36%; late guess hits 4.79/6 (99% 94% 90% 76% 66% 54%)
+  VRAM experts also held in RAM: 0 of 1498 RAM slots
+  drive idle: attention 0.0s, routing 0.0s, experts 0.0s, after experts 0.0s, between tokens 0.0s
+  drive busy 1.3s, read 5.2 GB (3.94 GB/s while busy), guesses never used 10
+  GPU batches 390: building+submitting 0.04s, waiting 0.08s
+  hc+norm (attn)                 0.41s
+  GPU projections                7.70s
+  cache+compress                 0.33s
+  CPU attention                  5.79s
+  GPU output proj                8.75s
+  hc+route (ffn)                 3.62s
+  shared+VRAM experts            3.34s
+  CPU experts (+drive)           1.13s
+  VRAM expert groups             3.27s
+  staged experts (+drive)       18.16s
+  hc_post                        0.16s
+  head                           0.01s
+    staged: drive wait           1.11s
+    staged: upload               1.90s
+    staged: GPU                 14.99s
+[pelica] prefill 1404 tokens in 53.2s (26.37 tok/s); decode 3 tokens in 1.4s: 2.15 tok/s; expert reads 9973 (read-ahead 5410), RAM hits 5708, moved to VRAM 256

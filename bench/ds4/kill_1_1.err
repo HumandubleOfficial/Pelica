@@ -1,0 +1,27 @@
+[pelica] device 127.0.0.1:8650 connected: 3.0 GB to lend, 211 experts already there
+[pelica] DeepSeek V4: 43 layers, dense 7.36 GB in VRAM; experts 155.8 GB: 435 in VRAM, 1395 cache slots in RAM (19.8 GB), the rest read from the drive; warmed 1766 from use history; loaded in 13.2s
+  prompt pass: 8.8s, drive busy 7.7s, read 30.2 GB; drive idle: attention 0.0s, routing 0.0s, experts 0.0s, after experts 0.0s, other 0.0s
+[pelica] device 127.0.0.1:8650 dropped out (An existing connection was forcibly closed by the remote host. (os error 10054)); its experts run here
+  early guess hit rate by rank: 98% 94% 85% 72% 56% 41%; late guess hits 5.08/6 (100% 98% 94% 86% 74% 56%)
+  VRAM experts also held in RAM: 0 of 1395 RAM slots
+  drive idle: attention 2.9s, routing 0.5s, experts 2.1s, after experts 0.0s, between tokens 0.6s
+  drive busy 29.0s, read 110.8 GB (3.82 GB/s while busy), guesses never used 689
+  devices: 427 experts worked there (all passes), 0 held now; [{"addr":"127.0.0.1:8650","name":"DESKTOP-TFB0NEE","state":"error","error":"An existing connection was forcibly closed by the remote host. (os error 10054)","kernel":"AVX-512 VNNI","threads":12,"lend_gb":3.0,"used_gb":2.986868736,"experts":0,"full":true,"runs":394,"experts_run":427,"avg_ms":6.102685279187817}]
+  GPU batches 15470: building+submitting 1.56s, waiting 3.18s
+  hc+norm (attn)                 0.40s
+  GPU projections                3.09s
+  cache+compress                 0.07s
+  CPU attention                  0.73s
+  GPU output proj                2.41s
+  hc+route (ffn)                 1.70s
+  shared+VRAM experts            1.07s
+  CPU experts (+drive)          25.49s
+  VRAM expert groups             0.10s
+  staged experts (+drive)        7.00s
+  hc_post                        0.05s
+  head                           0.24s
+    staged: drive wait           0.00s
+    staged: upload               0.00s
+    staged: GPU                  0.00s
+  devices (waiting)              0.01s
+[pelica] prefill 25 tokens in 8.8s (2.85 tok/s); decode 119 tokens in 35.2s: 3.38 tok/s; expert reads 11720 (read-ahead 5438), RAM hits 17195, moved to VRAM 488

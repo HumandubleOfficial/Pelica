@@ -1,0 +1,203 @@
+[
+  {
+    "version": "0.12.0",
+    "date": "2026-11-01",
+    "title": "Pictures, a local API, scheduled tasks and faster long prompts",
+    "notes": [
+      "Qwen3.8 sees pictures you attach: it reads the text in them and describes what is in them. The first look at a picture takes a few seconds (about 5 for a 640 × 480 photo); after that the chat reuses it. It needs Qwen's image file (mmproj-F16.gguf) beside the model.",
+      "Qwen3.8 reads long prompts about twice as fast: a 4,000-token prompt in about 28 seconds instead of 51 to 61. The answer is the same as before.",
+      "Longer chats cost nothing up front: Qwen3.8 now takes memory for a chat as it grows, so you can choose a 128K or 256K context and short chats stay as fast. Before, a 256K context took about 7 GB of RAM away from the experts as soon as the model loaded.",
+      "Draft-ahead also works when a reply is sampled with a temperature (for example through the local API): a code rewrite at temperature 0.7 went from 10 to 17 tokens a second, and the reply is drawn exactly as it would be without it.",
+      "Local API (Settings → Models): other programs on this PC can use the loaded model through an OpenAI-compatible server at http://127.0.0.1:11435/v1, with streaming, tool calls and the model list. It is off until you turn it on, and nothing outside this PC can reach it.",
+      "Click the tokens-a-second number under a reply to see where its time went: the GPU, attention, experts in VRAM or on the CPU, and waiting for the drive, with how many experts came from each (Qwen3.8).",
+      "Scheduled tasks (in the palette, or /tasks): prompts that run on their own once, every hour, every day, on weekdays or every week, each in a chat of its own, with a notification when they finish. /background runs a prompt in a new chat while you keep working.",
+      "Project instructions (PELICA.md, AGENTS.md or CLAUDE.md) are read again at the start of every chat, so your edits show up without restarting Pelica. They are also found at the root of the repository the folder is in, and longer files are kept (20,000 characters, was 6,000)."
+    ]
+  },
+  {
+    "version": "0.11.0",
+    "date": "2026-11-01",
+    "title": "Qwen3.8 starts faster and drafts ahead",
+    "notes": [
+      "Qwen3.8 keeps what it has read on disk. A new chat that starts the same way as an earlier one (the app's instructions and tools) begins in about 2 seconds instead of 45, and a long chat opened again carries on from where it was read up to. These saved states take up to 8 GB beside the model and go with it when you uninstall it.",
+      "Qwen3.8 writes faster when its reply repeats text already in the chat, as when it edits code: about 50% faster on a code rewrite here (11.5 to 17.4 tokens a second). It checks every guess, so the reply is what it would have written anyway, and other writing runs at the same speed as before.",
+      "Devices: a computer running pelica bridge can now lend its RAM to Qwen3.8 too, not only DeepSeek V4. Both computers need this version of Pelica."
+    ]
+  },
+  {
+    "version": "0.10.0",
+    "date": "2026-10-31",
+    "title": "Qwen3.8 about 60% faster",
+    "notes": [
+      "Qwen3.8 writes about 60% faster: about 16 tokens a second on this PC, up from 10.",
+      "Qwen3.8 reads prompts faster: a 4,000-token prompt in about 51 seconds instead of 66, and a short one at about 33 tokens a second instead of 20.",
+      "Speed up (in Models) now works for Qwen3.8 too. It rearranges the file so each expert loads in one read, and reads from the drive go about 45% faster (2.3 to 3.3 GB/s). Undo speed-up puts it back.",
+      "About 40% more of Qwen3.8's experts fit in the same VRAM and RAM, so Pelica goes to the drive about half as often.",
+      "Fixed a freeze that could happen when the memory for a model's experts filled up during a long prompt."
+    ]
+  },
+  {
+    "version": "0.9.0",
+    "date": "2026-10-31",
+    "title": "Qwen3.8-Flash-Next",
+    "notes": [
+      "Pelica runs Qwen3.8-Flash-Next (the 94 GB file in three parts), checked against llama.cpp to give the same answers. It writes about 10 tokens a second (roughly 7 words) on this PC, and reads a 4,000-token prompt in about a minute.",
+      "Thinking effort for Qwen3.8: Off, Low, Medium and High, from the effort menu in the app or --effort in the terminal.",
+      "Qwen3.8 can use the app's tools: reading and writing files, running commands and searching the web.",
+      "A model that comes in several files shows once in the model list, under one name, with the size of all its parts."
+    ]
+  },
+  {
+    "version": "0.8.1",
+    "date": "2026-10-30",
+    "title": "A fresher look in the terminal",
+    "notes": [
+      "Starting pelica in a terminal plays a short animation: the Pelica name sweeps in, in orange, while the model gets ready. Ctrl+C skips it, and setting PELICA_NO_INTRO=1 turns it off.",
+      "A welcome box shows the folder, the model and its context size, and whether the terminal is using the app's engine.",
+      "You type between two lines drawn across the window. Under them you see the permission mode, in its own colour, and how full the context is. Once you send a message, it stays above as you wrote it.",
+      "Replies are easier to read: list items get orange bullets, code blocks have a bar down the side, and every line lines up under the reply dot.",
+      "The waiting line has an orange spinner and says how to stop (Ctrl+C). Loading a model shows an orange progress bar.",
+      "When Pelica asks before running a command or changing a file, the choices are spelled out: y yes · a always · n no."
+    ]
+  },
+  {
+    "version": "0.8.0",
+    "date": "2026-10-30",
+    "title": "Pelica in the terminal",
+    "notes": [
+      "Pelica in the terminal: open a terminal in any folder and type pelica. It works on that folder with the same tools, permission modes and project notes as the app, shows each file change as a diff, and asks before running commands just as the app does.",
+      "When the app is open, the terminal uses the model it already has loaded instead of loading a second copy. When it isn't, the terminal loads the model itself.",
+      "Terminal chats are saved with your other chats, so they show up in the app's sidebar. pelica -c carries on the latest chat in a folder, and /resume picks an earlier one.",
+      "pelica chat -p \"your task\" does one task, prints the answer and exits.",
+      "Ctrl+C stops a reply, or says no when Pelica asks before a command; press it twice at the prompt to quit. Type /help for the commands: /model, /mode, /effort, /compact, /context, /init and more.",
+      "The installer has a new option, on by default: Add pelica to PATH, which is what lets you type pelica in a terminal. Uninstalling takes it off again. Open a new terminal window after installing."
+    ]
+  },
+  {
+    "version": "0.7.0",
+    "date": "2026-10-30",
+    "title": "Saved prompts, quotes, Undo and backups",
+    "notes": [
+      "Saved prompts: keep text you send often under a name, then type / and its name in the message box (or pick it from the + menu or Ctrl+K). Save one from the bookmark under any of your messages, from the + menu, or in Settings → General.",
+      "Select part of a reply and a Quote button appears: it puts those words in the message box as a quote, so you can ask about just that part.",
+      "Deleting a chat shows an Undo button for a few seconds.",
+      "Settings → General → Back up and restore: save all your chats to one file, or bring them back from one (a folder's proj.pel works too). Restoring never overwrites a chat you have; one that differs comes back as a copy.",
+      "Chats that go on over several days show a line where each day starts (Today, Yesterday, Tuesday…).",
+      "Alt+↑ and Alt+↓ jump to your previous or next message in a long chat.",
+      "Ctrl+= and Ctrl+- make the text bigger or smaller anywhere (Ctrl+0 goes back to Default), with two new sizes, Smaller and Largest."
+    ]
+  },
+  {
+    "version": "0.6.0",
+    "date": "2026-10-30",
+    "title": "Queue messages, search inside chats, and Usage",
+    "notes": [
+      "Type your next message while Pelica is still writing and press Enter: it waits above the box and goes as soon as the reply finishes. Edit or remove it before then; if you stop the reply, it stays there with a Send now button.",
+      "Search in the sidebar now finds words inside your messages and Pelica's replies, not just chat titles. Each result shows the match in context, and opening it starts Find in chat on those words.",
+      "Press ↑ in an empty message box to bring back your earlier messages in this chat (↓ goes forward again).",
+      "What you type stays with its chat: switch chats, or go to Models and back, and your unsent text and files are still there.",
+      "A Jump to latest button appears when you scroll up in a long chat, and says so when Pelica is still writing.",
+      "Keyboard shortcuts: press Ctrl+/ (or type /keys) to see every shortcut in one list.",
+      "Settings → Usage: your chats, replies and tokens written, a 30-day chart, and each model's speed, prompt speed, time to first token and fastest moment, all counted from the replies saved in your chats."
+    ]
+  },
+  {
+    "version": "0.5.2",
+    "date": "2026-10-28",
+    "title": "Faster DeepSeek V4",
+    "notes": [
+      "DeepSeek V4 answers about 3.5% faster on code (4.32 → 4.47 tokens a second here) and about 7% faster on stories and chat (4.71 → 5.05). The answers themselves don't change.",
+      "Pelica keeps the experts a model uses steadily in memory longer, instead of letting a short burst push them out, so it reads 3% less from the drive.",
+      "Pelica now reads experts ahead only when the model is fairly sure it will use them, instead of always the same number, so fewer reads go to waste."
+    ]
+  },
+  {
+    "version": "0.5.1",
+    "date": "2026-10-28",
+    "title": "Bug fixes",
+    "notes": [
+      "Chats: a change made just before switching to another chat (an edit, a retry) is no longer lost.",
+      "Chats are saved whole to a temporary file first, so a crash mid-save can't leave a broken file that hides the chat.",
+      "Speed up: clicking it twice quickly no longer starts a second run that failed and covered the first one's progress with an error.",
+      "Models: a DeepSeek V4 file with only some layers sped up shows \"Partly sped up\" and can be loaded; only a speed-up stopped partway blocks loading.",
+      "Small models show their size in MB instead of \"0.0 GB\" (Models, Brain, the model menu).",
+      "Retry, Edit and Branch say why they did nothing while a reply is running."
+    ]
+  },
+  {
+    "version": "0.5.0",
+    "date": "2026-10-28",
+    "title": "Live speed graph, Retry, Continue and Find",
+    "notes": [
+      "While Pelica writes, the tok/s number glides to each new reading (brighter when it speeds up), next to a small graph of the speed moment to moment.",
+      "Every reply keeps its speed graph and shows how long the first token took (hover the line under it; the graph's tooltip has the fastest moment).",
+      "Retry button under the last reply: answers your last message again.",
+      "Continue button on the note that appears when a reply hits the length limit.",
+      "Find in chat: Ctrl+F (or /find). Every match is highlighted; Enter and Shift+Enter step through them, Esc closes."
+    ]
+  },
+  {
+    "version": "0.4.1",
+    "date": "2026-10-28",
+    "title": "Smoother replies and a calmer Brain and Models",
+    "notes": [
+      "Replies fade in word by word as they're written, instead of popping in. (Off when Settings → Animations is off.)",
+      "While Pelica thinks you see one \"Thinking…\" and one set of orbs, instead of two labels and three orbs.",
+      "After tool calls, the rest of the reply carries on under the same orbs, and the copy and branch buttons wait until the reply is done.",
+      "Brain: matches the rest of the app. The map is grey (experts turn orange when used, routers are blue), the model picker is the app's menu, and the lists use the grey hover and selection.",
+      "Models: cards with a thin rim, small coloured dots instead of coloured text, a search box like the message box, and a switch for \"Speed up DeepSeek V4 downloads\".",
+      "Fixed: a reply's stats line could show \"NaN% of NaNK\"."
+    ]
+  },
+  {
+    "version": "0.4.0",
+    "date": "2026-10-28",
+    "title": "Speed up DeepSeek V4 from the Models page",
+    "notes": [
+      "Models: DeepSeek V4 models have a Speed up button. It rearranges the file so each expert loads in one read, for answers about 20% faster (3.5 → 4.2 tokens a second here), with a progress bar and time left.",
+      "Undo speed-up puts the file back so other programs (llama.cpp, LM Studio) can open it again.",
+      "New option: speed up DeepSeek V4 models as soon as they finish downloading (Discover, or Settings → Models). A finished download also gets its own Speed up button.",
+      "Stopping a speed-up partway, or closing Pelica during one, is safe: Finish speed-up picks it up again. Pelica won't load a model while its speed-up is unfinished, so it can never read a half-rewritten file."
+    ]
+  },
+  {
+    "version": "0.3.1",
+    "date": "2026-10-28",
+    "title": "A little faster, and fixes",
+    "notes": [
+      "DeepSeek V4 answers about 3.6% faster and reads 7% less from the drive: Pelica now guesses 3 experts ahead instead of 4, which wastes fewer reads now that each expert loads in one go.",
+      "Devices: a computer lending its RAM no longer drops out (for 10 seconds, with everything it held) when Pelica swaps an expert on it at the same moment an answer uses it.",
+      "Devices: custom pairing codes (pelica bridge --code) can be typed in; the box used to keep only the first 6 digits.",
+      "Devices: the bridge pauses after a wrong pairing code and locks for a minute after 10 wrong tries, so the code can't be guessed.",
+      "GitHub safety check: odd names like \"..\" in a link are refused instead of being sent to GitHub as a different address.",
+      "Saving long chats no longer re-reads the whole chat file every time it saves while a reply streams."
+    ]
+  },
+  {
+    "version": "0.3.0",
+    "date": "2026-10-28",
+    "title": "Faster DeepSeek, borrowed RAM and chats that live in their folder",
+    "notes": [
+      "DeepSeek V4 answers at about 4 tokens a second (was 3.5) once its file is repacked with `pelica repack`: each expert now loads in one read. `pelica repack --undo` puts the file back.",
+      "Prompts are read about twice as fast: 300 tokens in 23 s instead of 45 s.",
+      "Settings → Devices: another computer on your network can lend its RAM to the model through `pelica bridge`.",
+      "GitHub safety check: repositories are checked (age, owner, install scripts, downloaders) before the model opens or clones them. Risky ones always ask first.",
+      "proj.pel: chats are also saved inside their folder. Delete a chat, choose the folder again, and it comes back.",
+      "Thinking shows formatted Markdown instead of raw ** marks.",
+      "Cleaner replies: tidier bullet lists, spacing and headings.",
+      "Buttons show their grey hover at once, with no fade.",
+      "This What's new window, which also lives in Settings → About."
+    ]
+  },
+  {
+    "version": "0.2.0",
+    "date": "2026-10-24",
+    "title": "The first installer",
+    "notes": [
+      "Windows installer (Pelica-Setup.exe) with an uninstaller.",
+      "Model library with downloads you can pause and resume.",
+      "Permission modes: Manual, Accept edits, Plan and Bypass permissions.",
+      "Folders per chat, CQS code checks, the command palette, quick ask and the Brain page."
+    ]
+  }
+]

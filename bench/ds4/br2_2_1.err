@@ -1,0 +1,26 @@
+[pelica] device 127.0.0.1:8650 connected: 3.0 GB to lend, 211 experts already there
+[pelica] DeepSeek V4: 43 layers, dense 7.36 GB in VRAM; experts 155.8 GB: 436 in VRAM, 1399 cache slots in RAM (19.8 GB), the rest read from the drive; warmed 1771 from use history; loaded in 13.7s
+  prompt pass: 9.0s, drive busy 7.7s, read 30.2 GB; drive idle: attention 0.0s, routing 0.0s, experts 0.0s, after experts 0.0s, other 0.0s
+  early guess hit rate by rank: 98% 93% 85% 72% 56% 41%; late guess hits 5.08/6 (100% 98% 94% 87% 74% 56%)
+  VRAM experts also held in RAM: 0 of 1399 RAM slots
+  drive idle: attention 3.8s, routing 0.7s, experts 2.8s, after experts 0.0s, between tokens 0.8s
+  drive busy 34.5s, read 132.2 GB (3.83 GB/s while busy), guesses never used 872
+  devices: 846 experts worked there (all passes), 211 held now; [{"addr":"127.0.0.1:8650","name":"DESKTOP-TFB0NEE","state":"connected","error":"","kernel":"AVX-512 VNNI","threads":12,"lend_gb":3.0,"used_gb":2.986868736,"experts":211,"full":true,"runs":776,"experts_run":846,"avg_ms":5.68140193298969}]
+  GPU batches 19370: building+submitting 2.00s, waiting 4.16s
+  hc+norm (attn)                 0.51s
+  GPU projections                3.94s
+  cache+compress                 0.08s
+  CPU attention                  0.98s
+  GPU output proj                3.07s
+  hc+route (ffn)                 2.26s
+  shared+VRAM experts            1.42s
+  CPU experts (+drive)          29.98s
+  VRAM expert groups             0.10s
+  staged experts (+drive)        6.97s
+  hc_post                        0.06s
+  head                           0.32s
+    staged: drive wait           0.00s
+    staged: upload               0.00s
+    staged: GPU                  0.00s
+  devices (waiting)              0.01s
+[pelica] prefill 25 tokens in 9.0s (2.79 tok/s); decode 149 tokens in 42.7s: 3.49 tok/s; expert reads 13230 (read-ahead 6333), RAM hits 20522, moved to VRAM 552

@@ -1,0 +1,7 @@
+<|channel|>analysis<|message|>We need to rewrite the paragraph, changing only the word "quick" to "slow". So we replace "quick" with "slow". The rest remains unchanged. The paragraph: "The quick brown fox jumps over the lazy dog. The dog, startled, barks loudly and runs into the forest, where it hides behind a large oak tree until the fox has gone away."
+
+We need to rewrite it, but only change "quick" to "slow". So "The slow brown fox jumps over the lazy dog. The dog, startled, barks loudly and runs into the forest, where it hides behind a large oak tree until the fox has gone away."
+
+We must ensure we only change that word. So final answer: "The slow brown fox jumps over the lazy dog. The dog, startled, barks loudly and runs into the forest, where it hides behind a large oak tree until the fox has gone away."
+
+That's it.<|end|><|start|>assistant<|channel|>final<|message|>The slow brown fox jumps over the lazy dog. The dog, startled, barks loudly and runs into the forest, where it hides behind a large oak tree until the fox has gone away.<|return|>
