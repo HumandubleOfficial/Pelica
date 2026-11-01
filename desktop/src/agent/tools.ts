@@ -1,7 +1,8 @@
 // The tools the models get, and running them: web (any chat), files and
 // commands (chats with a workspace folder; commands ask the user first),
-// a todo list for long tasks, MCP servers.
-import { bridge, need, type RepoReport } from "../lib/bridge";
+// a todo list for long tasks, MCP servers (connectors; each tool allowed,
+// asked for, or off).
+import { bridge, need, type McpConfig, type McpToolInfo, type RepoReport, type ToolPerm } from "../lib/bridge";
 import type { ToolSpec } from "../lib/engine";
 import { app, uid, type Chat, type Todo, type ToolUI } from "../state";
 
@@ -61,9 +62,21 @@ export function toolsFor(chat: Chat, opts: { web: boolean; lastUser: string }): 
   const mcp: ToolSpec[] = [];
   for (const s of app.get().mcp) {
     if (!s.running) continue;
-    for (const t of s.tools) mcp.push({ name: `mcp__${s.name}__${t.name}`.replace(/[^\w]/g, "_").slice(0, 64), description: (t.description || "").slice(0, 600), parameters: t.inputSchema || { type: "object", properties: {} } });
+    const cfg = app.get().settings.mcpServers.find((c) => c.name === s.name);
+    for (const t of s.tools) {
+      if (toolPerm(cfg, t) === "off") continue;
+      // plan mode: only the tools that say they just look
+      if (mode === "plan" && !t.annotations?.readOnlyHint) continue;
+      mcp.push({ name: `mcp__${s.name}__${t.name}`.replace(/[^\w]/g, "_").slice(0, 64), description: (t.description || "").slice(0, 600), parameters: t.inputSchema || { type: "object", properties: {} } });
+    }
   }
   return { tools, mcp };
+}
+
+/** A connector tool's setting: the user's choice, else "allow" for tools that
+ *  say they only read and "ask" for the rest. */
+export function toolPerm(cfg: McpConfig | undefined, t: McpToolInfo): ToolPerm {
+  return cfg?.tools?.[t.name] || (t.annotations?.readOnlyHint ? "allow" : "ask");
 }
 
 // ---------- running ----------
@@ -73,7 +86,7 @@ const allowed = new Map<string, Set<string>>();
 
 /** `force`: ask even in Bypass permissions mode or when allowed for this chat
  *  (a command the GitHub safety check flagged). */
-export function askApproval(chat: Chat, command: string, title = "Run this command?", why?: string, kind: "command" | "file" | "other" = "command", force = false): Promise<"allow" | "always" | "deny"> {
+export function askApproval(chat: Chat, command: string, title = "Run this command?", why?: string, kind: "command" | "file" | "other" = "command", force = false, args?: string): Promise<"allow" | "always" | "deny"> {
   const mode = app.get().settings.permMode;
   // Bypass permissions: commands and file changes go ahead (the clipboard still asks)
   if (mode === "auto" && kind !== "other" && !force) return Promise.resolve("allow");
@@ -86,6 +99,7 @@ export function askApproval(chat: Chat, command: string, title = "Run this comma
         command,
         folder: chat.folder || "",
         why,
+        args,
         chatTitle: chat.title,
         resolve: (r) => {
           app.set({ approval: null });
@@ -250,6 +264,15 @@ export async function runTool(chat: Chat, name: string, args: any, live: (ui: Pa
           const s = app.get().mcp.find((x) => x.name.replace(/[^\w]/g, "_") === m[1]);
           const t = s?.tools.find((x) => x.name.replace(/[^\w]/g, "_") === m[2]);
           if (!s || !t) throw new Error(`no MCP tool ${name}`);
+          const perm = toolPerm(app.get().settings.mcpServers.find((c) => c.name === s.name), t);
+          const what = `${s.name} · ${t.title || t.annotations?.title || t.name}`;
+          if (perm === "off") throw new Error(`the user turned off ${what}`);
+          if (perm === "ask") {
+            const args = JSON.stringify(a, null, 1);
+            const about = t.description ? t.description.split("\n")[0].slice(0, 240) : undefined;
+            const ok = await askApproval(chat, what, "Let Pelica use this connector?", about, "command", false, args.length > 1500 ? args.slice(0, 1500) + "…" : args);
+            if (ok === "deny" || signal.stopped) return { content: `The user declined: ${what}. Ask them how to proceed.`, ui: { kind: "denied", title: what, detail: "Declined" } };
+          }
           const r = await need().mcp.call(s.name, t.name, a);
           return { content: clip(r, 20000), ui: { kind: "mcp", title: `${s.name} · ${t.name}`, output: r.slice(0, 20000) } };
         }

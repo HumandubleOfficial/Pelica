@@ -11,7 +11,7 @@ exports.download = download;
 exports.tidy = tidy;
 // Updates: Pelica asks an update feed what the newest version is: by default
 // the latest.json of Pelica's newest GitHub release (DEFAULT_FEED), or the web
-// address or file path set in Settings → About. The feed is the latest.json
+// address or file path set in Settings → Updates. The feed is the latest.json
 // that installer/make.mjs writes beside each installer:
 //   { "version": "0.13.0", "url": "Pelica-Setup-0.13.0.exe", "sha256": "…", "notes": [...] }
 // `url` may be relative to the feed. An update is downloaded into the app's
@@ -27,6 +27,8 @@ const node_url_1 = require("node:url");
 /** the newest GitHub release's feed (each release carries its installer and latest.json) */
 exports.DEFAULT_FEED = "https://github.com/HumandubleOfficial/Pelica/releases/latest/download/latest.json";
 exports.RELEASES_PAGE = "https://github.com/HumandubleOfficial/Pelica/releases";
+/** every release, previews (pre-releases) included, newest first */
+const RELEASES_API = "https://api.github.com/repos/HumandubleOfficial/Pelica/releases?per_page=20";
 /** a < b, for versions like 0.12.0 */
 function older(a, b) {
     const pa = a.split(/[.-]/).map((x) => parseInt(x, 10) || 0);
@@ -55,16 +57,34 @@ async function read(u, signal) {
         throw new Error(`${u.href}: ${r.status} ${r.statusText}`);
     return Buffer.from(await r.arrayBuffer());
 }
-async function check(feed, current) {
+/** With previews: the newest release on GitHub that carries a latest.json, pre-releases included. */
+async function previewFeed(signal) {
+    const r = await fetch(RELEASES_API, { signal, headers: { Accept: "application/vnd.github+json" } });
+    if (!r.ok)
+        throw new Error(`GitHub: ${r.status} ${r.statusText}`);
+    for (const rel of (await r.json())) {
+        if (rel.draft)
+            continue;
+        const a = (rel.assets || []).find((x) => x.name === "latest.json");
+        if (a)
+            return { url: new URL(a.browser_download_url), preview: !!rel.prerelease };
+    }
+    throw new Error("no GitHub release has a latest.json");
+}
+/** What the feed offers. `preview`: with the GitHub feed, also pre-releases. */
+async function check(feed, current, opts = {}) {
     if (!feed?.trim())
         return { current, newer: false, error: "No update feed is set." };
     try {
-        const u = feedUrl(feed);
+        let u = feedUrl(feed);
+        let preview = false;
+        if (opts.preview && feed === exports.DEFAULT_FEED)
+            ({ url: u, preview } = await previewFeed(AbortSignal.timeout(15000)));
         const j = JSON.parse((await read(u, AbortSignal.timeout(15000))).toString("utf8"));
         if (typeof j.version !== "string" || typeof j.url !== "string" || !/^[0-9a-f]{64}$/i.test(j.sha256 || ""))
             throw new Error("the feed needs version, url and sha256");
         j.url = new URL(j.url, u).href;
-        return { current, latest: j, newer: older(current, j.version) };
+        return { current, latest: j, newer: older(current, j.version), preview };
     }
     catch (e) {
         return { current, newer: false, error: `Couldn't read the update feed: ${e?.message || e}` };

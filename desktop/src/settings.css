@@ -451,3 +451,9 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* connectors: the form's fields fill their column */
+.settings .conn-grid .text-input:not(.narrow),
+.settings .conn-field .text-input:not(.narrow) {
+  width: 100%;
+}

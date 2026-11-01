@@ -145,7 +145,7 @@ export interface Settings {
   /** speed up (pelica repack) DeepSeek V4 files as soon as they finish downloading */
   autoRepack: boolean;
   modelDirs: string[];
-  mcpServers: { name: string; command: string; args?: string[]; env?: Record<string, string>; disabled?: boolean }[];
+  mcpServers: import("./lib/bridge").McpConfig[];
   lastModel?: string;
   lastCtx: number;
   folder: string | null;
@@ -193,8 +193,14 @@ export interface Settings {
   apiPort: number;
   /** where to look for new versions (a latest.json: web address or path; empty: Pelica's GitHub releases) */
   updateFeed: string;
-  /** check the feed at start */
-  updateAuto: boolean;
+  /** when to check for a new version by itself */
+  updateCheck: "start" | "daily" | "off";
+  /** also offer previews (GitHub pre-releases) */
+  updatePreview: boolean;
+  /** a version the user chose to skip: not announced at start */
+  updateSkip: string;
+  /** when the feed was last asked (ms) */
+  updateLast: number;
   /** scheduled tasks (agent/tasks.ts) */
   tasks: import("./agent/tasks").Task[];
   /** the version whose release notes were last shown (What's new) */
@@ -260,7 +266,10 @@ export const DEFAULTS: Settings = {
   apiServer: false,
   apiPort: 11435,
   updateFeed: "",
-  updateAuto: true,
+  updateCheck: "start",
+  updatePreview: false,
+  updateSkip: "",
+  updateLast: 0,
   tasks: [],
   lastSeenVersion: "",
   prompts: [],
@@ -276,6 +285,8 @@ export interface Approval {
   why?: string;
   /** the chat it's for (it may not be the open one) */
   chatTitle?: string;
+  /** a connector tool: what it's called with */
+  args?: string;
   resolve: (r: "allow" | "always" | "deny") => void;
 }
 
@@ -315,7 +326,7 @@ export interface AppState {
   settingsTab: string;
   /** What's new: the versions since the last one seen, or every release */
   whatsNew: "new" | "all" | null;
-  /** a newer version the update feed offers (Settings → About) */
+  /** a newer version the update feed offers (Settings → Updates) */
   update: import("./lib/bridge").UpdateCheck | null;
   /** the Scheduled tasks window */
   tasksOpen: boolean;

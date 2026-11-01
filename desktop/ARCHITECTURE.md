@@ -226,12 +226,25 @@ is chosen, since such models describe tasks instead of doing them.
   Vals AI's independent runs where they exist, else the vendor's own
   (striped, with the setup noted); missing scores show n/a. Update the
   tables there when new numbers are published.
-- Connectors (`components/Connectors.tsx`): one-click MCP presets (files,
-  memory, sequential thinking, fetch, git, time, SQLite, Playwright, GitHub,
-  Brave Search) with the one field each needs, a custom-server form, per
-  server on/off, restart (`mcp:restart`), tools and log, and the JSON under
-  Advanced. `mcp:launchers` tells which of npx / uvx are installed;
-  arguments with spaces are quoted for cmd.exe.
+- Connectors (`components/Connectors.tsx`, client in `electron/mcp.ts`): one-click
+  MCP presets (files, memory, sequential thinking, fetch, git, time, SQLite,
+  Playwright, GitHub, Brave Search; remote DeepWiki and Context7) with the one
+  field each needs, a custom form (a command on this PC, or a remote URL with
+  headers), per server on/off, restart (`mcp:restart`), log, and the JSON
+  under Advanced (Pelica's list, or another app's `{ mcpServers }`, via
+  `mcp:parse`). Transports: stdio (newline JSON-RPC), Streamable HTTP (a POST
+  per message, replies as JSON or an event stream, `Mcp-Session-Id`), and the
+  older HTTP+SSE one when the POST gets a 400/404/405. `tools/list` follows
+  `nextCursor`; `notifications/tools/list_changed` re-lists, and every start,
+  exit or change is pushed to the window (`mcp:changed`). `mcp:others` reads
+  Claude Desktop (also its Store package folder), Claude Code, Cursor,
+  Windsurf and VS Code configs for one-click import. Each tool has a setting
+  in `mcpServers[].tools` (`allow` / `ask` / `off`; unset: `allow` when the
+  tool's `readOnlyHint` is set, else `ask`; `toolPerm` in agent/tools.ts).
+  `ask` goes through `askApproval` (skipped in Bypass), showing the
+  arguments; plan mode offers only read-only tools. `mcp:launchers` tells
+  which of npx / uvx are installed; arguments with spaces are quoted for
+  cmd.exe.
 - Web search: `web_search` + `open_page` through Electron's `session.fetch`
   in the main process (DuckDuckGo, Bing, then a hidden rendered window), with
   local/private-address refusal. The system prompt and tool descriptions tell
@@ -320,10 +333,14 @@ No downloads: everything comes from `node_modules` and Windows itself.
   `PELICA_SIGN_THUMBPRINT`; PowerShell's `Set-AuthenticodeSignature`,
   SHA-256, timestamped), and writes `release/latest.json` (version, file
   name, sha256, notes): the update feed.
-- Updates (`electron/updates.ts`, Settings → About → Updates, `components/Updates.tsx`
-  for the check at start): `settings.updateFeed` is a web address or path of a
-  `latest.json` (empty: never checked); `updateAuto` checks it 15 s after
-  start. Install downloads into `<userData>/updates`, requires the feed's
+- Updates (`electron/updates.ts`; the Settings → Updates page is `UpdatesTab`
+  in Settings.tsx; `components/Updates.tsx` checks by itself):
+  `settings.updateFeed` is a web address or path of a `latest.json` (empty:
+  the newest GitHub release's). `updateCheck` is "start" (15 s after start),
+  "daily" (looked at hourly, asked when `updateLast` is a day old) or "off".
+  `updatePreview` reads the GitHub releases API instead and takes the newest
+  non-draft release with a latest.json, pre-releases included. `updateSkip`
+  is a version not announced in the start toast. Install downloads into `<userData>/updates`, requires the feed's
   sha256 and, when the running Pelica.exe is signed, a valid signature by the
   same subject, then starts the installer with `/S /RELAUNCH /D=<this
   folder>` and quits. Only the packaged app updates itself.

@@ -14,6 +14,7 @@ import { Library } from "./components/Library";
 import { Brain } from "./components/Brain";
 import { ExpertsBg } from "./components/ExpertsBg";
 import { Icon, Logo } from "./components/Icons";
+import { engine } from "./lib/engine";
 import { Palette } from "./components/Palette";
 import { ArtifactPanel } from "./components/ArtifactPanel";
 import { PhotoViewer } from "./components/Attachments";
@@ -124,6 +125,27 @@ const IDEAS: [string, string, string][] = [
   ["scan", "Review code", "Look through this project and point out bugs or risky code."],
 ];
 
+/** First start: no model on this PC yet, so say where to get one. */
+function Welcome() {
+  const st = useApp((s) => s.status);
+  const [none, setNone] = useState(false);
+  useEffect(() => {
+    engine.models().then((m) => setNone(!m.models.length)).catch(() => {});
+  }, [st?.state]);
+  if (!none || st?.state === "loading" || st?.state === "ready") return null;
+  return (
+    <div className="welcome">
+      <div className="welcome-text">
+        <b>Welcome to Pelica</b>
+        <span className="muted small">To chat, Pelica needs a model on this PC. The model library finds GGUF models on Hugging Face to download and shows which files fit your GPU.</span>
+      </div>
+      <button className="btn primary small" onClick={() => app.set({ view: "library" })}>
+        <Icon name="library" size={14} /> Get a model
+      </button>
+    </div>
+  );
+}
+
 function Home() {
   const name = useApp((s) => s.settings.userName);
   const st = useApp((s) => s.status);
@@ -137,6 +159,7 @@ function Home() {
           {greeting(name)}
         </h1>
         <Composer big />
+        <Welcome />
         <div className="ideas">
           {IDEAS.map(([icon, label, text]) => (
             <button key={label} className="idea" onClick={() => window.dispatchEvent(new CustomEvent("pelica:compose", { detail: text }))}>
@@ -179,18 +202,19 @@ function Approval() {
     <div className="modal-back">
       <div className="modal approval">
         <div className="approval-head">
-          <Icon name="terminal" size={18} /> {a.title}
+          <Icon name={a.args !== undefined ? "plug" : "terminal"} size={18} /> {a.title}
         </div>
         {a.chatTitle && a.chatTitle !== app.get().chat?.title && <div className="approval-chat">From the chat “{a.chatTitle}”</div>}
         {a.why && <p className="muted small">{a.why}</p>}
         <pre className="approval-cmd">{a.command}</pre>
-        {a.folder && <div className="muted small">in {a.folder}</div>}
+        {a.args !== undefined && a.args !== "{}" && <pre className="approval-cmd approval-args">{a.args}</pre>}
+        {a.folder && a.args === undefined && <div className="muted small">in {a.folder}</div>}
         <div className="approval-btns">
           <button className="btn ghost" onClick={() => a.resolve("deny")}>
             Deny <kbd>Esc</kbd>
           </button>
           <button className="btn ghost" onClick={() => a.resolve("always")}>
-            Allow this command for the chat
+            {a.args !== undefined ? "Allow this tool for the chat" : "Allow this command for the chat"}
           </button>
           <button className="btn primary" autoFocus onClick={() => a.resolve("allow")}>
             Allow <kbd>Ctrl+Enter</kbd>

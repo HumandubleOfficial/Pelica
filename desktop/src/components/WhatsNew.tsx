@@ -38,6 +38,8 @@ export function unseen(seen: string): Release[] {
 /** At start: open What's new when this version's notes haven't been seen. */
 export function checkWhatsNew() {
   const seen = app.get().settings.lastSeenVersion;
+  // the very first start: nothing to catch up on, so no release notes
+  if (!seen) return setSettings({ lastSeenVersion: VERSION });
   if (cmpVersion(VERSION, seen || "0") > 0 && unseen(seen).length) app.set({ whatsNew: "new" });
 }
 

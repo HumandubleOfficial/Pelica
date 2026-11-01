@@ -10,6 +10,7 @@ import { app, PERM_MODES, setSettings, useApp, type Msg } from "../state";
 import { openArtifact } from "./ArtifactPanel";
 import { FolderList } from "./Composer";
 import { presetOf } from "./Connectors";
+import { toolPerm } from "../agent/tools";
 import { Grip, Icon, TodoMark } from "./Icons";
 
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}k` : String(Math.round(n)));
@@ -214,12 +215,12 @@ function Connectors() {
         const p = presetOf(c);
         const state = c.disabled ? "off" : m?.running ? "on" : m ? "error" : "off";
         return (
-          <button key={c.name} className="sp-row click" onClick={() => app.set({ settingsOpen: true, settingsTab: "Connectors" })} title={state === "error" ? m?.error : `${c.command} ${(c.args || []).join(" ")}`}>
+          <button key={c.name} className="sp-row click" onClick={() => app.set({ settingsOpen: true, settingsTab: "Connectors" })} title={state === "error" ? m?.error : c.url || `${c.command} ${(c.args || []).join(" ")}`}>
             <span className="sp-conn-ico">
-              <Icon name={p?.icon || "plug"} size={13} />
+              <Icon name={p?.icon || (c.url ? "globe" : "plug")} size={13} />
             </span>
             <span className="sp-label ellipsis">{p?.name || c.name}</span>
-            <span className="sp-meta">{state === "on" ? `${m!.tools.length} tools` : state === "off" ? "off" : ""}</span>
+            <span className="sp-meta">{state === "on" ? `${m!.tools.filter((t) => toolPerm(c, t) !== "off").length} tools` : state === "off" ? "off" : ""}</span>
             <span className={`status-dot ${state === "on" ? "ready" : state === "error" ? "error" : "empty"}`} />
           </button>
         );

@@ -65,7 +65,11 @@ const quick = location.hash === "#quick";
   checkWhatsNew();
   checkForUpdates();
   poll();
-  if (bridge) bridge.mcp.list().then((mcp) => app.set({ mcp })).catch(() => {});
+  if (bridge) {
+    bridge.mcp.list().then((mcp) => app.set({ mcp })).catch(() => {});
+    // servers coming up, stopping, or changing their tools
+    bridge.mcp.onChanged((mcp) => app.set({ mcp }));
+  }
   startDesktop();
   startScheduler();
   createRoot(document.getElementById("root")!).render(<App />);

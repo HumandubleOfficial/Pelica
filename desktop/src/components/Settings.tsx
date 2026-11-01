@@ -12,6 +12,7 @@ import { setMaterial } from "./Palette";
 import { RELEASES, ReleaseNotes, VERSION } from "./WhatsNew";
 import { UsageTab } from "./Usage";
 import { PromptList } from "./Prompts";
+import { checkNow } from "./Updates";
 
 const PREVIEW_A = 'function greet(name: string) {\n  return "Hello, " + name;\n}\n';
 const PREVIEW_B = "function greet(name: string) {\n  return `Hello, ${name}!`;\n}\n";
@@ -30,7 +31,8 @@ const TABS: { name: string; icon: string; group: string; keys: string }[] = [
   { name: "Devices", icon: "monitor", group: "This computer", keys: "bridge ram lend pairing network" },
   { name: "Developer", icon: "terminal", group: "This computer", keys: "versions electron engine log data folder" },
   { name: "Connectors", icon: "plug", group: "Customize", keys: "mcp servers tools github memory browser" },
-  { name: "About", icon: "info", group: "Customize", keys: "version updates feed release notes" },
+  { name: "Updates", icon: "download", group: "Customize", keys: "update version check install feed preview pre-release skip github releases daily" },
+  { name: "About", icon: "info", group: "Customize", keys: "version release notes github" },
 ];
 
 /** What each theme looks like, for the picker (the colours in styles.css / polish.css). */
@@ -303,8 +305,18 @@ function ApiRows() {
 
 const mb = (n: number) => `${(n / 1048576).toFixed(0)} MB`;
 
-/** About → Updates: the feed, a check, and the download-and-install (electron/updates.ts). */
-function UpdateRows() {
+const ago = (t: number) => {
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} minute${m === 1 ? "" : "s"} ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? "" : "s"} ago`;
+};
+
+/** Settings → Updates: the newest version, how and when to check, and where (electron/updates.ts). */
+function UpdatesTab() {
   const s = useApp((x) => x.settings);
   const known = useApp((x) => x.update);
   const [feed, setFeed] = useState(s.updateFeed);
@@ -313,14 +325,16 @@ function UpdateRows() {
   const [got, setGot] = useState<{ got: number; total: number } | null>(null);
   const [err, setErr] = useState("");
   useEffect(() => bridge?.update.onProgress((v) => setGot(v)), []);
+  if (!bridge) return <p className="set-desc">Updates need the Pelica desktop app.</p>;
   const check = async () => {
     setBusy("check");
     setErr("");
     try {
-      const r = await bridge!.update.check();
+      const r = await checkNow();
       setRes(r);
-      app.set({ update: r.newer ? r : null });
       if (r.error) setErr(r.error);
+    } catch (e: any) {
+      setErr(String(e?.message || e));
     } finally {
       setBusy(null);
     }
@@ -338,6 +352,9 @@ function UpdateRows() {
       setBusy(null);
     }
   };
+  const v = res?.latest?.version;
+  const skipped = !!v && v === s.updateSkip;
+  const title = res?.newer && v ? `Pelica ${v}${res.preview ? " (preview)" : ""} is available` : res && !res.error ? `Pelica ${res.current} is the newest version` : `You have Pelica ${VERSION}`;
   const status = err
     ? err
     : busy === "get"
@@ -347,32 +364,57 @@ function UpdateRows() {
           ? `Downloading… ${mb(got.got)}`
           : "Downloading…"
       : res?.newer
-        ? "Install downloads it, checks it, and closes Pelica while it installs; Pelica starts again by itself. Your chats and settings stay."
-        : undefined;
+        ? `${skipped ? "You skipped this version, so Pelica doesn't mention it at start. " : ""}Install downloads it, checks it, and closes Pelica while it installs; Pelica starts again by itself. Your chats and settings stay.`
+        : s.updateLast
+          ? `Last checked ${ago(s.updateLast)}.`
+          : "Not checked yet.";
   return (
     <>
-      <Row title={res?.newer && res.latest ? `Pelica ${res.latest.version} is available` : res && !res.error ? `Pelica ${res.current} is the newest version` : "Check for updates"} desc={status}>
-          <div className="inline">
-            {res?.newer && (
-              <button className="btn small primary" disabled={!!busy} onClick={install}>
-                {busy === "get" ? "Installing…" : "Install"}
-              </button>
-            )}
-            {busy === "get" ? (
-              <button className="btn small ghost" onClick={() => bridge?.update.cancel()}>
-                Cancel
-              </button>
-            ) : (
-              <button className="btn small" disabled={!!busy} onClick={check}>
-                {busy === "check" ? "Checking…" : "Check now"}
-              </button>
-            )}
-          </div>
-        </Row>
-      <Row title="Check when Pelica starts" desc="Asks GitHub once at start whether a newer version is out, and says so. Nothing is downloaded until you choose Install.">
-        <Toggle on={s.updateAuto} set={(v) => setSettings({ updateAuto: v })} />
+      <Row title={title} desc={status}>
+        <div className="inline">
+          {res?.newer && !busy && (
+            <button className="btn small ghost" onClick={() => setSettings({ updateSkip: skipped ? "" : v! })}>
+              {skipped ? "Don't skip" : "Skip this version"}
+            </button>
+          )}
+          {res?.newer && (
+            <button className="btn small primary" disabled={!!busy} onClick={install}>
+              {busy === "get" ? "Installing…" : "Install"}
+            </button>
+          )}
+          {busy === "get" ? (
+            <button className="btn small ghost" onClick={() => bridge?.update.cancel()}>
+              Cancel
+            </button>
+          ) : (
+            <button className="btn small" disabled={!!busy} onClick={check}>
+              {busy === "check" ? "Checking…" : "Check now"}
+            </button>
+          )}
+        </div>
       </Row>
-      <Row title="Update feed" desc={<>Where Pelica looks for new versions: the web address or folder of a <code>latest.json</code>. Empty: Pelica's releases on GitHub.</>}>
+      {res?.newer && res.latest?.notes?.length ? <ReleaseNotes releases={[{ version: res.latest.version, date: "", title: res.latest.title, notes: res.latest.notes }]} /> : null}
+      <Section title="Options" />
+      <Row title="Check for updates" desc="When Pelica asks for a newer version by itself, and says so when one is out. Nothing is downloaded until you choose Install.">
+        <Seg value={s.updateCheck} options={[["start", "At start"], ["daily", "Once a day"], ["off", "Never"]]} onChange={(x) => setSettings({ updateCheck: x })} />
+      </Row>
+      <Row title="Preview versions" desc="Also offer versions marked as previews on GitHub: newer features, tried less. Off: only regular releases.">
+        <Toggle on={s.updatePreview} set={(x) => (setSettings({ updatePreview: x }), setRes(null))} />
+      </Row>
+      {s.updateSkip && !(res?.newer && skipped) && (
+        <Row title="Skipped version" desc={`Pelica ${s.updateSkip} isn't announced at start. A newer version is.`}>
+          <button className="btn small ghost" onClick={() => setSettings({ updateSkip: "" })}>
+            Don't skip
+          </button>
+        </Row>
+      )}
+      <Section title="Where updates come from" />
+      <Row title="Releases" desc="Every version, with its installer and release notes, is on Pelica's GitHub page.">
+        <button className="btn small" onClick={() => bridge?.sys.external("https://github.com/HumandubleOfficial/Pelica/releases")}>
+          Open on GitHub
+        </button>
+      </Row>
+      <Row title="Update feed" desc={<>The web address or folder of a <code>latest.json</code>, for builds you host yourself. Empty: Pelica's releases on GitHub.</>}>
         <input
           className="text-input wide"
           value={feed}
@@ -385,7 +427,6 @@ function UpdateRows() {
           placeholder="Pelica's GitHub releases"
         />
       </Row>
-      {res?.newer && res.latest?.notes?.length ? <ReleaseNotes releases={[{ version: res.latest.version, date: "", title: res.latest.title, notes: res.latest.notes }]} /> : null}
     </>
   );
 }
@@ -630,6 +671,9 @@ export function SettingsModal() {
     case "Developer":
       body = <DevTab />;
       break;
+    case "Updates":
+      body = <UpdatesTab />;
+      break;
     case "About":
       body = (
         <div className="about">
@@ -644,10 +688,9 @@ export function SettingsModal() {
             </button>
           </div>
           <p className="set-intro">
-            Pelica runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow, and the update check on GitHub (which you can turn off below).
+            Pelica runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow, the update check on GitHub (Settings → Updates), and what you ask the online connectors you add.
           </p>
-          <Section title="Updates" />
-          <UpdateRows />
+          <p className="set-intro">Pelica is open source under the MIT License.</p>
           <Section title="Release notes" />
           <ReleaseNotes releases={RELEASES.filter((r) => r.version !== "next")} />
         </div>

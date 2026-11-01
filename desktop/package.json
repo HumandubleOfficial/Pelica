@@ -1,8 +1,10 @@
 {
   "name": "pelica-desktop",
   "productName": "Pelica",
-  "version": "0.13.4",
+  "version": "0.14.0",
   "description": "Pelica Desktop: local models with tools, files, commands and a browser",
+  "license": "MIT",
+  "author": "Humanduble",
   "private": true,
   "main": "build/electron/main.js",
   "scripts": {

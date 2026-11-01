@@ -1,5 +1,22 @@
 [
   {
+    "version": "0.14.0",
+    "date": "2026-11-01",
+    "title": "Online connectors, tool permissions and an Updates page",
+    "notes": [
+      "Connectors can now be online services, not just programs on your PC: add one by its web address (with a token under Headers if it needs a sign-in). DeepWiki and Context7 are ready to add in one click.",
+      "Each connector tool can be set to Allow, Ask or Off. Tools that change things now ask you before they run (before, connector tools never asked); tools that say they only read run straight away, and Plan mode only offers those.",
+      "Bring over connectors you already set up in Claude Desktop, Claude Code, Cursor, Windsurf or VS Code with one click. The Advanced box also takes their config pasted as it is.",
+      "When a connector adds or removes tools while it runs, the change shows up right away. Connectors that finish starting after Pelica opens now appear in chats without opening Settings.",
+      "Settings has its own Updates page: the newest version with Install, when you last checked, and its release notes. About now just shows Pelica and its release notes.",
+      "Choose when Pelica checks for updates: at start, once a day, or never.",
+      "Preview versions: turn on to also be offered versions marked as previews on GitHub.",
+      "Skip this version: Pelica stops mentioning that version at start (a newer one is still announced).",
+      "A new install opens on a welcome that points to the model library when there is no model yet, instead of on release notes.",
+      "Pelica is open source under the MIT License (LICENSE in the repository and in the install folder; About says so too)."
+    ]
+  },
+  {
     "version": "0.13.4",
     "date": "2026-11-01",
     "title": "Pelica is on GitHub",

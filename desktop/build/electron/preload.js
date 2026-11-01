@@ -16,7 +16,7 @@ electron_1.contextBridge.exposeInMainWorld("pelica", {
     fs: { list: call("fs:list"), read: call("fs:read"), write: call("fs:write"), edit: call("fs:edit"), search: call("fs:search"), find: call("fs:find"), raw: call("fs:raw"), notes: call("fs:notes"), trash: call("fs:trash"), reveal: call("fs:reveal") },
     cmd: { run: call("cmd:run"), kill: call("cmd:kill"), onData: on("cmd:data"), onExit: on("cmd:exit") },
     web: { search: call("web:search"), open: call("web:open"), repos: call("web:repos") },
-    mcp: { start: call("mcp:start"), list: call("mcp:list"), call: call("mcp:call"), restart: call("mcp:restart"), launchers: call("mcp:launchers") },
+    mcp: { start: call("mcp:start"), list: call("mcp:list"), call: call("mcp:call"), restart: call("mcp:restart"), launchers: call("mcp:launchers"), others: call("mcp:others"), parse: call("mcp:parse"), onChanged: on("mcp:changed") },
     lib: { search: call("lib:search"), files: call("lib:files"), download: call("lib:download"), downloads: call("lib:downloads"), cancel: call("lib:cancel"), pause: call("lib:pause"), resume: call("lib:resume"), uninstall: call("lib:uninstall"), repack: call("lib:repack"), repacks: call("lib:repacks"), repackStop: call("lib:repackStop"), onRepack: on("lib:repack"), pickDir: call("lib:pickDir"), onProgress: on("lib:progress") },
     engine: { log: call("engine:log"), restart: call("engine:restart"), api: call("api:status") },
     media: { ocr: call("media:ocr"), dictateStart: call("media:dictateStart"), dictateStop: call("media:dictateStop"), onDictate: on("media:dictate") },

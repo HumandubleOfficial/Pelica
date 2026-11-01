@@ -8,7 +8,14 @@ mid-range gaming PC faster than [Colibrì](https://github.com/JustVugg/colibri).
 [Releases page](https://github.com/HumandubleOfficial/Pelica/releases/latest)
 (Windows 10 or 11, 64-bit; a processor with AVX2; a GPU with Vulkan drivers).
 The app checks there for new versions and can update itself
-(Settings → About → Updates).
+(Settings → Updates).
+
+**Getting started.** Install, start Pelica, and open the model library (the
+Models button in the sidebar): it lists the models already on your PC and
+GGUF models on Hugging Face to download. Pick one and chat. To let it work
+on files, choose a workspace folder in the message box; it asks before
+running a command. Settings → Connectors adds more tools (MCP servers on
+your PC or online). Everything runs on your own PC.
 
 The idea is the same one Colibrì proved: an MoE token only touches a few
 experts, so the dense part of the model can stay resident while the experts
@@ -199,8 +206,12 @@ like the Claude desktop app. It starts `pelica.exe app` as its engine (chat API
 v2: whole conversation + tools in, streamed reply out, stopping at tool
 calls; see `desktop/ARCHITECTURE.md`) and adds the agent around it:
 
-* web search and page reading for every model (never for small talk), MCP
-  servers (Settings → Connectors); links open in your default browser. Searches go
+* web search and page reading for every model (never for small talk),
+  connectors (Settings → Connectors): MCP servers on this PC or online
+  (Streamable HTTP, or the older SSE transport), brought over from Claude
+  Desktop, Claude Code or Cursor in one click, each tool allowed, asked for
+  or off (tools that say they only read are allowed; plan mode offers only
+  those); links open in your default browser. Searches go
   through Chromium's network stack (DuckDuckGo, then Bing, then DuckDuckGo
   rendered in a hidden window), so engines don't turn them away as scripts;
   pages built by scripts are rendered before reading
@@ -1006,3 +1017,7 @@ GPU times of a prompt pass), `PELICA_DRAFT=0` (no drafting).
    /v1/chat/completions` (streamed or not, with tools) on the engine's port
    (`src/app_openai.rs`); Pelica Desktop serves them on a fixed one
    (Settings → Models → Local API, default 11435).
+
+## License
+
+Pelica is open source under the [MIT License](LICENSE).

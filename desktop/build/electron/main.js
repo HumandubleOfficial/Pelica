@@ -907,6 +907,10 @@ function registerIpc() {
         return mcp.list();
     });
     handle("mcp:launchers", () => mcp.launchers());
+    handle("mcp:others", () => mcp.otherApps());
+    handle("mcp:parse", (text) => mcp.fromConfig(JSON.parse(text)));
+    // a server's tools changed by themselves (or it stopped): tell the window
+    mcp.watch(() => win?.webContents.send("mcp:changed", mcp.list()));
     handle("mcp:call", (server, tool, args) => mcp.call(server, tool, args));
     handle("lib:search", (q) => lib.searchRepos(q));
     handle("lib:files", (id) => lib.repoFiles(id));
@@ -1002,7 +1006,7 @@ function registerIpc() {
     });
     // updates (electron/updates.ts): only the installed app replaces itself
     let updating = null;
-    handle("update:check", () => updates.check(settings.updateFeed || updates.DEFAULT_FEED, electron_1.app.getVersion()));
+    handle("update:check", () => updates.check(settings.updateFeed || updates.DEFAULT_FEED, electron_1.app.getVersion(), { preview: !!settings.updatePreview }));
     handle("update:install", async (f) => {
         if (!electron_1.app.isPackaged)
             throw new Error("Only the installed Pelica can update itself (this one runs from the source folder).");

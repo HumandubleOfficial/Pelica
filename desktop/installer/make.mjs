@@ -11,7 +11,7 @@
 // 2. compiles the uninstaller into it and packs it into payload.zip,
 // 3. compiles the installer around the payload, and
 // 4. writes release/latest.json beside it: the update feed the app reads
-//    (Settings → About → Updates; electron/updates.ts). Attach both files to
+//    (Settings → Updates; electron/updates.ts). Attach both files to
 //    a GitHub release (gh release create vX.Y.Z <installer> release/latest.json):
 //    the app reads the newest release's latest.json by default.
 //
@@ -113,6 +113,8 @@ fs.writeFileSync(path.join(app, "package.json"), JSON.stringify({ name: pkg.name
 fs.cpSync(path.join(desktop, "build/electron"), path.join(app, "build/electron"), { recursive: true, force: true });
 fs.cpSync(path.join(desktop, "dist"), path.join(app, "dist"), { recursive: true, force: true });
 fs.copyFileSync(engine, path.join(stage, "resources", "pelica.exe"));
+// Pelica's license (MIT) beside Electron's LICENSE and Chromium's LICENSES.chromium.html
+fs.copyFileSync(path.resolve(desktop, "../LICENSE"), path.join(stage, "LICENSE.Pelica.txt"));
 
 console.log("icons");
 run(path.join(electronDist, "electron.exe"), [path.join(here, "icons.cjs"), path.join(desktop, "public/logo.svg"), work], "rendering the icons");

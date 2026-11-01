@@ -41,7 +41,7 @@ export interface Bridge {
     /** safety reports for the GitHub repositories named in a command or URL */
     repos(text: string): Promise<RepoReport[]>;
   };
-  mcp: { start(): Promise<McpServer[]>; list(): Promise<McpServer[]>; call(server: string, tool: string, args: unknown): Promise<string>; restart(name: string): Promise<McpServer[]>; launchers(): Promise<Record<string, boolean>> };
+  mcp: { start(): Promise<McpServer[]>; list(): Promise<McpServer[]>; call(server: string, tool: string, args: unknown): Promise<string>; restart(name: string): Promise<McpServer[]>; launchers(): Promise<Record<string, boolean>>; others(): Promise<{ app: string; file: string; servers: McpConfig[] }[]>; parse(text: string): Promise<McpConfig[]>; onChanged(fn: (v: McpServer[]) => void): () => void };
   lib: {
     search(q: string): Promise<{ id: string; downloads: number; likes: number; updated: string; tags: string[] }[]>;
     files(id: string): Promise<{ path: string; size: number }[]>;
@@ -103,8 +103,32 @@ export interface McpServer {
   running: boolean;
   error: string;
   log: string;
-  tools: { name: string; description?: string; inputSchema?: any }[];
+  /** a remote server's host */
+  remote?: string;
+  tools: McpToolInfo[];
 }
+
+export interface McpToolInfo {
+  name: string;
+  title?: string;
+  description?: string;
+  inputSchema?: any;
+  annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean; title?: string };
+}
+
+/** a connector in the settings: a program on this PC (command) or a remote server (url) */
+export interface McpConfig {
+  name: string;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  headers?: Record<string, string>;
+  disabled?: boolean;
+  /** per tool: "allow" (no asking), "ask", "off" (not offered); unset: from the tool's hints */
+  tools?: Record<string, ToolPerm>;
+}
+export type ToolPerm = "allow" | "ask" | "off";
 
 export interface Download {
   id: string;
@@ -147,5 +171,7 @@ export interface UpdateCheck {
   current: string;
   latest?: UpdateFeed;
   newer: boolean;
+  /** the offered version is a preview (a GitHub pre-release) */
+  preview?: boolean;
   error?: string;
 }
