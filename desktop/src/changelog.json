@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.13.2",
+    "date": "2026-11-01",
+    "title": "Settings laid out like Claude’s",
+    "notes": [
+      "Settings now looks like Claude’s: a title bar across the top, a search box over the list on the left (Preferences, This computer, Customize), and plain sections with thin lines between settings instead of cards.",
+      "Type in the search box to find a setting’s page: for example “tray” finds Desktop and “port” finds Models. Enter opens the first match."
+    ]
+  },
+  {
     "version": "0.13.1",
     "date": "2026-11-01",
     "title": "A cleaner Settings window",

@@ -1,6 +1,6 @@
-// Settings, laid out like the Claude app's: a grouped left nav, and each
-// page's rows in titled sections (consecutive .set-row elements draw as one
-// card: settings.css).
+// Settings, laid out like the Claude app's: a title bar, a nav with a
+// search box and groups, and pages of headed sections whose rows are split
+// by thin lines (settings.css).
 import { useEffect, useState } from "react";
 import { bridge, type UpdateCheck } from "../lib/bridge";
 import { app, PERM_MODES, refreshChats, setSettings, toast, useApp, type Settings as S } from "../state";
@@ -16,20 +16,21 @@ import { PromptList } from "./Prompts";
 const PREVIEW_A = 'function greet(name: string) {\n  return "Hello, " + name;\n}\n';
 const PREVIEW_B = "function greet(name: string) {\n  return `Hello, ${name}!`;\n}\n";
 
-const TABS: { name: string; icon: string; group: string; sub: string }[] = [
-  { name: "General", icon: "user", group: "", sub: "Your name, your instructions, and how messages are sent." },
-  { name: "Appearance", icon: "palette", group: "", sub: "Theme, text and code." },
-  { name: "Desktop", icon: "monitor", group: "", sub: "How Pelica fits into Windows." },
-  { name: "Capabilities", icon: "bolt", group: "Assistant", sub: "What models can do on their own." },
-  { name: "Permissions", icon: "shield", group: "Assistant", sub: "What Pelica may do without asking you." },
-  { name: "Context", icon: "gauge", group: "Assistant", sub: "How long chats stay within what the model can hold." },
-  { name: "CQS", icon: "scan", group: "Assistant", sub: "Checks on the code Pelica writes." },
-  { name: "Connectors", icon: "plug", group: "Assistant", sub: "Tools from MCP servers." },
-  { name: "Models", icon: "library", group: "Engine", sub: "Where models live, the local API and the engine." },
-  { name: "Devices", icon: "monitor", group: "Engine", sub: "Other computers lending their RAM to the model." },
-  { name: "Usage", icon: "spark", group: "Engine", sub: "What you've used, by day and by model." },
-  { name: "Developer", icon: "terminal", group: "More", sub: "Versions and the engine's log." },
-  { name: "About", icon: "info", group: "More", sub: "Version, updates and release notes." },
+/** The nav: groups as in Claude's settings; `keys` are what the search box also finds a page by. */
+const TABS: { name: string; icon: string; group: string; keys: string }[] = [
+  { name: "General", icon: "user", group: "Preferences", keys: "name instructions send enter reply length saved prompts back up restore chats" },
+  { name: "Appearance", icon: "palette", group: "Preferences", keys: "theme dark light warm midnight neural background backdrop mica acrylic text size font serif code animations" },
+  { name: "Capabilities", icon: "bolt", group: "Preferences", keys: "web search steps thinking effort" },
+  { name: "Permissions", icon: "shield", group: "Preferences", keys: "manual accept edits plan bypass folders deleting recycle shell cmd powershell" },
+  { name: "Context", icon: "gauge", group: "Preferences", keys: "auto-compact compact trim tool output" },
+  { name: "CQS", icon: "scan", group: "Preferences", keys: "code quality scanner fix checkers" },
+  { name: "Usage", icon: "spark", group: "Preferences", keys: "tokens days models" },
+  { name: "Desktop", icon: "monitor", group: "This computer", keys: "quick ask shortcut hotkey tray start with windows notifications computer tools" },
+  { name: "Models", icon: "library", group: "This computer", keys: "model folders load download speed up repack local api openai port engine restart" },
+  { name: "Devices", icon: "monitor", group: "This computer", keys: "bridge ram lend pairing network" },
+  { name: "Developer", icon: "terminal", group: "This computer", keys: "versions electron engine log data folder" },
+  { name: "Connectors", icon: "plug", group: "Customize", keys: "mcp servers tools github memory browser" },
+  { name: "About", icon: "info", group: "Customize", keys: "version updates feed release notes" },
 ];
 
 /** What each theme looks like, for the picker (the colours in styles.css / polish.css). */
@@ -77,7 +78,7 @@ function SizePicker({ value, onChange }: { value: number; onChange: (v: number) 
   );
 }
 
-/** A page's heading inside it: a title over a card of rows. */
+/** A heading inside a page, over its rows. */
 function Section({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <>
@@ -272,7 +273,7 @@ function ApiRows() {
   const url = `http://127.0.0.1:${s.apiPort || 11435}/v1`;
   return (
     <>
-      <Row title="Local API" desc="Lets other programs on this PC (editors, scripts, chat apps) use the loaded model, as an OpenAI-compatible server. Nothing outside this computer can reach it.">
+      <Row title="OpenAI-compatible server" desc="Lets other programs on this PC (editors, scripts, chat apps) use the loaded model, as an OpenAI-compatible server. Nothing outside this computer can reach it.">
         <Toggle on={s.apiServer} set={(v) => setSettings({ apiServer: v })} />
       </Row>
       {s.apiServer && (
@@ -398,7 +399,6 @@ function ModelsTab() {
   const [dirs, setDirs] = useState(s.modelDirs.join("; "));
   return (
     <>
-      <Section title="Model files" />
       <Row title="Model folders" desc="Where Pelica looks for .gguf files (separate with ;). Empty: C:\models and D:\Models. Takes effect after restarting the engine.">
         <input className="text-input wide" value={dirs} onChange={(e) => setDirs(e.target.value)} onBlur={() => setSettings({ modelDirs: dirs.split(";").map((x) => x.trim()).filter(Boolean) })} placeholder="C:\models; D:\Models" />
       </Row>
@@ -439,7 +439,6 @@ function DevTab() {
     <>
       {info && (
         <>
-          <Section title="Versions" />
           <Row title="Pelica Desktop">
             <span className="muted mono small">{info.version}</span>
           </Row>
@@ -475,6 +474,7 @@ export function SettingsModal() {
   const tab = useApp((x) => x.settingsTab);
   const s = useApp((x) => x.settings);
   const st = useApp((x) => x.status);
+  const [q, setQ] = useState("");
   useEffect(() => {
     const f = (e: KeyboardEvent) => e.key === "Escape" && app.set({ settingsOpen: false });
     window.addEventListener("keydown", f);
@@ -482,29 +482,29 @@ export function SettingsModal() {
   }, []);
   if (!open) return null;
   const set = (p: Partial<S>) => setSettings(p);
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const shown = TABS.filter((t) => words.every((w) => `${t.name} ${t.group} ${t.keys}`.toLowerCase().includes(w)));
   let body: React.ReactNode = null;
   switch (tab) {
     case "General":
       body = (
         <>
-          <Section title="Profile" />
           <Row title="What should Pelica call you?">
             <input className="text-input" value={s.userName} placeholder="Your name" onChange={(e) => set({ userName: e.target.value })} />
           </Row>
           <Row title="Instructions for every chat" desc="How you like answers: tone, format, things to always keep in mind.">
             <textarea className="text-input wide" rows={4} value={s.customInstructions} onChange={(e) => set({ customInstructions: e.target.value })} placeholder="e.g. Keep answers short. I use Windows and Python 3.12." />
           </Row>
-          <Section title="Messages" />
           <Row title="Send with">
             <Seg value={s.sendOnEnter} options={[[true, "Enter"], [false, "Ctrl+Enter"]]} onChange={(v) => set({ sendOnEnter: v })} />
           </Row>
           <Row title="Reply length limit" desc="Tokens per reply at most.">
             <Seg value={s.maxTokens} options={[[2048, "2K"], [4096, "4K"], [8192, "8K"], [16384, "16K"], [32768, "32K"]]} onChange={(v) => set({ maxTokens: v })} />
           </Row>
-          <div className="set-section">Saved prompts</div>
+          <Section title="Saved prompts" />
           <p className="set-intro">Text you send often. Type / and its name in the message box, or pick it from the + menu or the palette (Ctrl+K).</p>
           <PromptList />
-          <div className="set-section">Your chats</div>
+          <Section title="Your chats" />
           <BackupRow />
         </>
       );
@@ -512,8 +512,8 @@ export function SettingsModal() {
     case "Appearance":
       body = (
         <>
-          <Section title="Theme" />
           <div className="set-row set-row-block">
+            <div className="set-title">Theme</div>
             <ThemePicker value={s.theme} onChange={(v) => set({ theme: v })} />
           </div>
           <Row title="Background" desc="Live experts: the model's experts as a grid behind the chat, lighting up as the model uses them (mixture-of-experts models). The Neural theme turns it on.">
@@ -522,23 +522,21 @@ export function SettingsModal() {
           <Row title="Window backdrop" desc="Windows 11's Mica or Acrylic material shows softly through the window.">
             <Seg value={bridge ? s.material : "none"} options={[["none", "Solid"], ["mica", "Mica"], ["acrylic", "Acrylic"]]} onChange={(v) => setMaterial(v)} />
           </Row>
-          <Section title="Text" />
           <Row title="Text size" desc={`${SIZES.find((x) => x[0] === s.fontSize)?.[1] ?? "Default"}. Ctrl+= and Ctrl+- change it anywhere; Ctrl+0 goes back to Default.`}>
             <SizePicker value={s.fontSize} onChange={(v) => set({ fontSize: v })} />
           </Row>
           <Row title="Reply font" desc="Replies in a serif face, as in Claude, or the same sans as the rest of the app.">
             <Seg value={s.replyFont} options={[["serif", "Serif"], ["sans", "Sans"]]} onChange={(v) => set({ replyFont: v })} />
           </Row>
-          <Section title="Code" />
+          <Row title="Animations" desc="Effort orbs, the shimmer while working, the expert grid.">
+            <Toggle on={s.animations} set={(v) => set({ animations: v })} />
+          </Row>
+          <Section title="Code appearance" />
           <div className="set-row set-row-block code-preview">
             <Diff before={PREVIEW_A} after={PREVIEW_B} path="greet.ts" />
           </div>
           <Row title="Code font" desc="A monospace font for code, diffs and the terminal.">
             <input className="text-input" value={s.codeFont} placeholder="e.g. JetBrains Mono" onChange={(e) => set({ codeFont: e.target.value })} spellCheck={false} />
-          </Row>
-          <Section title="Motion" />
-          <Row title="Animations" desc="Effort orbs, the shimmer while working, the expert grid.">
-            <Toggle on={s.animations} set={(v) => set({ animations: v })} />
           </Row>
         </>
       );
@@ -577,7 +575,6 @@ export function SettingsModal() {
             ))}
           </div>
           {s.permMode === "auto" && <div className="warn-text">Bypass permissions runs commands without asking. Use it for folders you can afford to lose: deletes still go to the Recycle Bin, but a command can do anything you can.</div>}
-          <Section title="Files and commands" />
           <Row title="Folders" desc="Each chat has its own folder, picked from the folder chip under the message box. Files and commands stay inside that chat's folder; paths outside it are refused.">
             <span className="muted small">{s.recentFolders.length ? `${s.recentFolders.length} recent` : "none yet"}</span>
           </Row>
@@ -661,31 +658,45 @@ export function SettingsModal() {
   return (
     <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && app.set({ settingsOpen: false })}>
       <div className="modal settings">
-        <nav className="set-nav">
-          <div className="set-head">Settings</div>
-          {TABS.map((t, i) => (
-            <div key={t.name} className="set-nav-item">
-              {t.group && t.group !== TABS[i - 1]?.group && <div className="set-group">{t.group}</div>}
-              <button className={t.name === tab ? "sel" : ""} onClick={() => app.set({ settingsTab: t.name })}>
-                <Icon name={t.icon} size={15} />
-                {t.name}
-              </button>
+        <div className="set-top">
+          <span>Settings</span>
+          <button className="ghost-btn" onClick={() => app.set({ settingsOpen: false })} aria-label="Close settings">
+            <Icon name="x" size={17} />
+          </button>
+        </div>
+        <div className="set-main">
+          <nav className="set-nav">
+            <label className="set-search">
+              <Icon name="search" size={15} />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && shown[0]) app.set({ settingsTab: shown[0].name });
+                  if (e.key === "Escape" && q) (e.stopPropagation(), e.nativeEvent.stopImmediatePropagation(), setQ(""));
+                }}
+                placeholder="Search"
+                spellCheck={false}
+              />
+            </label>
+            <div className="set-nav-list">
+              {shown.map((t, i) => (
+                <div key={t.name} className="set-nav-item">
+                  {t.group !== shown[i - 1]?.group && <div className="set-group">{t.group}</div>}
+                  <button className={t.name === tab ? "sel" : ""} onClick={() => app.set({ settingsTab: t.name })}>
+                    <Icon name={t.icon} size={16} />
+                    {t.name}
+                  </button>
+                </div>
+              ))}
+              {!shown.length && <div className="set-none">No settings match.</div>}
             </div>
-          ))}
-          <div className="set-nav-foot">Pelica {VERSION}</div>
-        </nav>
-        <div className="set-body">
-          <div className="set-body-head">
-            <div>
-              <h2>{tab}</h2>
-              <div className="set-sub">{TABS.find((t) => t.name === tab)?.sub}</div>
+          </nav>
+          <div className="set-body">
+            <div className="set-page" key={tab}>
+              <div className="set-section set-page-title">{tab}</div>
+              {body}
             </div>
-            <button className="ghost-btn" onClick={() => app.set({ settingsOpen: false })} aria-label="Close settings">
-              <Icon name="x" size={16} />
-            </button>
-          </div>
-          <div className="set-page" key={tab}>
-            {body}
           </div>
         </div>
       </div>
