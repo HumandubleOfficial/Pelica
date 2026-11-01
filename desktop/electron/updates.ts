@@ -1,17 +1,22 @@
-// Updates: Pelica asks an update feed (Settings → About; a web address or a
-// file path, such as a shared folder) what the newest version is. The feed is
-// the latest.json that installer/make.mjs writes beside each installer:
+// Updates: Pelica asks an update feed what the newest version is: by default
+// the latest.json of Pelica's newest GitHub release (DEFAULT_FEED), or the web
+// address or file path set in Settings → About. The feed is the latest.json
+// that installer/make.mjs writes beside each installer:
 //   { "version": "0.13.0", "url": "Pelica-Setup-0.13.0.exe", "sha256": "…", "notes": [...] }
 // `url` may be relative to the feed. An update is downloaded into the app's
 // data folder, must match its sha256 (and, when this copy of Pelica is
 // signed, carry a valid signature from the same publisher), and then runs
 // silently (/S /RELAUNCH) after the app quits; the installer starts Pelica
-// again when it's done. Nothing is checked or downloaded unless a feed is set.
+// again when it's done. Nothing is downloaded until the user chooses Install.
 import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+/** the newest GitHub release's feed (each release carries its installer and latest.json) */
+export const DEFAULT_FEED = "https://github.com/HumandubleOfficial/Pelica/releases/latest/download/latest.json";
+export const RELEASES_PAGE = "https://github.com/HumandubleOfficial/Pelica/releases";
 
 export interface Feed {
   version: string;

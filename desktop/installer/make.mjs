@@ -11,8 +11,9 @@
 // 2. compiles the uninstaller into it and packs it into payload.zip,
 // 3. compiles the installer around the payload, and
 // 4. writes release/latest.json beside it: the update feed the app reads
-//    (Settings → About → Updates; electron/updates.ts). Put both files where
-//    the feed address points.
+//    (Settings → About → Updates; electron/updates.ts). Attach both files to
+//    a GitHub release (gh release create vX.Y.Z <installer> release/latest.json):
+//    the app reads the newest release's latest.json by default.
 //
 // Signing (optional): with a code-signing certificate, the exes are signed
 // (Windows then names the publisher instead of warning about an unknown one)

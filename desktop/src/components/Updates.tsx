@@ -3,10 +3,10 @@
 import { bridge } from "../lib/bridge";
 import { app, toast } from "../state";
 
-/** At start: when a feed is set and checking is on, say once if a newer version is out. */
+/** At start: when checking is on, say once if a newer version is out. */
 export function checkForUpdates() {
   const s = app.get().settings;
-  if (!bridge?.update || !s.updateFeed || !s.updateAuto) return;
+  if (!bridge?.update || !s.updateAuto) return;
   setTimeout(async () => {
     const r = await bridge!.update.check().catch(() => null);
     if (!r?.newer || !r.latest) return;

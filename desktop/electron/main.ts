@@ -959,7 +959,7 @@ function registerIpc() {
   });
   // updates (electron/updates.ts): only the installed app replaces itself
   let updating: AbortController | null = null;
-  handle("update:check", () => updates.check(settings.updateFeed || "", app.getVersion()));
+  handle("update:check", () => updates.check(settings.updateFeed || updates.DEFAULT_FEED, app.getVersion()));
   handle("update:install", async (f: updates.Feed) => {
     if (!app.isPackaged) throw new Error("Only the installed Pelica can update itself (this one runs from the source folder).");
     if (updating) throw new Error("An update is already downloading.");

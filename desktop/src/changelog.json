@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.13.4",
+    "date": "2026-11-01",
+    "title": "Pelica is on GitHub",
+    "notes": [
+      "Pelica now lives on GitHub: github.com/HumandubleOfficial/Pelica. New versions are published there, and About has a GitHub button.",
+      "Pelica checks GitHub for a new version when it starts and tells you when one is out; Install in Settings → About downloads it, checks it, and updates Pelica. You can turn the check off there."
+    ]
+  },
+  {
     "version": "0.13.3",
     "date": "2026-11-01",
     "title": "Starts on a freshly installed Windows",

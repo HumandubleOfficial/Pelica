@@ -351,26 +351,7 @@ function UpdateRows() {
         : undefined;
   return (
     <>
-      <Row title="Update feed" desc={<>Where Pelica looks for new versions: the web address or folder of the <code>latest.json</code> that comes with each installer. Empty: Pelica never checks.</>}>
-        <input
-          className="text-input wide"
-          value={feed}
-          onChange={(e) => setFeed(e.target.value)}
-          onBlur={() => {
-            if (feed.trim() === s.updateFeed) return;
-            setSettings({ updateFeed: feed.trim() });
-            setRes(null);
-          }}
-          placeholder="https://…/latest.json"
-        />
-      </Row>
-      {s.updateFeed && (
-        <Row title="Check when Pelica starts" desc="Asks the feed once at start and says when a newer version is out. Nothing is downloaded until you choose Install.">
-          <Toggle on={s.updateAuto} set={(v) => setSettings({ updateAuto: v })} />
-        </Row>
-      )}
-      {s.updateFeed && (
-        <Row title={res?.newer && res.latest ? `Pelica ${res.latest.version} is available` : res && !res.error ? `Pelica ${res.current} is the newest version` : "Check for updates"} desc={status}>
+      <Row title={res?.newer && res.latest ? `Pelica ${res.latest.version} is available` : res && !res.error ? `Pelica ${res.current} is the newest version` : "Check for updates"} desc={status}>
           <div className="inline">
             {res?.newer && (
               <button className="btn small primary" disabled={!!busy} onClick={install}>
@@ -388,7 +369,22 @@ function UpdateRows() {
             )}
           </div>
         </Row>
-      )}
+      <Row title="Check when Pelica starts" desc="Asks GitHub once at start whether a newer version is out, and says so. Nothing is downloaded until you choose Install.">
+        <Toggle on={s.updateAuto} set={(v) => setSettings({ updateAuto: v })} />
+      </Row>
+      <Row title="Update feed" desc={<>Where Pelica looks for new versions: the web address or folder of a <code>latest.json</code>. Empty: Pelica's releases on GitHub.</>}>
+        <input
+          className="text-input wide"
+          value={feed}
+          onChange={(e) => setFeed(e.target.value)}
+          onBlur={() => {
+            if (feed.trim() === s.updateFeed) return;
+            setSettings({ updateFeed: feed.trim() });
+            setRes(null);
+          }}
+          placeholder="Pelica's GitHub releases"
+        />
+      </Row>
       {res?.newer && res.latest?.notes?.length ? <ReleaseNotes releases={[{ version: res.latest.version, date: "", title: res.latest.title, notes: res.latest.notes }]} /> : null}
     </>
   );
@@ -643,9 +639,12 @@ export function SettingsModal() {
               <div className="about-name">Pelica {VERSION}</div>
               <div className="muted small">{st?.gpu ? `Running on ${st.gpu}` : "Mixture-of-experts models on your own PC"}</div>
             </div>
+            <button className="btn small ghost about-gh" onClick={() => bridge?.sys.external("https://github.com/HumandubleOfficial/Pelica")}>
+              GitHub
+            </button>
           </div>
           <p className="set-intro">
-            Pelica runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow.
+            Pelica runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow, and the update check on GitHub (which you can turn off below).
           </p>
           <Section title="Updates" />
           <UpdateRows />

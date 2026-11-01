@@ -4,6 +4,12 @@ A tiered **GPU + RAM + SSD** inference engine for giant Mixture-of-Experts
 models, written in Rust. The aim is to run frontier-scale MoE checkpoints on a
 mid-range gaming PC faster than [Colibrì](https://github.com/JustVugg/colibri).
 
+**Download:** the Windows installer is on the
+[Releases page](https://github.com/HumandubleOfficial/Pelica/releases/latest)
+(Windows 10 or 11, 64-bit; a processor with AVX2; a GPU with Vulkan drivers).
+The app checks there for new versions and can update itself
+(Settings → About → Updates).
+
 The idea is the same one Colibrì proved: an MoE token only touches a few
 experts, so the dense part of the model can stay resident while the experts
 stream from an NVMe drive. Pelica's bet is that the winning engine treats

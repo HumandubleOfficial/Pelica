@@ -3,25 +3,30 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.RELEASES_PAGE = exports.DEFAULT_FEED = void 0;
 exports.older = older;
 exports.check = check;
 exports.signature = signature;
 exports.download = download;
 exports.tidy = tidy;
-// Updates: Pelica asks an update feed (Settings → About; a web address or a
-// file path, such as a shared folder) what the newest version is. The feed is
-// the latest.json that installer/make.mjs writes beside each installer:
+// Updates: Pelica asks an update feed what the newest version is: by default
+// the latest.json of Pelica's newest GitHub release (DEFAULT_FEED), or the web
+// address or file path set in Settings → About. The feed is the latest.json
+// that installer/make.mjs writes beside each installer:
 //   { "version": "0.13.0", "url": "Pelica-Setup-0.13.0.exe", "sha256": "…", "notes": [...] }
 // `url` may be relative to the feed. An update is downloaded into the app's
 // data folder, must match its sha256 (and, when this copy of Pelica is
 // signed, carry a valid signature from the same publisher), and then runs
 // silently (/S /RELAUNCH) after the app quits; the installer starts Pelica
-// again when it's done. Nothing is checked or downloaded unless a feed is set.
+// again when it's done. Nothing is downloaded until the user chooses Install.
 const node_child_process_1 = require("node:child_process");
 const node_crypto_1 = __importDefault(require("node:crypto"));
 const node_fs_1 = __importDefault(require("node:fs"));
 const node_path_1 = __importDefault(require("node:path"));
 const node_url_1 = require("node:url");
+/** the newest GitHub release's feed (each release carries its installer and latest.json) */
+exports.DEFAULT_FEED = "https://github.com/HumandubleOfficial/Pelica/releases/latest/download/latest.json";
+exports.RELEASES_PAGE = "https://github.com/HumandubleOfficial/Pelica/releases";
 /** a < b, for versions like 0.12.0 */
 function older(a, b) {
     const pa = a.split(/[.-]/).map((x) => parseInt(x, 10) || 0);

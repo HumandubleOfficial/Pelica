@@ -1002,7 +1002,7 @@ function registerIpc() {
     });
     // updates (electron/updates.ts): only the installed app replaces itself
     let updating = null;
-    handle("update:check", () => updates.check(settings.updateFeed || "", electron_1.app.getVersion()));
+    handle("update:check", () => updates.check(settings.updateFeed || updates.DEFAULT_FEED, electron_1.app.getVersion()));
     handle("update:install", async (f) => {
         if (!electron_1.app.isPackaged)
             throw new Error("Only the installed Pelica can update itself (this one runs from the source folder).");

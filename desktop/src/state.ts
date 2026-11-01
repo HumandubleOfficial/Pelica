@@ -191,7 +191,7 @@ export interface Settings {
   /** the OpenAI-compatible local API on a fixed port, for other programs */
   apiServer: boolean;
   apiPort: number;
-  /** where to look for new versions (a latest.json: web address or path; empty: never) */
+  /** where to look for new versions (a latest.json: web address or path; empty: Pelica's GitHub releases) */
   updateFeed: string;
   /** check the feed at start */
   updateAuto: boolean;
