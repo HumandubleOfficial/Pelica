@@ -8,9 +8,23 @@
 // 1. lays the app out as it will be installed (release/stage/Pelica):
 //    Pelica.exe (electron.exe, renamed, with Pelica's icon and version info),
 //    resources/app (the main process and UI), resources/pelica.exe (the engine)
-// 2. compiles the uninstaller into it, packs it into payload.zip, and
-// 3. compiles the installer around the payload.
+// 2. compiles the uninstaller into it and packs it into payload.zip,
+// 3. compiles the installer around the payload, and
+// 4. writes release/latest.json beside it: the update feed the app reads
+//    (Settings → About → Updates; electron/updates.ts). Put both files where
+//    the feed address points.
+//
+// Signing (optional): with a code-signing certificate, the exes are signed
+// (Windows then names the publisher instead of warning about an unknown one)
+// and the app only installs updates signed by the same publisher.
+//   PELICA_SIGN_PFX=<file.pfx>  PELICA_SIGN_PASSWORD=<its password>, or
+//   PELICA_SIGN_THUMBPRINT=<a certificate in your personal store>
+//   PELICA_SIGN_TIMESTAMP=<timestamp server> (default DigiCert's; none: no timestamp)
+//   PELICA_SIGN_TEST=1: also accept a certificate Windows doesn't trust (one
+//   you made yourself, to try this out)
+// PowerShell's Set-AuthenticodeSignature does it; nothing else is needed.
 import { spawnSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,6 +52,32 @@ const year = new Date().getFullYear();
 function run(exe, args, what) {
   const r = spawnSync(exe, args, { stdio: "inherit", windowsHide: true });
   if (r.status !== 0) throw new Error(`${what} failed (${r.error?.message || "exit " + r.status})`);
+}
+
+const signing = process.env.PELICA_SIGN_PFX || process.env.PELICA_SIGN_THUMBPRINT;
+
+/** Signs exes with the configured certificate (see the top), SHA-256 and timestamped. */
+function sign(files) {
+  if (!signing) return;
+  const ps = `
+$ErrorActionPreference = 'Stop'
+if ($env:PELICA_SIGN_PFX) {
+  $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($env:PELICA_SIGN_PFX, $env:PELICA_SIGN_PASSWORD)
+} else {
+  $cert = Get-Item ("Cert:\\CurrentUser\\My\\" + $env:PELICA_SIGN_THUMBPRINT)
+}
+foreach ($f in $env:PELICA_SIGN_FILES.Split('|')) {
+  if ($env:PELICA_SIGN_TS -eq 'none') { $r = Set-AuthenticodeSignature -LiteralPath $f -Certificate $cert -HashAlgorithm SHA256 }
+  else { $r = Set-AuthenticodeSignature -LiteralPath $f -Certificate $cert -HashAlgorithm SHA256 -TimestampServer $env:PELICA_SIGN_TS }
+  if ($r.Status -ne 'Valid' -and !$env:PELICA_SIGN_TEST) { throw ($f + ': ' + $r.Status + ' ' + $r.StatusMessage) }
+  Write-Output ("signed " + (Split-Path $f -Leaf))
+}`;
+  const r = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", ps], {
+    stdio: "inherit",
+    windowsHide: true,
+    env: { ...process.env, PELICA_SIGN_FILES: files.join("|"), PELICA_SIGN_TS: process.env.PELICA_SIGN_TIMESTAMP || "http://timestamp.digicert.com" },
+  });
+  if (r.status !== 0) throw new Error("signing failed");
 }
 
 function need(p, hint) {
@@ -88,6 +128,7 @@ fs.writeFileSync(path.join(work, "version.cs"), `// written by installer/make.mj
 
 console.log("uninstaller");
 run(csc, [...cscUi, "/define:UNINSTALL", `/out:${path.join(stage, "Uninstall Pelica.exe")}`, path.join(here, "setup.cs"), path.join(work, "version.cs")], "compiling the uninstaller");
+sign([path.join(stage, "Pelica.exe"), path.join(stage, "resources", "pelica.exe"), path.join(stage, "Uninstall Pelica.exe")]);
 
 console.log("payload");
 run(tool, ["zip", stage, path.join(work, "payload.zip")], "packing the app");
@@ -95,4 +136,10 @@ run(tool, ["zip", stage, path.join(work, "payload.zip")], "packing the app");
 console.log("installer");
 const out = path.join(release, `Pelica-Setup-${version}.exe`);
 run(csc, [...cscUi, `/resource:${path.join(work, "payload.zip")},payload.zip`, `/out:${out}`, path.join(here, "setup.cs"), path.join(work, "version.cs")], "compiling the installer");
-console.log(`\n${out}\n${(fs.statSync(out).size / 1048576).toFixed(1)} MB (installs ${(size / 1048576).toFixed(0)} MB)`);
+sign([out]);
+
+// the update feed for this version
+const sha256 = crypto.createHash("sha256").update(fs.readFileSync(out)).digest("hex");
+const feed = path.join(release, "latest.json");
+fs.writeFileSync(feed, JSON.stringify({ version, url: path.basename(out), sha256, date: notes[0].date, title: notes[0].title, notes: notes[0].notes }, null, 2) + "\n");
+console.log(`\n${out}\n${(fs.statSync(out).size / 1048576).toFixed(1)} MB (installs ${(size / 1048576).toFixed(0)} MB), ${signing ? "signed" : "not signed (see the top of installer/make.mjs)"}\n${feed}`);

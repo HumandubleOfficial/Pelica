@@ -208,7 +208,50 @@ pub(crate) fn vram_margin() -> usize {
 const RAM_MARGIN_GB: f64 = 2.5;
 
 /// Free VRAM in bytes, from nvidia-smi when it is there (wgpu does not report it).
+/// Free VRAM on the GPU: nvidia-smi's count on NVIDIA, else what Windows
+/// budgets this process on the GPU with the most memory (DXGI, any vendor).
 pub(crate) fn free_vram() -> Option<usize> {
+    if std::env::var_os("PELICA_NO_SMI").is_none() {
+        if let Some(f) = smi_free_vram() {
+            return Some(f);
+        }
+    }
+    dxgi_free_vram()
+}
+
+#[cfg(windows)]
+pub(crate) fn dxgi_free_vram() -> Option<usize> {
+    use windows::core::Interface;
+    use windows::Win32::Graphics::Dxgi::*;
+    // SAFETY: plain DXGI queries on interfaces it hands back
+    unsafe {
+        let f: IDXGIFactory1 = CreateDXGIFactory1().ok()?;
+        let mut best: Option<(usize, usize)> = None; // (dedicated, free)
+        for i in 0.. {
+            let Ok(a) = f.EnumAdapters1(i) else { break };
+            let Ok(d) = a.GetDesc1() else { continue };
+            if d.Flags & DXGI_ADAPTER_FLAG_SOFTWARE.0 as u32 != 0 {
+                continue;
+            }
+            let Ok(a3) = a.cast::<IDXGIAdapter3>() else { continue };
+            let mut m = DXGI_QUERY_VIDEO_MEMORY_INFO::default();
+            if a3.QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &mut m).is_err() {
+                continue;
+            }
+            if best.map_or(true, |(ded, _)| d.DedicatedVideoMemory > ded) {
+                best = Some((d.DedicatedVideoMemory, m.Budget.saturating_sub(m.CurrentUsage) as usize));
+            }
+        }
+        best.map(|b| b.1)
+    }
+}
+
+#[cfg(not(windows))]
+pub(crate) fn dxgi_free_vram() -> Option<usize> {
+    None
+}
+
+fn smi_free_vram() -> Option<usize> {
     let out = std::process::Command::new("nvidia-smi")
         .args(["--query-gpu=memory.free", "--format=csv,noheader,nounits"])
         .output()
@@ -467,6 +510,10 @@ fn main() -> Result<()> {
     }
     if let Some(w) = std::env::args().nth(1).as_deref().and_then(|a| a.strip_prefix("oss-alloc-test")) {
         return oss::alloc_test(w == "-write");
+    }
+    if std::env::args().nth(1).as_deref() == Some("gpus") {
+        print!("{}", gpu::list());
+        return Ok(());
     }
     if std::env::args().nth(1).as_deref() == Some("gpu-test") {
         let g = gpu::Gpu::new()?;

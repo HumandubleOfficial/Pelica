@@ -87,11 +87,37 @@ at zero, i.e. nothing spills into system RAM).
 | Correctness | **Bit-identical next-token choices to Colibrì** on a 24-token teacher-forced prompt and a 16-token greedy continuation; the GPU path gives the same tokens as the CPU path |
 | Resident weights | 8.5 GB (int8 per row), 7.9 GB of it in VRAM — or 4.6 GB with `--dense-bits 4` |
 | Expert tiers | VRAM slots with heat-based promotion, rank-heat-evicted RAM tier, prioritised SSD reads with lookahead and cancellation, losslessly packed scales |
-| GPU | wgpu (Vulkan / DX12): no CUDA toolkit or SDK needed |
+| GPU | wgpu (Vulkan): no CUDA toolkit or SDK needed |
 | Speed | **~4× Colibrì's decode** (3.16 vs 0.76 tok/s) on the same machine and prompt; long prompts 4.8× faster than before |
 
 Results on the dev machine (Ryzen 5 8400F, 32 GB DDR5, RTX 5060 Ti 16 GB,
 PCIe 4 NVMe) are in [Benchmarks](#benchmarks).
+
+## Running on other PCs
+
+* **CPU**: built for x86-64-v3 (`.cargo/config.toml`: AVX2, FMA, F16C; Intel
+  since 2013, AMD since 2015). The AVX-512 kernels (VNNI, VBMI) check the CPU
+  at runtime. On Zen 4 this build matched `target-cpu=native` in speed and
+  output. Without AVX2 the engine stops with an illegal instruction, and the
+  app says the processor is too old.
+* **GPU**: the GPU engines' kernels sum across 32-lane subgroups. They use
+  Vulkan (`gpu::adapter`), refuse adapters that can't run 32 lanes
+  (`need_subgroups32`), and run a probe kernel at start
+  (`probe_subgroups32`), since AMD and Intel drivers may pick 64, 16 or 8
+  lanes for a kernel, which would give wrong sums rather than an error.
+  `pelica gpus` lists the adapters; `PELICA_GPU=<part of a name>` picks one.
+* **Direct3D 12** offers subgroups only with `dxcompiler.dll` beside the
+  engine, and the 1.9 builds that Edge and Firefox ship miscompile the
+  many-token `mv` kernel (only every 8th token right;
+  `ds4_gpu::tests::mv_tokens_match_mv1`). 1.7 and 1.8 compile it right, but
+  then the engine's device was lost at creation on the dev machine. So the GPU
+  engines use Vulkan unless `PELICA_BACKEND=dx12` is set.
+* **Free VRAM** comes from `nvidia-smi` on NVIDIA, else from DXGI (what
+  Windows budgets the process on the GPU with the most memory), so AMD and
+  Intel cards keep experts in VRAM too.
+* Checked on the dev machine only (RTX 5060 Ti): Vulkan with and without
+  tensor cores, no VRAM experts, adapter choice and the refusal messages. No
+  AMD or Intel GPU has been tried.
 
 ## Usage
 
@@ -620,8 +646,7 @@ Knobs: `PELICA_EXPERTS_GB` / `PELICA_RAM_GB` (cache sizes),
 experts guessed at attention: 95/89/80% right, but they are almost always
 cached already, so it only added reads; off), `PELICA_READER_PRIO` (reader
 thread priority: no change, since the drive already has 4+ reads in flight
-65% of its busy time), `PELICA_BACKEND=vulkan|dx12` (DX12 doesn't report
-32-wide subgroups on this card, so it can't run),
+65% of its busy time), `PELICA_BACKEND=vulkan|dx12` (see [Running on other PCs](#running-on-other-pcs)),
 `PELICA_READERS` (drive threads, 2), `PELICA_AHEAD`, `PELICA_EARLY_K` (4),
 `PELICA_LATE_K` (3), `PELICA_EARLY_M` / `PELICA_LATE_M` (guess margins,
 0.12 / 0.2; 0 = top-k while decoding too), `PELICA_HALF_LIFE` (8),

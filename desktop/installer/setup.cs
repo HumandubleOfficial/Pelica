@@ -8,7 +8,7 @@
 // removes exactly the files the installer listed; chats, settings and models
 // stay unless the user asks (and then go to the Recycle Bin).
 //
-// Flags: /S (silent)  /D=<folder>  /NODESKTOP  /NOSHORTCUTS  /NOREG  /NOPATH  /NOLAUNCH
+// Flags: /S (silent)  /RELAUNCH (with /S: start Pelica afterwards; the app's updater)  /D=<folder>  /NODESKTOP  /NOSHORTCUTS  /NOREG  /NOPATH  /NOLAUNCH
 //        /DATA (uninstall: also recycle the chats and settings)
 //
 // C# 5: it is compiled by the csc.exe that ships with Windows.
@@ -46,7 +46,7 @@ static partial class Info
 
 class Opts
 {
-    public bool Silent, Desktop = true, Shortcuts = true, Reg = true, Cli = true, Launch = true, Data;
+    public bool Silent, Relaunch, Desktop = true, Shortcuts = true, Reg = true, Cli = true, Launch = true, Data;
     public string Dir;
 
     public static Opts Parse(string[] args)
@@ -56,6 +56,7 @@ class Opts
         {
             string u = a.ToUpperInvariant();
             if (u == "/S") o.Silent = true;
+            else if (u == "/RELAUNCH") o.Relaunch = true;
             else if (u == "/NODESKTOP") o.Desktop = false;
             else if (u == "/NOSHORTCUTS") o.Shortcuts = false;
             else if (u == "/NOREG") o.Reg = false;
@@ -83,6 +84,7 @@ static class Program
                 if (Info.IsUninstaller) Setup.Uninstall(o, null);
                 else Setup.Install(o, null);
                 Setup.RunCleanup();
+                if (!Info.IsUninstaller && o.Relaunch) Setup.Launch(o.Dir);
                 return 0;
             }
             catch (Exception e)

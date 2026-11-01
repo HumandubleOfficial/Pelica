@@ -446,18 +446,7 @@ fn storage(device: &wgpu::Device, label: &str, size: u64, usage: wgpu::BufferUsa
 
 impl Gpu {
     pub fn new() -> Result<Gpu> {
-        let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
-        match std::env::var("PELICA_BACKEND").as_deref() {
-            Ok("dx12") => desc.backends = wgpu::Backends::DX12,
-            Ok("vulkan") => desc.backends = wgpu::Backends::VULKAN,
-            _ => {}
-        }
-        let instance = wgpu::Instance::new(desc);
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            ..Default::default()
-        }))
-        .map_err(|e| anyhow!("no GPU adapter: {e}"))?;
+        let adapter = adapter(false)?;
         let info = adapter.get_info();
         if info.device_type == wgpu::DeviceType::Cpu {
             return Err(anyhow!("only a software adapter ({}) is available", info.name));
@@ -905,4 +894,140 @@ impl Batch<'_> {
         }
         out
     }
+}
+
+// ---------- choosing the GPU (every engine) ----------
+
+/// wgpu instance over the APIs `PELICA_BACKEND` allows (dx12 | vulkan).
+/// By default the subgroup engines use Vulkan only: Direct3D 12 needs
+/// dxcompiler.dll for subgroups, and the 1.9 builds that browsers ship
+/// (Edge, Firefox) miscompile the many-token `mv` kernel
+/// (`ds4_gpu::tests::mv_tokens_match_mv1`), so a copy that happens to be on
+/// the PATH would give wrong answers. PELICA_BACKEND=dx12 still tries it.
+fn instance(subgroups: bool) -> wgpu::Instance {
+    let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
+    match std::env::var("PELICA_BACKEND").as_deref() {
+        Ok("dx12") => desc.backends = wgpu::Backends::DX12,
+        Ok("vulkan") => desc.backends = wgpu::Backends::VULKAN,
+        _ if subgroups => desc.backends = wgpu::Backends::VULKAN,
+        _ => {}
+    }
+    wgpu::Instance::new(desc)
+}
+
+/// The GPU to run on: the first adapter whose name contains `PELICA_GPU`
+/// (any case; `pelica gpus` lists them), else the high-performance one
+/// (on a laptop, the dedicated GPU rather than the integrated one).
+/// `subgroups`: for the engines whose kernels need them (Vulkan by default).
+pub fn adapter(subgroups: bool) -> Result<wgpu::Adapter> {
+    let instance = instance(subgroups);
+    if let Ok(want) = std::env::var("PELICA_GPU") {
+        let w = want.to_lowercase();
+        let all = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
+        let names: Vec<String> = all.iter().map(|a| a.get_info().name).collect();
+        return all.into_iter().find(|a| a.get_info().name.to_lowercase().contains(&w)).ok_or_else(|| anyhow!("no GPU matches PELICA_GPU={want} (found: {})", names.join(", ")));
+    }
+    pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions { power_preference: wgpu::PowerPreference::HighPerformance, ..Default::default() }))
+        .map_err(|e| if subgroups { anyhow!("no GPU with Vulkan drivers was found ({e}): Pelica's GPU engine needs Vulkan, which current NVIDIA, AMD and Intel drivers include") } else { anyhow!("no GPU was found ({e}): Pelica needs a GPU with Vulkan or Direct3D 12 drivers") })
+}
+
+/// `pelica gpus`: every adapter, what it offers, and which one Pelica would use.
+pub fn list() -> String {
+    let instance = instance(false);
+    let mut s = String::new();
+    for a in pollster::block_on(instance.enumerate_adapters(wgpu::Backends::all())) {
+        let i = a.get_info();
+        let f = a.features();
+        let tc = f.contains(wgpu::Features::SHADER_F16 | wgpu::Features::EXPERIMENTAL_COOPERATIVE_MATRIX);
+        s += &format!(
+            "{} ({:?}, {:?}): subgroups {}, {}-{} lanes; tensor cores {}; largest buffer {} MB\n",
+            i.name,
+            i.backend,
+            i.device_type,
+            if f.contains(wgpu::Features::SUBGROUP) { "yes" } else { "no" },
+            i.subgroup_min_size,
+            i.subgroup_max_size,
+            if tc { "yes" } else { "no" },
+            a.limits().max_buffer_size >> 20
+        );
+    }
+    match adapter(true) {
+        Ok(a) => {
+            let free = match (crate::free_vram(), crate::dxgi_free_vram()) {
+                (Some(f), Some(d)) if f != d => format!("{:.2} GB (Windows' budget for Pelica: {:.2} GB)", f as f64 / 1e9, d as f64 / 1e9),
+                (f, d) => format!("{:.2} GB", f.or(d).unwrap_or(0) as f64 / 1e9),
+            };
+            s += &format!("Pelica uses: {} ({:?}); free VRAM {free}\n", a.get_info().name, a.get_info().backend)
+        }
+        Err(e) => s += &format!("Pelica uses: none ({e})\n"),
+    }
+    s
+}
+
+/// For the engines whose kernels sum across 32-lane subgroups: the adapter
+/// must offer subgroups that can be 32 wide.
+pub fn need_subgroups32(adapter: &wgpu::Adapter) -> Result<()> {
+    let info = adapter.get_info();
+    if info.device_type == wgpu::DeviceType::Cpu {
+        return Err(anyhow!("{} is a software renderer, not a GPU: Pelica needs a GPU with Vulkan drivers", info.name));
+    }
+    if !adapter.features().contains(wgpu::Features::SUBGROUP) && info.backend == wgpu::Backend::Dx12 {
+        return Err(anyhow!("{} doesn't offer subgroups through Direct3D 12 without dxcompiler.dll beside Pelica; leave PELICA_BACKEND unset to use Vulkan", info.name));
+    }
+    if !adapter.features().contains(wgpu::Features::SUBGROUP) || info.subgroup_min_size > 32 || info.subgroup_max_size < 32 {
+        return Err(anyhow!(
+            "{} ({:?}) can't run 32-lane subgroups ({}-{} lanes), which Pelica's GPU kernels need; a newer GPU driver may help",
+            info.name,
+            info.backend,
+            info.subgroup_min_size,
+            info.subgroup_max_size
+        ));
+    }
+    Ok(())
+}
+
+/// Runs a small kernel and checks its subgroups really are 32 lanes in order:
+/// a driver may pick 64 (AMD), 16 or 8 (Intel) for a kernel, and Pelica's
+/// kernels would then add up the wrong lanes instead of failing.
+pub fn probe_subgroups32(device: &wgpu::Device, queue: &wgpu::Queue) -> Result<()> {
+    const N: u64 = 64 * 256;
+    let src = r#"
+@group(0) @binding(0) var<storage, read_write> out: array<u32>;
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) g: vec3<u32>, @builtin(local_invocation_index) li: u32,
+        @builtin(subgroup_size) sz: u32, @builtin(subgroup_invocation_id) lane: u32) {
+    let n = subgroupAdd(1u);
+    let first = subgroupBroadcastFirst(li);
+    out[g.x] = min(n, 255u) + min(sz, 255u) * 256u + select(0u, 65536u, lane == li % 32u && first == li - li % 32u);
+}
+"#;
+    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("subgroup probe"), source: wgpu::ShaderSource::Wgsl(src.into()) });
+    let pipe = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor { label: Some("subgroup probe"), layout: None, module: &module, entry_point: Some("main"), compilation_options: Default::default(), cache: None });
+    let out = device.create_buffer(&wgpu::BufferDescriptor { label: Some("probe out"), size: N * 4, usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC, mapped_at_creation: false });
+    let back = device.create_buffer(&wgpu::BufferDescriptor { label: Some("probe back"), size: N * 4, usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+    let bind = device.create_bind_group(&wgpu::BindGroupDescriptor { label: None, layout: &pipe.get_bind_group_layout(0), entries: &[wgpu::BindGroupEntry { binding: 0, resource: out.as_entire_binding() }] });
+    let mut enc = device.create_command_encoder(&Default::default());
+    {
+        let mut pass = enc.begin_compute_pass(&Default::default());
+        pass.set_pipeline(&pipe);
+        pass.set_bind_group(0, &bind, &[]);
+        pass.dispatch_workgroups((N / 256) as u32, 1, 1);
+    }
+    enc.copy_buffer_to_buffer(&out, 0, &back, 0, N * 4);
+    queue.submit([enc.finish()]);
+    let slice = back.slice(..);
+    slice.map_async(wgpu::MapMode::Read, |_| {});
+    let _ = device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None });
+    let v: Vec<u32> = slice.get_mapped_range().context("reading the subgroup probe")?.chunks_exact(4).map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect();
+    back.unmap();
+    let want = 32 + 32 * 256 + 65536;
+    if let Some(&bad) = v.iter().find(|&&x| x != want) {
+        return Err(anyhow!(
+            "this GPU ran a test kernel {} lanes wide (subgroup size {}{}), but Pelica's GPU kernels need exactly 32; a newer GPU driver may help",
+            bad & 255,
+            (bad >> 8) & 255,
+            if bad >> 16 == 0 { ", lanes out of order" } else { "" }
+        ));
+    }
+    Ok(())
 }

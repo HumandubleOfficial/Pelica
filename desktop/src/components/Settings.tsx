@@ -1,7 +1,7 @@
 // Settings, laid out like the Claude app's: a left nav and rows of
 // controls.
 import { useEffect, useState } from "react";
-import { bridge } from "../lib/bridge";
+import { bridge, type UpdateCheck } from "../lib/bridge";
 import { app, PERM_MODES, refreshChats, setSettings, toast, useApp, type Settings as S } from "../state";
 import { ConnectorsTab } from "./Connectors";
 import { DevicesTab } from "./Devices";
@@ -244,6 +244,99 @@ function ApiRows() {
   );
 }
 
+const mb = (n: number) => `${(n / 1048576).toFixed(0)} MB`;
+
+/** About → Updates: the feed, a check, and the download-and-install (electron/updates.ts). */
+function UpdateRows() {
+  const s = useApp((x) => x.settings);
+  const known = useApp((x) => x.update);
+  const [feed, setFeed] = useState(s.updateFeed);
+  const [res, setRes] = useState<UpdateCheck | null>(known);
+  const [busy, setBusy] = useState<"check" | "get" | null>(null);
+  const [got, setGot] = useState<{ got: number; total: number } | null>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => bridge?.update.onProgress((v) => setGot(v)), []);
+  const check = async () => {
+    setBusy("check");
+    setErr("");
+    try {
+      const r = await bridge!.update.check();
+      setRes(r);
+      app.set({ update: r.newer ? r : null });
+      if (r.error) setErr(r.error);
+    } finally {
+      setBusy(null);
+    }
+  };
+  const install = async () => {
+    if (!res?.latest) return;
+    setBusy("get");
+    setErr("");
+    setGot(null);
+    try {
+      // the app closes, the installer runs and starts Pelica again
+      await bridge!.update.install(res.latest);
+    } catch (e: any) {
+      setErr(String(e?.message || e).replace(/^Error invoking remote method '[^']*': (Error: )?/, ""));
+      setBusy(null);
+    }
+  };
+  const status = err
+    ? err
+    : busy === "get"
+      ? got?.total
+        ? `Downloading… ${mb(got.got)} of ${mb(got.total)}`
+        : got
+          ? `Downloading… ${mb(got.got)}`
+          : "Downloading…"
+      : res?.newer
+        ? "Install downloads it, checks it, and closes Pelica while it installs; Pelica starts again by itself. Your chats and settings stay."
+        : undefined;
+  return (
+    <>
+      <Row title="Update feed" desc={<>Where Pelica looks for new versions: the web address or folder of the <code>latest.json</code> that comes with each installer. Empty: Pelica never checks.</>}>
+        <input
+          className="text-input wide"
+          value={feed}
+          onChange={(e) => setFeed(e.target.value)}
+          onBlur={() => {
+            if (feed.trim() === s.updateFeed) return;
+            setSettings({ updateFeed: feed.trim() });
+            setRes(null);
+          }}
+          placeholder="https://…/latest.json"
+        />
+      </Row>
+      {s.updateFeed && (
+        <Row title="Check when Pelica starts" desc="Asks the feed once at start and says when a newer version is out. Nothing is downloaded until you choose Install.">
+          <Toggle on={s.updateAuto} set={(v) => setSettings({ updateAuto: v })} />
+        </Row>
+      )}
+      {s.updateFeed && (
+        <Row title={res?.newer && res.latest ? `Pelica ${res.latest.version} is available` : res && !res.error ? `Pelica ${res.current} is the newest version` : "Updates"} desc={status}>
+          <div className="inline">
+            {res?.newer && (
+              <button className="btn small primary" disabled={!!busy} onClick={install}>
+                {busy === "get" ? "Installing…" : "Install"}
+              </button>
+            )}
+            {busy === "get" ? (
+              <button className="btn small ghost" onClick={() => bridge?.update.cancel()}>
+                Cancel
+              </button>
+            ) : (
+              <button className="btn small" disabled={!!busy} onClick={check}>
+                {busy === "check" ? "Checking…" : "Check now"}
+              </button>
+            )}
+          </div>
+        </Row>
+      )}
+      {res?.newer && res.latest?.notes?.length ? <ReleaseNotes releases={[{ version: res.latest.version, date: "", title: res.latest.title, notes: res.latest.notes }]} /> : null}
+    </>
+  );
+}
+
 function ModelsTab() {
   const s = useApp((x) => x.settings);
   const [dirs, setDirs] = useState(s.modelDirs.join("; "));
@@ -469,6 +562,8 @@ export function SettingsModal() {
             <b>Pelica</b> runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow.
           </p>
           <p className="muted small">{st?.gpu ? `GPU: ${st.gpu}` : ""}</p>
+          <div className="set-section">Updates</div>
+          <UpdateRows />
           <div className="set-section">Pelica {VERSION}: release notes</div>
           <ReleaseNotes releases={RELEASES.filter((r) => r.version !== "next")} />
         </div>

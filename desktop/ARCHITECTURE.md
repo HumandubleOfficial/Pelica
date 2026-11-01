@@ -312,9 +312,21 @@ No downloads: everything comes from `node_modules` and Windows itself.
   `pelica` works in a terminal) to the user PATH in `HKCU\Environment`
   (`UserPath`: only that entry is added or removed, the rest stays as
   stored; then `WM_SETTINGCHANGE`). A running Pelica from that folder is
-  closed first. Flags: `/S`, `/D=<dir>`, `/NODESKTOP`, `/NOSHORTCUTS`,
+  closed first. Flags: `/S`, `/RELAUNCH` (with `/S`: start Pelica afterwards), `/D=<dir>`, `/NODESKTOP`, `/NOSHORTCUTS`,
   `/NOREG`, `/NOPATH`, `/NOLAUNCH`, `/DATA` (uninstall: user data to the Recycle Bin),
   `/SHOT=<dir>` (renders every page to PNG, for checking the UI).
+- `make.mjs` signs the three exes and the installer when a certificate is
+  set (`PELICA_SIGN_PFX` + `PELICA_SIGN_PASSWORD`, or
+  `PELICA_SIGN_THUMBPRINT`; PowerShell's `Set-AuthenticodeSignature`,
+  SHA-256, timestamped), and writes `release/latest.json` (version, file
+  name, sha256, notes): the update feed.
+- Updates (`electron/updates.ts`, Settings → About → Updates, `components/Updates.tsx`
+  for the check at start): `settings.updateFeed` is a web address or path of a
+  `latest.json` (empty: never checked); `updateAuto` checks it 15 s after
+  start. Install downloads into `<userData>/updates`, requires the feed's
+  sha256 and, when the running Pelica.exe is signed, a valid signature by the
+  same subject, then starts the installer with `/S /RELAUNCH /D=<this
+  folder>` and quits. Only the packaged app updates itself.
 - The packaged app takes `--user-data-dir=<dir>` for a separate profile
   (settings, chats, its own single-instance lock), which is how it is
   tested beside an installed copy.

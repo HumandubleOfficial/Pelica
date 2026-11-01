@@ -56,6 +56,7 @@ const lib = __importStar(require("./library"));
 const media = __importStar(require("./media"));
 const chatdata_1 = require("./chatdata");
 const repocheck_1 = require("./repocheck");
+const updates = __importStar(require("./updates"));
 const userDir = electron_1.app.getPath("userData");
 const settingsFile = node_path_1.default.join(userDir, "settings.json");
 const chatsDir = node_path_1.default.join(userDir, "chats");
@@ -118,6 +119,9 @@ async function startEngine() {
     engine.stderr.on("data", add);
     engine.on("exit", (code) => {
         engineLog += `\n[pelica exited: ${code}]\n`;
+        // STATUS_ILLEGAL_INSTRUCTION: a processor without AVX2 (the engine is built for x86-64-v3)
+        if (code === 0xc000001d || code === -1073741795)
+            engineLog += "\nThis PC's processor is missing AVX2, which Pelica's engine needs (Intel processors from 2013 on and AMD from 2015 on have it).\n";
         engine = null;
     });
     engine.on("error", (e) => (engineLog += `\n[could not start pelica: ${e.message}]\n`));
@@ -996,6 +1000,29 @@ function registerIpc() {
         await startEngine();
         await win?.loadURL(`http://127.0.0.1:${port}/`);
     });
+    // updates (electron/updates.ts): only the installed app replaces itself
+    let updating = null;
+    handle("update:check", () => updates.check(settings.updateFeed || "", electron_1.app.getVersion()));
+    handle("update:install", async (f) => {
+        if (!electron_1.app.isPackaged)
+            throw new Error("Only the installed Pelica can update itself (this one runs from the source folder).");
+        if (updating)
+            throw new Error("An update is already downloading.");
+        updating = new AbortController();
+        const dir = node_path_1.default.join(userDir, "updates");
+        try {
+            const exe = await updates.download(f, dir, process.execPath, (pr) => win?.webContents.send("update:progress", pr), updating.signal);
+            updates.tidy(dir, exe);
+            // the installer closes what's left of this app, installs, and starts Pelica again
+            (0, node_child_process_1.spawn)(exe, ["/S", "/RELAUNCH", `/D=${node_path_1.default.dirname(process.execPath)}`], { detached: true, stdio: "ignore", windowsHide: true }).unref();
+            setTimeout(() => electron_1.app.quit(), 300);
+            return true;
+        }
+        finally {
+            updating = null;
+        }
+    });
+    handle("update:cancel", () => updating?.abort());
     handle("app:info", () => ({ version: electron_1.app.getVersion(), userDir, pelica: pelicaExe(), electron: process.versions.electron, hotkey: hotkey(), hotkeyError }));
     // the desktop
     handle("app:hotkey", (k) => {

@@ -1,4 +1,7 @@
-# Build for the machine it runs on (AVX2/AVX-512 on Zen 4). Kernels also
-# check features at runtime, so a portable build only loses speed.
+# Build for x86-64-v3 (AVX2, FMA, F16C: Intel since 2013, AMD since 2015),
+# so the engine runs on other people's PCs, not only the one it was built on.
+# The AVX-512 kernels (VNNI, VBMI) check the CPU at runtime and still run
+# where it has them; measured on Zen 4 against target-cpu=native: the same
+# speed and output.
 [build]
-rustflags = ["-C", "target-cpu=native"]
+rustflags = ["-C", "target-cpu=x86-64-v3"]

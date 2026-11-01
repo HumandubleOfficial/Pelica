@@ -191,6 +191,10 @@ export interface Settings {
   /** the OpenAI-compatible local API on a fixed port, for other programs */
   apiServer: boolean;
   apiPort: number;
+  /** where to look for new versions (a latest.json: web address or path; empty: never) */
+  updateFeed: string;
+  /** check the feed at start */
+  updateAuto: boolean;
   /** scheduled tasks (agent/tasks.ts) */
   tasks: import("./agent/tasks").Task[];
   /** the version whose release notes were last shown (What's new) */
@@ -255,6 +259,8 @@ export const DEFAULTS: Settings = {
   devices: [],
   apiServer: false,
   apiPort: 11435,
+  updateFeed: "",
+  updateAuto: true,
   tasks: [],
   lastSeenVersion: "",
   prompts: [],
@@ -309,6 +315,8 @@ export interface AppState {
   settingsTab: string;
   /** What's new: the versions since the last one seen, or every release */
   whatsNew: "new" | "all" | null;
+  /** a newer version the update feed offers (Settings → About) */
+  update: import("./lib/bridge").UpdateCheck | null;
   /** the Scheduled tasks window */
   tasksOpen: boolean;
   approval: Approval | null;
@@ -371,6 +379,7 @@ export const app = createStore<AppState>({
   settingsOpen: false,
   settingsTab: "General",
   whatsNew: null,
+  update: null,
   tasksOpen: false,
   approval: null,
   context: null,

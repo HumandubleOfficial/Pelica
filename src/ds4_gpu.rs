@@ -406,19 +406,9 @@ impl Gpu {
     /// The device (32-wide subgroups required) and an activation buffer of
     /// `act_words` f32.
     pub fn new(act_words: usize) -> Result<Gpu> {
-        let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
-        match std::env::var("PELICA_BACKEND").as_deref() {
-            Ok("dx12") => desc.backends = wgpu::Backends::DX12,
-            Ok("vulkan") => desc.backends = wgpu::Backends::VULKAN,
-            _ => {}
-        }
-        let instance = wgpu::Instance::new(desc);
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions { power_preference: wgpu::PowerPreference::HighPerformance, ..Default::default() }))
-            .map_err(|e| anyhow::anyhow!("no GPU adapter: {e}"))?;
+        let adapter = crate::gpu::adapter(true)?;
         let info = adapter.get_info();
-        if !adapter.features().contains(wgpu::Features::SUBGROUP) || info.subgroup_min_size > 32 || info.subgroup_max_size < 32 {
-            bail!("{} lacks 32-wide subgroups, which the GPU engine needs", info.name);
-        }
+        crate::gpu::need_subgroups32(&adapter)?;
         let limits = adapter.limits();
         // tensor cores, if offered (PELICA_TC=0: not)
         let tcf = wgpu::Features::SHADER_F16 | wgpu::Features::EXPERIMENTAL_COOPERATIVE_MATRIX;
@@ -436,6 +426,7 @@ impl Gpu {
             trace: wgpu::Trace::Off,
         }))
         .context("creating GPU device")?;
+        crate::gpu::probe_subgroups32(&device, &queue)?;
         let entry = |binding: u32, ty: wgpu::BufferBindingType, dynamic: bool| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::COMPUTE,
@@ -690,15 +681,21 @@ impl<'a> Batch<'a> {
         }
         let idx = g.queue.submit([enc.finish()]);
         let done = Arc::new(AtomicBool::new(false));
-        let d = done.clone();
+        let failed = Arc::new(std::sync::Mutex::new(None));
+        let (d, f) = (done.clone(), failed.clone());
         if !self.reads.is_empty() {
-            g.rb.slice(..at).map_async(wgpu::MapMode::Read, move |_| d.store(true, Ordering::Release));
+            g.rb.slice(..at).map_async(wgpu::MapMode::Read, move |r| {
+                if let Err(e) = r {
+                    *f.lock().unwrap() = Some(e.to_string());
+                }
+                d.store(true, Ordering::Release)
+            });
         } else {
             g.queue.on_submitted_work_done(move || d.store(true, Ordering::Release));
         }
         BATCH_PROF[0].fetch_add(1, Ordering::Relaxed);
         BATCH_PROF[1].fetch_add(t0.elapsed().as_nanos() as u64, Ordering::Relaxed);
-        Pending { g, idx, reads: self.reads, at, done }
+        Pending { g, idx, reads: self.reads, at, done, failed }
     }
 }
 
@@ -709,6 +706,8 @@ pub struct Pending<'a> {
     reads: Vec<(u32, usize)>,
     at: u64,
     done: Arc<AtomicBool>,
+    /// why the readback couldn't be mapped (the device was lost)
+    failed: Arc<std::sync::Mutex<Option<String>>>,
 }
 
 /// PELICA_SPIN=0 sleeps in the driver while the GPU works; by default the
@@ -745,10 +744,13 @@ impl Pending<'_> {
         if self.reads.is_empty() {
             return Ok(Vec::new());
         }
+        if let Some(e) = self.failed.lock().unwrap().take() {
+            anyhow::bail!("the GPU stopped answering (its driver reset, or another program took its memory): {e}");
+        }
         let slice = g.rb.slice(..at);
         let mut out = Vec::with_capacity(self.reads.len());
         {
-            let v = slice.get_mapped_range().context("mapping the readback")?;
+            let v = slice.get_mapped_range().context("the GPU stopped answering (its driver reset, or another program took its memory)")?;
             let mut o = 0usize;
             for &(_, n) in &self.reads {
                 let mut r = vec![0f32; n];
@@ -855,6 +857,54 @@ mod tests {
                 assert!(worst <= 1e-5 * scale.max(1.0), "{} group {group:?} add {add}: worst difference {worst} of {scale}", ty.name());
             }
         }
+    }
+
+    /// Many-token `mv` gives each token the same sums as the one-token
+    /// `mv1` on that token alone (tokens past one 8-token step and one
+    /// 64-token workgroup, as prompt passes have). Direct3D 12 through the
+    /// dxcompiler.dll 1.9 that Edge and Firefox ship fails it (only every 8th
+    /// token right); 1.7 and 1.8 pass.
+    #[test]
+    fn mv_tokens_match_mv1() {
+        let Ok(mut g) = Gpu::new(1 << 22) else { return };
+        let (rows, cols, t) = (64usize, 512usize, 150usize);
+        let mut s = 5u32;
+        let mut rnd = || {
+            s = s.wrapping_mul(1664525).wrapping_add(1013904223);
+            s
+        };
+        let mut wb = vec![0u8; rows * cols / 32 * 36];
+        for blk in wb.chunks_mut(36) {
+            blk[0..2].copy_from_slice(&0x2400u16.to_le_bytes());
+            for v in blk[4..].iter_mut() {
+                *v = rnd() as u8;
+            }
+        }
+        let a = g.arena(wb.len() as u64).unwrap();
+        g.write(a, 0, &wb);
+        let m = Mat { buf: a, base: 0, ty: Ty::Q8_0, rows, cols, wpr: (cols / 32 * 9) as u32 };
+        let x: Vec<f32> = (0..t * cols).map(|_| (rnd() % 2000) as f32 / 1000.0 - 1.0).collect();
+        let y = (t * cols) as u32;
+        let mut b = g.batch();
+        b.upload(0, &x);
+        let p = g.pipe("mv-Q8_0", || mv(Ty::Q8_0));
+        b.push(p, m.buf, &[rows as u32, cols as u32, 0, cols as u32, y, rows as u32, 0, m.wpr, t as u32, 0, 0, 0], [(rows / 8) as u32, t.div_ceil(64) as u32, 1]);
+        b.read(y, t * rows);
+        let many = b.run().unwrap().pop().unwrap();
+        let mut bad = Vec::new();
+        for tok in 0..t {
+            let mut b = g.batch();
+            b.upload(0, &x[tok * cols..(tok + 1) * cols]);
+            let p = g.pipe("mv1-Q8_0", || mv1(Ty::Q8_0));
+            b.push(p, m.buf, &[rows as u32, cols as u32, 0, cols as u32, y, rows as u32, 0, m.wpr, 1, 0, 0, 0], [(rows / 8) as u32, 1, 1]);
+            b.read(y, rows);
+            let one = b.run().unwrap().pop().unwrap();
+            let worst = one.iter().zip(&many[tok * rows..(tok + 1) * rows]).fold(0f32, |m, (p, q)| m.max((p - q).abs()));
+            if worst > 1e-3 {
+                bad.push((tok, worst));
+            }
+        }
+        assert!(bad.is_empty(), "tokens whose sums differ: {bad:?}");
     }
 
     /// The tiled prompt-pass product gives the same sums as the one-token

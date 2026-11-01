@@ -293,16 +293,9 @@ impl Engine {
         }
 
         // device with subgroups (one 32-lane subgroup per matrix row)
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            ..Default::default()
-        }))
-        .map_err(|e| anyhow::anyhow!("no GPU adapter: {e}"))?;
+        let adapter = crate::gpu::adapter(true)?;
         let info = adapter.get_info();
-        if !adapter.features().contains(wgpu::Features::SUBGROUP) || info.subgroup_min_size > 32 || info.subgroup_max_size < 32 {
-            bail!("{} lacks 32-wide subgroups, which the GPU-resident engine needs", info.name);
-        }
+        crate::gpu::need_subgroups32(&adapter)?;
         let limits = adapter.limits();
         // (host buffers the GPU reads in place, for cache past VRAM)
         let mappable = adapter.features() & wgpu::Features::MAPPABLE_PRIMARY_BUFFERS;
@@ -325,6 +318,7 @@ impl Engine {
             trace: wgpu::Trace::Off,
         }))
         .context("creating GPU device")?;
+        crate::gpu::probe_subgroups32(&device, &queue)?;
         let name = format!("{} ({:?})", info.name, info.backend);
 
         // expert rows each subgroup sums at once, per build

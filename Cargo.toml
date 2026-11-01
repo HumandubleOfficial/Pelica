@@ -1,6 +1,6 @@
 [package]
 name = "pelica"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 description = "Tiered GPU + RAM + SSD inference engine for giant Mixture-of-Experts models"
 license = "Apache-2.0"
@@ -16,6 +16,10 @@ pollster = "0.4"
 regex = "1"
 minijinja = { version = "3.0.1", features = ["loop_controls", "json", "builtins", "serde"] }
 minijinja-contrib = { version = "3.0.1", features = ["pycompat"] }
+
+# free VRAM on any GPU (DXGI), where nvidia-smi isn’t there
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Win32_Graphics_Dxgi"] }
 
 [profile.release]
 opt-level = 3

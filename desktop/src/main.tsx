@@ -12,6 +12,7 @@ import "./panel.css";
 import "./rail.css";
 import "./polish.css";
 import { checkWhatsNew } from "./components/WhatsNew";
+import { checkForUpdates } from "./components/Updates";
 import { startScheduler } from "./agent/tasks";
 import "highlight.js/styles/github-dark.css";
 
@@ -61,6 +62,7 @@ const quick = location.hash === "#quick";
   app.set({ chat: newChat(null) });
   refreshChats();
   checkWhatsNew();
+  checkForUpdates();
   poll();
   if (bridge) bridge.mcp.list().then((mcp) => app.set({ mcp })).catch(() => {});
   startDesktop();

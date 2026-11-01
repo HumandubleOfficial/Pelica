@@ -1,5 +1,20 @@
 [
   {
+    "version": "0.13.0",
+    "date": "2026-11-01",
+    "title": "Runs on more PCs, and updates itself",
+    "notes": [
+      "Pelica now runs on any PC whose processor has AVX2 (Intel from 2013 on, AMD from 2015 on), not only on processors like the one it was built on. Speed on newer processors is the same as before.",
+      "If a processor is too old for Pelica, it says so in plain words instead of failing with an error code.",
+      "Settings → About → Updates: point Pelica at an update feed and it can check for new versions, download one, check it hasn’t been altered, install it and start again by itself. Your chats and settings stay. Nothing is checked until you set a feed.",
+      "Pelica checks at start that your GPU runs its calculations the way it needs (32 lanes at a time), and refuses with a clear message instead of giving wrong answers on GPUs that don’t.",
+      "On AMD and Intel GPUs Pelica now sees how much video memory is free, so it can keep model parts there (before, only NVIDIA cards got this).",
+      "`pelica gpus` lists your GPUs and which one Pelica uses; set PELICA_GPU to part of a GPU’s name to pick another (for laptops with two).",
+      "Pelica uses Vulkan for the GPU: Direct3D 12 needs a separate compiler, and the copies that come with web browsers give wrong answers.",
+      "When the GPU driver resets or another program takes the GPU’s memory, Pelica says that instead of “Buffer is not mapped”."
+    ]
+  },
+  {
     "version": "0.12.0",
     "date": "2026-11-01",
     "title": "Pictures, a local API, scheduled tasks and faster long prompts",

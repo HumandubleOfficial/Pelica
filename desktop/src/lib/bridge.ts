@@ -71,6 +71,12 @@ export interface Bridge {
     login(on?: boolean): Promise<boolean>;
     onAction(fn: (a: AppAction) => void): () => void;
   };
+  update: {
+    check(): Promise<UpdateCheck>;
+    install(f: UpdateFeed): Promise<boolean>;
+    cancel(): Promise<void>;
+    onProgress(fn: (p: { got: number; total: number }) => void): () => void;
+  };
   quick: { submit(text: string, reply?: string): Promise<void>; hide(): Promise<void>; resize(h: number): Promise<void>; clip(): Promise<string>; onShown(fn: () => void): () => void };
   sys: { info(): Promise<Record<string, string>>; open(root: string, rel: string): Promise<void>; clipRead(): Promise<string>; clipWrite(t: string): Promise<void>; external(url: string): Promise<void>; saveAs(name: string, text: string, dir?: string): Promise<string | null>; reveal(path: string): Promise<void>; awake(on: boolean): Promise<boolean> };
   media: { ocr(dataUrl: string): Promise<string>; dictateStart(): Promise<void>; dictateStop(): Promise<void>; onDictate(fn: (e: DictateEvent) => void): () => void };
@@ -126,4 +132,20 @@ export const bridge: Bridge | null = (window as any).pelica ?? null;
 export function need(): Bridge {
   if (!bridge) throw new Error("This needs the Pelica desktop app (it isn't available in a plain browser).");
   return bridge;
+}
+
+/** an update feed's newest version (electron/updates.ts) */
+export interface UpdateFeed {
+  version: string;
+  url: string;
+  sha256: string;
+  notes?: string[];
+  title?: string;
+}
+
+export interface UpdateCheck {
+  current: string;
+  latest?: UpdateFeed;
+  newer: boolean;
+  error?: string;
 }
