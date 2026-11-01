@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.13.3",
+    "date": "2026-11-01",
+    "title": "Starts on a freshly installed Windows",
+    "notes": [
+      "Pelica’s engine no longer needs Microsoft’s Visual C++ runtime, so it starts on a freshly installed Windows too (before, it could fail with “VCRUNTIME140.dll was not found”). Same speed and answers as before."
+    ]
+  },
+  {
     "version": "0.13.2",
     "date": "2026-11-01",
     "title": "Settings laid out like Claude’s",

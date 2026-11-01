@@ -3,5 +3,7 @@
 # The AVX-512 kernels (VNNI, VBMI) check the CPU at runtime and still run
 # where it has them; measured on Zen 4 against target-cpu=native: the same
 # speed and output.
+# The C runtime is linked in (crt-static), so pelica.exe doesn't need
+# VCRUNTIME140.dll, which a fresh Windows doesn't have.
 [build]
-rustflags = ["-C", "target-cpu=x86-64-v3"]
+rustflags = ["-C", "target-cpu=x86-64-v3", "-C", "target-feature=+crt-static"]

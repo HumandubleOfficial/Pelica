@@ -100,6 +100,9 @@ PCIe 4 NVMe) are in [Benchmarks](#benchmarks).
   at runtime. On Zen 4 this build matched `target-cpu=native` in speed and
   output. Without AVX2 the engine stops with an illegal instruction, and the
   app says the processor is too old.
+* **C runtime**: linked in (`+crt-static`), so the engine needs no
+  VCRUNTIME140.dll; everything it loads ships with Windows 10 and 11, and
+  the Vulkan loader comes with the GPU driver.
 * **GPU**: the GPU engines' kernels sum across 32-lane subgroups. They use
   Vulkan (`gpu::adapter`), refuse adapters that can't run 32 lanes
   (`need_subgroups32`), and run a probe kernel at start
