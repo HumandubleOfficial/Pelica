@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -10,6 +43,8 @@ exports.startAll = startAll;
 exports.stopOne = stopOne;
 exports.stopAll = stopAll;
 exports.list = list;
+exports.signIn = signIn;
+exports.signOut = signOut;
 exports.call = call;
 exports.fromConfig = fromConfig;
 exports.otherApps = otherApps;
@@ -22,10 +57,11 @@ const node_child_process_1 = require("node:child_process");
 const node_fs_1 = __importDefault(require("node:fs"));
 const node_os_1 = __importDefault(require("node:os"));
 const node_path_1 = __importDefault(require("node:path"));
+const oauth = __importStar(require("./oauth"));
 // cmd.exe joins the arguments as they are: quote the ones with spaces
 const arg = (a) => (process.platform === "win32" && /[\s&|<>^()]/.test(a) && !/^".*"$/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a);
 const PROTOCOL = "2025-06-18";
-const CLIENT = { name: "pelica", version: "0.14.0" };
+const CLIENT = { name: "pelica", version: "1.0.0" };
 /** What both transports share: ids, waiting requests, and what the server tells us. */
 class Server {
     cfg;
@@ -34,6 +70,8 @@ class Server {
     error = "";
     log = "";
     remote = "";
+    /** an online connector's sign-in: "needed" (it answered 401), "in" (signed in), "" (no sign-in) */
+    auth = "";
     id = 0;
     waiting = new Map();
     constructor(cfg, changed) {
@@ -195,13 +233,40 @@ class HttpServer extends Server {
     get running() {
         return this.live;
     }
-    headers(extra = {}) {
+    /** the WWW-Authenticate of its last 401 (where to sign in) */
+    challenge = "";
+    /** an Authorization header the user typed (Headers) wins over a sign-in */
+    get ownAuth() {
+        return Object.keys(this.cfg.headers || {}).some((k) => k.toLowerCase() === "authorization");
+    }
+    async headers(extra = {}) {
         const h = { ...(this.cfg.headers || {}), ...extra };
+        if (!this.ownAuth) {
+            const t = await oauth.tokenFor(this.cfg.url);
+            if (t)
+                h.Authorization = `Bearer ${t}`;
+            this.auth = t ? "in" : this.auth === "needed" ? "needed" : "";
+        }
         if (this.session)
             h["Mcp-Session-Id"] = this.session;
         if (this.version)
             h["MCP-Protocol-Version"] = this.version;
         return h;
+    }
+    /** A 401: the connector wants a sign-in (or the one it had stopped working). */
+    unauthorized(res) {
+        if (this.ownAuth)
+            return new Error(`HTTP 401: the server turned down the token under Headers`);
+        this.challenge = res.headers.get("www-authenticate") || "";
+        oauth.rejected(this.cfg.url);
+        this.auth = "needed";
+        this.error = "Sign in to use this connector";
+        // (mid-session: it stops, so its card asks to sign in)
+        if (this.live) {
+            this.live = false;
+            this.changed();
+        }
+        return new Error(this.error);
     }
     async open() {
         this.live = true;
@@ -213,7 +278,7 @@ class HttpServer extends Server {
         }
         catch (e) {
             // an older server: a 4xx to the POST means "use the event stream"
-            if (!this.legacy && /^HTTP 4(04|05|00)\b/.test(e.message)) {
+            if (!this.legacy && this.auth !== "needed" && /^HTTP 4(04|05|00)\b/.test(e.message)) {
                 await this.openLegacy();
                 return super.start();
             }
@@ -228,7 +293,9 @@ class HttpServer extends Server {
     }
     async openLegacy() {
         const abort = new AbortController();
-        const res = await fetch(this.cfg.url, { headers: this.headers({ Accept: "text/event-stream" }), signal: abort.signal });
+        const res = await fetch(this.cfg.url, { headers: await this.headers({ Accept: "text/event-stream" }), signal: abort.signal });
+        if (res.status === 401)
+            throw this.unauthorized(res);
         if (!res.ok || !res.body)
             throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
         let found = () => { };
@@ -258,7 +325,9 @@ class HttpServer extends Server {
     }
     async send(msg, id) {
         if (this.legacy) {
-            const res = await fetch(this.legacy.post, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }), body: JSON.stringify(msg) });
+            const res = await fetch(this.legacy.post, { method: "POST", headers: await this.headers({ "Content-Type": "application/json" }), body: JSON.stringify(msg) });
+            if (res.status === 401)
+                throw this.unauthorized(res);
             if (!res.ok)
                 throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
             return;
@@ -266,7 +335,9 @@ class HttpServer extends Server {
         const abort = new AbortController();
         this.aborts.add(abort);
         try {
-            const res = await fetch(this.cfg.url, { method: "POST", headers: this.headers({ "Content-Type": "application/json", Accept: "application/json, text/event-stream" }), body: JSON.stringify(msg), signal: abort.signal });
+            const res = await fetch(this.cfg.url, { method: "POST", headers: await this.headers({ "Content-Type": "application/json", Accept: "application/json, text/event-stream" }), body: JSON.stringify(msg), signal: abort.signal });
+            if (res.status === 401)
+                throw this.unauthorized(res);
             const sid = res.headers.get("mcp-session-id");
             if (sid)
                 this.session = sid;
@@ -276,7 +347,7 @@ class HttpServer extends Server {
             }
             if (!res.ok) {
                 const text = (await res.text().catch(() => "")).slice(0, 200).replace(/\s+/g, " ");
-                const hint = res.status === 401 || res.status === 403 ? " (the server wants a sign-in: add its token under Headers, e.g. Authorization: Bearer …)" : "";
+                const hint = res.status === 403 ? " (the server turned the request down: check the sign-in or the token under Headers)" : "";
                 throw new Error(`HTTP ${res.status} ${res.statusText}${hint}${text && !hint ? `: ${text}` : ""}`.trim());
             }
             if (id === undefined || res.status === 202)
@@ -308,7 +379,9 @@ class HttpServer extends Server {
         for (const a of this.aborts)
             a.abort();
         if (this.session && !l)
-            fetch(this.cfg.url, { method: "DELETE", headers: this.headers() }).catch(() => { });
+            this.headers()
+                .then((headers) => fetch(this.cfg.url, { method: "DELETE", headers }))
+                .catch(() => { });
         this.failAll(`MCP server ${this.cfg.name} stopped`);
     }
 }
@@ -357,26 +430,52 @@ function stopAll() {
     servers.clear();
 }
 function list() {
-    return [...servers.values()].map((s) => ({ name: s.cfg.name, running: s.running, error: s.error, log: s.log, tools: s.tools, remote: s.remote }));
+    return [...servers.values()].map((s) => ({ name: s.cfg.name, running: s.running, error: s.error, log: s.log, tools: s.tools, remote: s.remote, auth: s.auth }));
 }
+/** Signs in to an online connector (the browser opens), then starts it again. */
+async function signIn(c, open) {
+    if (!c.url)
+        throw new Error("only online connectors sign in");
+    const s = servers.get(c.name);
+    await oauth.signIn(c.url, s instanceof HttpServer ? s.challenge : undefined, open);
+    await startOne(c);
+}
+async function signOut(c) {
+    if (!c.url)
+        return;
+    oauth.signOut(c.url);
+    await startOne(c);
+}
+const IMAGE = /^image\/(png|jpe?g|gif|webp|bmp)$/i;
 async function call(server, tool, args) {
     const s = servers.get(server);
     if (!s)
         throw new Error(`no MCP server called ${server}`);
     const r = await s.request("tools/call", { name: tool, arguments: args || {} });
     const parts = [];
+    const images = [];
+    // (four pictures at most, 12 MB each)
+    const picture = (data, mimeType) => {
+        if (typeof data !== "string" || typeof mimeType !== "string" || !IMAGE.test(mimeType) || data.length > 16e6 || images.length >= 4)
+            return false;
+        images.push({ data, mimeType });
+        parts.push(`[picture ${images.length}]`);
+        return true;
+    };
     for (const c of r?.content || []) {
         if (c.type === "text")
             parts.push(c.text);
+        else if (c.type === "image")
+            picture(c.data, c.mimeType) || parts.push("[a picture Pelica couldn't show]");
         else if (c.type === "resource")
-            parts.push(c.resource?.text || `[resource ${c.resource?.uri}]`);
+            (c.resource?.blob && picture(c.resource.blob, c.resource.mimeType)) || parts.push(c.resource?.text || `[resource ${c.resource?.uri}]`);
         else if (c.type === "resource_link")
             parts.push(`[${c.name || "resource"}: ${c.uri}]`);
         else
             parts.push(`[${c.type} content]`);
     }
     const text = parts.join("\n") || JSON.stringify(r?.structuredContent ?? r ?? null);
-    return r?.isError ? `Error: ${text}` : text;
+    return { text: r?.isError ? `Error: ${text}` : text, images };
 }
 // ---------- importing from other apps ----------
 /** The usual `{ "mcpServers": { name: { command, args, env } | { url, headers } } }`

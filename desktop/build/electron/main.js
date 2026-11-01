@@ -57,6 +57,9 @@ const media = __importStar(require("./media"));
 const chatdata_1 = require("./chatdata");
 const repocheck_1 = require("./repocheck");
 const updates = __importStar(require("./updates"));
+const importer_1 = require("./importer");
+const phone = __importStar(require("./phone"));
+const oauth = __importStar(require("./oauth"));
 const userDir = electron_1.app.getPath("userData");
 const settingsFile = node_path_1.default.join(userDir, "settings.json");
 const chatsDir = node_path_1.default.join(userDir, "chats");
@@ -220,6 +223,16 @@ function syncApi() {
     });
     srv.listen(want, "127.0.0.1");
     apiServer = srv;
+}
+// Pelica on your phone (Settings → Phone): the page and its pairing key
+function syncPhone() {
+    if (settings.phoneOn && !settings.phoneKey) {
+        settings.phoneKey = phone.newKey();
+        saveSettings();
+    }
+    // (the phone follows replies as they stream, also while the window is hidden in the tray)
+    win?.webContents.setBackgroundThrottling(!settings.phoneOn);
+    phone.sync(settings.phoneOn ? Number(settings.phonePort) || 8737 : 0, settings.phoneKey || "", node_path_1.default.resolve(__dirname, "../../dist"), (c) => win?.webContents.send("phone:cmd", c));
 }
 // where `pelica chat` in a terminal finds this engine, to use the loaded
 // model instead of loading a second copy
@@ -723,11 +736,22 @@ function registerIpc() {
             syncTheme();
         if ("apiServer" in rest || "apiPort" in rest)
             syncApi();
+        if ("phoneOn" in rest || "phonePort" in rest)
+            syncPhone();
         if ("modelDirs" in rest || "downloadDir" in rest)
             syncDirs();
         return settings;
     });
     handle("api:status", () => ({ on: !!apiServer && !apiError, port: apiPort, error: apiError }));
+    handle("phone:status", () => ({ ...phone.status(), key: settings.phoneKey || "" }));
+    handle("phone:push", (snap) => phone.push(snap));
+    // a new pairing key: phones paired before can't connect until they scan again
+    handle("phone:newKey", () => {
+        settings.phoneKey = phone.newKey();
+        saveSettings();
+        syncPhone();
+        return { ...phone.status(), key: settings.phoneKey };
+    });
     handle("folder:pick", async () => {
         const r = await electron_1.dialog.showOpenDialog(win, { properties: ["openDirectory", "createDirectory"], title: "Choose the folder Pelica works in" });
         if (r.canceled || !r.filePaths[0])
@@ -748,7 +772,7 @@ function registerIpc() {
             .map((f) => {
             try {
                 const c = JSON.parse(node_fs_1.default.readFileSync(node_path_1.default.join(chatsDir, f), "utf8"));
-                return { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder || null };
+                return { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder || null, project: c.project || undefined };
             }
             catch {
                 return null;
@@ -838,6 +862,13 @@ function registerIpc() {
             out.copies++;
         }
         return out;
+    });
+    // chats from ChatGPT's or Claude's data export (the zip, or its conversations.json)
+    handle("chats:import", async () => {
+        const r = await electron_1.dialog.showOpenDialog(win, { title: "Import chats from ChatGPT or Claude", properties: ["openFile"], filters: [{ name: "ChatGPT or Claude export", extensions: ["zip", "json"] }] });
+        if (r.canceled || !r.filePaths[0])
+            return null;
+        return (0, importer_1.importChats)(r.filePaths[0], chatsDir);
     });
     const chatPath = (id) => {
         if (!/^[\w-]+$/.test(id))
@@ -953,6 +984,23 @@ function registerIpc() {
     // a server's tools changed by themselves (or it stopped): tell the window
     mcp.watch(() => win?.webContents.send("mcp:changed", mcp.list()));
     handle("mcp:call", (server, tool, args) => mcp.call(server, tool, args));
+    // online connectors' sign-in (the browser opens the server's sign-in page)
+    const mcpCfg = (name) => {
+        const c = (settings.mcpServers || []).find((x) => x.name === name);
+        if (!c)
+            throw new Error(`no connector called ${name}`);
+        return c;
+    };
+    handle("mcp:signIn", async (name) => {
+        await mcp.signIn(mcpCfg(name), (u) => electron_1.shell.openExternal(u));
+        win?.show();
+        win?.focus();
+        return mcp.list();
+    });
+    handle("mcp:signOut", async (name) => {
+        await mcp.signOut(mcpCfg(name));
+        return mcp.list();
+    });
     handle("lib:search", (q) => lib.searchRepos(q));
     handle("lib:files", (id) => lib.repoFiles(id));
     handle("lib:download", (repo, file, dir) => lib.download(repo, file, dir, dlProgress));
@@ -1264,12 +1312,15 @@ else {
         }
     });
     electron_1.app.whenReady().then(async () => {
+        // (connector sign-ins first: connectors may start as soon as the window asks)
+        oauth.init(userDir);
         registerIpc();
         makeTray();
         registerHotkey();
         jumpList();
         await createWindow();
         syncApi();
+        syncPhone();
         mcp.startAll(settings.mcpServers || []).catch(() => { });
         if (process.argv.includes("--quick"))
             openQuick();

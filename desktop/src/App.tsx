@@ -1,7 +1,7 @@
 // The window: sidebar, title bar, the current page (chat, models, brain),
 // and the overlays (settings, command approval, toasts).
 import { useEffect, useState } from "react";
-import { app, COMPACT, setSettings, startNewChat, toast, toggleSidebar, useApp } from "./state";
+import { app, COMPACT, openProject, setSettings, startNewChat, toast, toggleSidebar, useApp } from "./state";
 import { ChatView } from "./components/ChatView";
 import { Composer } from "./components/Composer";
 import { Sidebar, TitleBar } from "./components/Sidebar";
@@ -11,6 +11,7 @@ import { TasksModal } from "./components/Tasks";
 import { Shortcuts } from "./components/Shortcuts";
 import { PromptEditor } from "./components/Prompts";
 import { Library } from "./components/Library";
+import { ProjectPage, ProjectsPage } from "./components/Projects";
 import { Brain } from "./components/Brain";
 import { ExpertsBg } from "./components/ExpertsBg";
 import { Icon, Logo } from "./components/Icons";
@@ -149,6 +150,7 @@ function Welcome() {
 function Home() {
   const name = useApp((s) => s.settings.userName);
   const st = useApp((s) => s.status);
+  const project = useApp((s) => s.settings.projects.find((p) => p.id === s.chat?.project));
   return (
     <div className="home">
       <div className="home-center">
@@ -158,6 +160,11 @@ function Home() {
           </span>
           {greeting(name)}
         </h1>
+        {project && (
+          <button className="home-project" onClick={() => openProject(project.id)} title="Open the project">
+            <Icon name="layers" size={13} /> New chat in {project.name}
+          </button>
+        )}
         <Composer big />
         <Welcome />
         <div className="ideas">
@@ -278,6 +285,10 @@ export function App() {
           <div className="center-pane">
             {view === "library" ? (
               <Library />
+            ) : view === "projects" ? (
+              <ProjectsPage />
+            ) : view === "project" ? (
+              <ProjectPage />
             ) : view === "brain" ? (
               <Brain />
             ) : empty ? (

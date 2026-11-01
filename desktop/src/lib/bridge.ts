@@ -21,7 +21,7 @@ export interface Bridge {
   win: { minimize(): Promise<void>; maximize(): Promise<void>; close(): Promise<void>; isMaximized(): Promise<boolean>; onState(fn: (s: { maximized: boolean }) => void): () => void; material(m: Material): Promise<Material> };
   settings: { get(): Promise<Record<string, any>>; set(p: Record<string, any>): Promise<Record<string, any>> };
   folder: { pick(): Promise<string | null>; open(root: string): Promise<string>; restore(root: string): Promise<string[]> };
-  chats: { list(): Promise<ChatMeta[]>; load(id: string): Promise<any>; save(c: any): Promise<boolean>; remove(id: string): Promise<void>; search(q: string): Promise<SearchHit[]>; usage(): Promise<Usage>; backup(): Promise<{ path: string; count: number } | null>; restore(): Promise<{ added: number; copies: number; same: number } | null> };
+  chats: { list(): Promise<ChatMeta[]>; load(id: string): Promise<any>; save(c: any): Promise<boolean>; remove(id: string): Promise<void>; search(q: string): Promise<SearchHit[]>; usage(): Promise<Usage>; backup(): Promise<{ path: string; count: number } | null>; restore(): Promise<{ added: number; copies: number; same: number } | null>; import(): Promise<{ from: "chatgpt" | "claude"; added: number; same: number; empty: number } | null> };
   fs: {
     list(root: string, rel: string, depth: number): Promise<string>;
     read(root: string, rel: string, offset: number, limit: number): Promise<{ text: string; lines: number; path: string }>;
@@ -41,7 +41,7 @@ export interface Bridge {
     /** safety reports for the GitHub repositories named in a command or URL */
     repos(text: string): Promise<RepoReport[]>;
   };
-  mcp: { start(): Promise<McpServer[]>; list(): Promise<McpServer[]>; call(server: string, tool: string, args: unknown): Promise<string>; restart(name: string): Promise<McpServer[]>; launchers(): Promise<Record<string, boolean>>; others(): Promise<{ app: string; file: string; servers: McpConfig[] }[]>; parse(text: string): Promise<McpConfig[]>; onChanged(fn: (v: McpServer[]) => void): () => void };
+  mcp: { start(): Promise<McpServer[]>; list(): Promise<McpServer[]>; call(server: string, tool: string, args: unknown): Promise<{ text: string; images: { data: string; mimeType: string }[] }>; restart(name: string): Promise<McpServer[]>; launchers(): Promise<Record<string, boolean>>; others(): Promise<{ app: string; file: string; servers: McpConfig[] }[]>; parse(text: string): Promise<McpConfig[]>; signIn(name: string): Promise<McpServer[]>; signOut(name: string): Promise<McpServer[]>; onChanged(fn: (v: McpServer[]) => void): () => void };
   lib: {
     search(q: string): Promise<{ id: string; downloads: number; likes: number; updated: string; tags: string[] }[]>;
     files(id: string): Promise<{ path: string; size: number }[]>;
@@ -73,6 +73,12 @@ export interface Bridge {
     onMove(fn: (m: ModelMove[]) => void): () => void;
   };
   engine: { log(): Promise<string>; restart(): Promise<void>; api(): Promise<{ on: boolean; port: number; error: string }> };
+  phone: {
+    status(): Promise<PhoneStatus>;
+    push(snap: unknown): Promise<void>;
+    newKey(): Promise<PhoneStatus>;
+    onCmd(fn: (c: PhoneCmd) => void): () => void;
+  };
   app: {
     info(): Promise<{ version: string; userDir: string; pelica: string; electron: string; hotkey: string; hotkeyError: string }>;
     busy(b: { label: string; progress: number } | null): Promise<void>;
@@ -107,6 +113,7 @@ export interface ChatMeta {
   updated: number;
   pinned: boolean;
   folder: string | null;
+  project?: string;
 }
 
 export interface McpServer {
@@ -116,6 +123,8 @@ export interface McpServer {
   log: string;
   /** a remote server's host */
   remote?: string;
+  /** an online connector's sign-in: "needed", "in" (signed in), or "" */
+  auth?: "" | "needed" | "in";
   tools: McpToolInfo[];
 }
 
@@ -210,4 +219,23 @@ export interface UpdateCheck {
   /** the offered version is a preview (a GitHub pre-release) */
   preview?: boolean;
   error?: string;
+}
+
+/** Settings → Phone: the server on this PC's network. */
+export interface PhoneStatus {
+  on: boolean;
+  port: number;
+  error: string;
+  lan: string[];
+  tailscale: string | null;
+  phones: number;
+  key: string;
+}
+
+/** What the phone asks the window to do. */
+export interface PhoneCmd {
+  type: "send" | "open" | "new" | "approve" | "stop";
+  id?: string;
+  text?: string;
+  answer: "allow" | "always" | "deny";
 }

@@ -214,7 +214,18 @@ calls; see `desktop/ARCHITECTURE.md`) and adds the agent around it:
   those); links open in your default browser. Searches go
   through Chromium's network stack (DuckDuckGo, then Bing, then DuckDuckGo
   rendered in a hidden window), so engines don't turn them away as scripts;
-  pages built by scripts are rendered before reading
+  pages built by scripts are rendered before reading. Online connectors
+  that need an account sign in with OAuth (MCP authorization: discovery,
+  dynamic registration, PKCE, a 127.0.0.1 redirect; tokens encrypted with
+  Windows' DPAPI and refreshed). Pictures a tool answers with show in the
+  chat and go to models that see images
+* projects: chats that share instructions, text files and a folder
+* memory across chats: the model saves short facts when asked (or on its
+  own, with a note), Settings → Memory to read and edit them
+* import from ChatGPT's or Claude's data export (the zip)
+* Pelica on your phone: a page on this PC's network (off until turned on),
+  paired by a QR code with a key in it; it mirrors the open chat and sends
+  messages and approvals back
 * file and command work needs a model trained for tool calls (Qwen3,
   gpt-oss, GLM). Older chat models such as OLMoE explain instead of doing;
   the app says so when one is loaded with a folder chosen

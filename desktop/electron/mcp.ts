@@ -7,12 +7,13 @@ import { spawn, execFile, ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import * as oauth from "./oauth";
 
 // cmd.exe joins the arguments as they are: quote the ones with spaces
 const arg = (a: string) => (process.platform === "win32" && /[\s&|<>^()]/.test(a) && !/^".*"$/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a);
 
 const PROTOCOL = "2025-06-18";
-const CLIENT = { name: "pelica", version: "0.14.0" };
+const CLIENT = { name: "pelica", version: "1.0.0" };
 
 export interface McpServerConfig {
   name: string;
@@ -44,6 +45,8 @@ abstract class Server {
   error = "";
   log = "";
   remote = "";
+  /** an online connector's sign-in: "needed" (it answered 401), "in" (signed in), "" (no sign-in) */
+  auth: "" | "needed" | "in" = "";
   protected id = 0;
   protected waiting = new Map<number, Waiter>();
 
@@ -211,11 +214,39 @@ class HttpServer extends Server {
     return this.live;
   }
 
-  private headers(extra: Record<string, string> = {}) {
+  /** the WWW-Authenticate of its last 401 (where to sign in) */
+  challenge = "";
+
+  /** an Authorization header the user typed (Headers) wins over a sign-in */
+  private get ownAuth() {
+    return Object.keys(this.cfg.headers || {}).some((k) => k.toLowerCase() === "authorization");
+  }
+
+  private async headers(extra: Record<string, string> = {}) {
     const h: Record<string, string> = { ...(this.cfg.headers || {}), ...extra };
+    if (!this.ownAuth) {
+      const t = await oauth.tokenFor(this.cfg.url!);
+      if (t) h.Authorization = `Bearer ${t}`;
+      this.auth = t ? "in" : this.auth === "needed" ? "needed" : "";
+    }
     if (this.session) h["Mcp-Session-Id"] = this.session;
     if (this.version) h["MCP-Protocol-Version"] = this.version;
     return h;
+  }
+
+  /** A 401: the connector wants a sign-in (or the one it had stopped working). */
+  private unauthorized(res: Response): Error {
+    if (this.ownAuth) return new Error(`HTTP 401: the server turned down the token under Headers`);
+    this.challenge = res.headers.get("www-authenticate") || "";
+    oauth.rejected(this.cfg.url!);
+    this.auth = "needed";
+    this.error = "Sign in to use this connector";
+    // (mid-session: it stops, so its card asks to sign in)
+    if (this.live) {
+      this.live = false;
+      this.changed();
+    }
+    return new Error(this.error);
   }
 
   protected async open() {
@@ -228,7 +259,7 @@ class HttpServer extends Server {
       await super.start();
     } catch (e: any) {
       // an older server: a 4xx to the POST means "use the event stream"
-      if (!this.legacy && /^HTTP 4(04|05|00)\b/.test(e.message)) {
+      if (!this.legacy && this.auth !== "needed" && /^HTTP 4(04|05|00)\b/.test(e.message)) {
         await this.openLegacy();
         return super.start();
       }
@@ -244,7 +275,8 @@ class HttpServer extends Server {
 
   private async openLegacy() {
     const abort = new AbortController();
-    const res = await fetch(this.cfg.url!, { headers: this.headers({ Accept: "text/event-stream" }), signal: abort.signal });
+    const res = await fetch(this.cfg.url!, { headers: await this.headers({ Accept: "text/event-stream" }), signal: abort.signal });
+    if (res.status === 401) throw this.unauthorized(res);
     if (!res.ok || !res.body) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
     let found: (u: string) => void = () => {};
     const endpoint = new Promise<string>((ok, bad) => {
@@ -272,14 +304,16 @@ class HttpServer extends Server {
 
   protected async send(msg: any, id?: number) {
     if (this.legacy) {
-      const res = await fetch(this.legacy.post, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }), body: JSON.stringify(msg) });
+      const res = await fetch(this.legacy.post, { method: "POST", headers: await this.headers({ "Content-Type": "application/json" }), body: JSON.stringify(msg) });
+      if (res.status === 401) throw this.unauthorized(res);
       if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
       return;
     }
     const abort = new AbortController();
     this.aborts.add(abort);
     try {
-      const res = await fetch(this.cfg.url!, { method: "POST", headers: this.headers({ "Content-Type": "application/json", Accept: "application/json, text/event-stream" }), body: JSON.stringify(msg), signal: abort.signal });
+      const res = await fetch(this.cfg.url!, { method: "POST", headers: await this.headers({ "Content-Type": "application/json", Accept: "application/json, text/event-stream" }), body: JSON.stringify(msg), signal: abort.signal });
+      if (res.status === 401) throw this.unauthorized(res);
       const sid = res.headers.get("mcp-session-id");
       if (sid) this.session = sid;
       if (res.status === 404 && this.session && msg.method !== "initialize") {
@@ -288,7 +322,7 @@ class HttpServer extends Server {
       }
       if (!res.ok) {
         const text = (await res.text().catch(() => "")).slice(0, 200).replace(/\s+/g, " ");
-        const hint = res.status === 401 || res.status === 403 ? " (the server wants a sign-in: add its token under Headers, e.g. Authorization: Bearer …)" : "";
+        const hint = res.status === 403 ? " (the server turned the request down: check the sign-in or the token under Headers)" : "";
         throw new Error(`HTTP ${res.status} ${res.statusText}${hint}${text && !hint ? `: ${text}` : ""}`.trim());
       }
       if (id === undefined || res.status === 202) return;
@@ -315,7 +349,9 @@ class HttpServer extends Server {
     l?.abort.abort();
     for (const a of this.aborts) a.abort();
     if (this.session && !l)
-      fetch(this.cfg.url!, { method: "DELETE", headers: this.headers() }).catch(() => {});
+      this.headers()
+        .then((headers) => fetch(this.cfg.url!, { method: "DELETE", headers }))
+        .catch(() => {});
     this.failAll(`MCP server ${this.cfg.name} stopped`);
   }
 }
@@ -371,22 +407,53 @@ export function stopAll() {
 }
 
 export function list() {
-  return [...servers.values()].map((s) => ({ name: s.cfg.name, running: s.running, error: s.error, log: s.log, tools: s.tools, remote: s.remote }));
+  return [...servers.values()].map((s) => ({ name: s.cfg.name, running: s.running, error: s.error, log: s.log, tools: s.tools, remote: s.remote, auth: s.auth }));
 }
 
-export async function call(server: string, tool: string, args: unknown): Promise<string> {
+/** Signs in to an online connector (the browser opens), then starts it again. */
+export async function signIn(c: McpServerConfig, open: (u: string) => void): Promise<void> {
+  if (!c.url) throw new Error("only online connectors sign in");
+  const s = servers.get(c.name);
+  await oauth.signIn(c.url, s instanceof HttpServer ? s.challenge : undefined, open);
+  await startOne(c);
+}
+
+export async function signOut(c: McpServerConfig): Promise<void> {
+  if (!c.url) return;
+  oauth.signOut(c.url);
+  await startOne(c);
+}
+
+/** A picture a tool answered with (base64, as the server sent it). */
+export interface ToolImage {
+  data: string;
+  mimeType: string;
+}
+
+const IMAGE = /^image\/(png|jpe?g|gif|webp|bmp)$/i;
+
+export async function call(server: string, tool: string, args: unknown): Promise<{ text: string; images: ToolImage[] }> {
   const s = servers.get(server);
   if (!s) throw new Error(`no MCP server called ${server}`);
   const r = await s.request("tools/call", { name: tool, arguments: args || {} });
   const parts: string[] = [];
+  const images: ToolImage[] = [];
+  // (four pictures at most, 12 MB each)
+  const picture = (data: unknown, mimeType: unknown) => {
+    if (typeof data !== "string" || typeof mimeType !== "string" || !IMAGE.test(mimeType) || data.length > 16e6 || images.length >= 4) return false;
+    images.push({ data, mimeType });
+    parts.push(`[picture ${images.length}]`);
+    return true;
+  };
   for (const c of r?.content || []) {
     if (c.type === "text") parts.push(c.text);
-    else if (c.type === "resource") parts.push(c.resource?.text || `[resource ${c.resource?.uri}]`);
+    else if (c.type === "image") picture(c.data, c.mimeType) || parts.push("[a picture Pelica couldn't show]");
+    else if (c.type === "resource") (c.resource?.blob && picture(c.resource.blob, c.resource.mimeType)) || parts.push(c.resource?.text || `[resource ${c.resource?.uri}]`);
     else if (c.type === "resource_link") parts.push(`[${c.name || "resource"}: ${c.uri}]`);
     else parts.push(`[${c.type} content]`);
   }
   const text = parts.join("\n") || JSON.stringify(r?.structuredContent ?? r ?? null);
-  return r?.isError ? `Error: ${text}` : text;
+  return { text: r?.isError ? `Error: ${text}` : text, images };
 }
 
 // ---------- importing from other apps ----------

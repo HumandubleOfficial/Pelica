@@ -5,9 +5,22 @@
    lines (no cards). No opening animation. */
 
 .modal.settings {
-  --set-line: color-mix(in srgb, var(--text) 9%, transparent);
-  --set-sel: color-mix(in srgb, var(--text) 9%, transparent);
-  --set-field: color-mix(in srgb, var(--text) 4%, var(--bg));
+  --set-page: color-mix(in srgb, var(--text) 3%, var(--bg));
+  --set-nav: var(--bg);
+  --set-top-line: color-mix(in srgb, var(--text) 14%, transparent);
+  --set-divider: color-mix(in srgb, var(--text) 10%, transparent);
+  --set-line: color-mix(in srgb, var(--text) 5.5%, transparent);
+  --set-sel: color-mix(in srgb, var(--text) 16%, transparent);
+  --set-hover: color-mix(in srgb, var(--text) 7%, transparent);
+  --set-field: color-mix(in srgb, var(--text) 5.5%, var(--set-page));
+  --set-field-line: color-mix(in srgb, var(--text) 9%, transparent);
+  --set-search: color-mix(in srgb, var(--text) 5.5%, var(--bg));
+  --set-search-line: color-mix(in srgb, var(--text) 10%, transparent);
+  --set-chip: color-mix(in srgb, var(--text) 16%, var(--set-page));
+  --set-chip-line: color-mix(in srgb, var(--text) 26%, transparent);
+  --set-title: color-mix(in srgb, var(--text) 92%, var(--set-page));
+  background: var(--set-page);
+  border: 1px solid color-mix(in srgb, var(--text) 8%, var(--bg));
   width: min(1060px, 94vw);
   height: min(820px, 92vh);
   display: flex;
@@ -15,12 +28,23 @@
   overflow: hidden;
   animation: none;
   border-radius: 12px;
-  border-color: var(--set-line);
 }
+/* Claude's light settings: a white page beside a cream nav */
 :root[data-theme="light"] .modal.settings {
-  --set-line: color-mix(in srgb, var(--text) 11%, transparent);
-  --set-sel: color-mix(in srgb, var(--text) 7%, transparent);
+  --set-page: var(--panel);
+  --set-nav: var(--bg);
+  --set-top-line: color-mix(in srgb, var(--text) 13%, transparent);
+  --set-divider: color-mix(in srgb, var(--text) 11%, transparent);
+  --set-line: color-mix(in srgb, var(--text) 9%, transparent);
+  --set-sel: color-mix(in srgb, var(--text) 8%, transparent);
+  --set-hover: color-mix(in srgb, var(--text) 5%, transparent);
   --set-field: #fff;
+  --set-field-line: color-mix(in srgb, var(--text) 16%, transparent);
+  --set-search: #fff;
+  --set-search-line: color-mix(in srgb, var(--text) 14%, transparent);
+  --set-chip: #fff;
+  --set-chip-line: color-mix(in srgb, var(--text) 16%, transparent);
+  --set-title: var(--text);
 }
 .modal-back:has(> .modal.settings) {
   animation: none;
@@ -32,11 +56,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 46px;
+  height: 50px;
   padding: 0 10px 0 22px;
-  border-bottom: 1px solid var(--set-line);
+  border-bottom: 1px solid var(--set-top-line);
   font-size: 1.05em;
   font-weight: 600;
+  color: var(--set-title);
 }
 .set-top .ghost-btn {
   width: 32px;
@@ -47,7 +72,7 @@
   color: var(--text-2);
 }
 .set-top .ghost-btn:hover {
-  background: var(--set-sel);
+  background: var(--set-hover);
   color: var(--text);
 }
 .set-main {
@@ -63,8 +88,8 @@
   display: flex;
   flex-direction: column;
   padding: 16px 0 0 14px;
-  background: transparent;
-  border-right: 1px solid var(--set-line);
+  background: var(--set-nav);
+  border-right: 1px solid var(--set-divider);
   overflow: hidden;
 }
 .set-search {
@@ -75,8 +100,8 @@
   padding: 0 10px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid var(--set-line);
-  background: var(--set-field);
+  border: 1px solid var(--set-search-line);
+  background: var(--set-search);
   color: var(--muted);
   cursor: text;
 }
@@ -121,7 +146,7 @@
   flex: none;
 }
 .settings .set-nav button:hover {
-  background: color-mix(in srgb, var(--text) 5%, transparent);
+  background: var(--set-hover);
 }
 .settings .set-nav button.sel {
   background: var(--set-sel);
@@ -199,7 +224,7 @@
 .settings .set-title {
   font-weight: 500;
   font-size: 0.97em;
-  color: var(--text);
+  color: var(--set-title);
 }
 .settings .set-desc {
   margin-top: 4px;
@@ -247,28 +272,32 @@
 .settings .toggle.on::after {
   transform: translateX(16px);
 }
+/* choices: a flat track, the chosen one a lighter chip with a fine edge (it slides) */
 .settings .seg {
-  background: color-mix(in srgb, #000 18%, var(--bg));
-  border: 1px solid var(--set-line);
+  --seg-chip: var(--set-chip);
+  --seg-chip-line: var(--set-chip-line);
+  --seg-chip-shadow: none;
+  background: var(--set-field);
+  border: 0;
   border-radius: 9px;
   padding: 2px;
+  gap: 0;
 }
 .settings .seg button {
-  padding: 4px 12px;
+  padding: 5px 13px;
   border: 1px solid transparent;
-  color: var(--text);
+  border-radius: 7px;
+  color: var(--set-title);
   font-size: 0.92em;
+  font-weight: 500;
 }
 .settings .seg button.sel {
-  background: color-mix(in srgb, var(--text) 12%, var(--bg));
-  border-color: var(--set-line);
+  background: var(--set-chip);
+  border-color: var(--set-chip-line);
   box-shadow: none;
 }
 :root[data-theme="light"] .settings .seg {
   background: var(--side);
-}
-:root[data-theme="light"] .settings .seg button.sel {
-  background: #fff;
 }
 .settings .size-seg button {
   min-width: 34px;
@@ -277,12 +306,13 @@
 }
 .settings .text-input {
   background: var(--set-field);
-  border: 1px solid var(--set-line);
+  border: 1px solid var(--set-field-line);
   border-radius: 8px;
-  padding: 6px 10px;
+  padding: 7px 11px;
+  color: var(--set-title);
 }
 .settings .text-input:focus {
-  border-color: color-mix(in srgb, var(--text) 28%, transparent);
+  border-color: color-mix(in srgb, var(--text) 30%, transparent);
   box-shadow: none;
 }
 .settings .text-input:not(.wide):not(.narrow) {
@@ -456,4 +486,23 @@
 .settings .conn-grid .text-input:not(.narrow),
 .settings .conn-field .text-input:not(.narrow) {
   width: 100%;
+}
+
+/* buttons: Claude's settings buttons, a field-coloured face with a fine edge
+   (a ghost one only the edge); the main action keeps the accent */
+.settings .btn:not(.primary) {
+  background: var(--set-field);
+  border-color: var(--set-field-line);
+  color: var(--set-title);
+  font-weight: 500;
+}
+.settings .btn.ghost:not(.primary) {
+  background: transparent;
+}
+.settings .btn:not(.primary):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 9%, var(--set-page));
+  border-color: color-mix(in srgb, var(--text) 16%, transparent);
+}
+.settings .btn.danger:not(.primary) {
+  color: var(--bad);
 }

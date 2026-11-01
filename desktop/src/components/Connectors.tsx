@@ -276,7 +276,24 @@ function ServerCard({ c, live }: { c: Cfg; live?: McpServer }) {
   const [edit, setEdit] = useState(false);
   const [busy, setBusy] = useState(false);
   const p = presetOf(c);
-  const state = c.disabled ? "off" : busy ? "starting" : live?.running ? "on" : live ? "error" : "off";
+  const [signing, setSigning] = useState(false);
+  const needs = !c.disabled && !live?.running && live?.auth === "needed";
+  const state = c.disabled ? "off" : busy || signing ? "starting" : live?.running ? "on" : needs ? "signin" : live ? "error" : "off";
+  async function signIn() {
+    setSigning(true);
+    try {
+      app.set({ mcp: await bridge!.mcp.signIn(c.name) });
+      toast(`Signed in to ${p?.name || c.name}`);
+    } catch (e: any) {
+      toast(String(e?.message || e).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, ""));
+    }
+    setSigning(false);
+  }
+  async function signOut() {
+    setBusy(true);
+    app.set({ mcp: await bridge!.mcp.signOut(c.name) });
+    setBusy(false);
+  }
   const on = live?.running ? live.tools.filter((t) => toolPerm(c, t) !== "off").length : 0;
   async function again() {
     setBusy(true);
@@ -303,9 +320,14 @@ function ServerCard({ c, live }: { c: Cfg; live?: McpServer }) {
         <div className="conn-title">
           <b>{p?.name || c.name}</b>
           <span className="muted small">
-            {state === "on" ? `${on} of ${live!.tools.length} tool${live!.tools.length === 1 ? "" : "s"} on${c.url ? ` · ${live!.remote || new URL(c.url).host}` : ""}` : state === "starting" ? "Starting…" : state === "off" ? "Off" : live?.error || "Not running"}
+            {state === "signin" ? "Needs you to sign in" : signing ? "Waiting for the sign-in in your browser…" : state === "on" ? `${on} of ${live!.tools.length} tool${live!.tools.length === 1 ? "" : "s"} on${c.url ? ` · ${live!.remote || new URL(c.url).host}` : ""}` : state === "starting" ? "Starting…" : state === "off" ? "Off" : live?.error || "Not running"}
           </span>
         </div>
+        {needs && !signing && (
+          <button className="btn small primary" onClick={signIn}>
+            Sign in
+          </button>
+        )}
         <span className={`status-dot ${state === "on" ? "ready" : state === "starting" ? "loading" : state === "error" ? "error" : "empty"}`} />
         <button className={`toggle ${c.disabled ? "" : "on"}`} onClick={toggle} role="switch" aria-checked={!c.disabled} title={c.disabled ? "Turn on" : "Turn off"} />
         <button className="ghost-btn" title="Details" onClick={() => setOpen(!open)}>
@@ -324,6 +346,11 @@ function ServerCard({ c, live }: { c: Cfg; live?: McpServer }) {
             <button className="btn ghost small" onClick={() => setEdit(true)}>
               <Icon name="edit" size={13} /> Edit
             </button>
+            {live?.auth === "in" && (
+              <button className="btn ghost small" onClick={signOut} disabled={busy}>
+                Sign out
+              </button>
+            )}
             <button className="btn small" onClick={again} disabled={busy || c.disabled}>
               <Icon name="reload" size={13} /> Restart
             </button>

@@ -35,7 +35,7 @@ export function useStore<T extends object, U>(store: ReturnType<typeof createSto
 // ---------- chats ----------
 
 export interface ToolUI {
-  kind: "search" | "page" | "read" | "write" | "edit" | "list" | "grep" | "command" | "todo" | "browser" | "mcp" | "trash" | "error" | "denied" | "cqs" | "system" | "clipboard" | "open";
+  kind: "search" | "page" | "read" | "write" | "edit" | "list" | "grep" | "command" | "todo" | "browser" | "mcp" | "trash" | "error" | "denied" | "cqs" | "system" | "clipboard" | "open" | "memory";
   title: string;
   detail?: string;
   path?: string;
@@ -96,7 +96,7 @@ export interface SpeedParts {
 export type Msg =
   | { id: string; role: "user"; content: string; ts: number; summary?: boolean; images?: Photo[] }
   | { id: string; role: "assistant"; content: string; reasoning?: string; tool_calls?: WireCall[]; stats?: Stats; model?: string; effort?: string; ts: number; ack?: boolean }
-  | { id: string; role: "tool"; tool_call_id: string; name: string; content: string; ui: ToolUI; ts: number }
+  | { id: string; role: "tool"; tool_call_id: string; name: string; content: string; ui: ToolUI; ts: number; images?: Photo[] }
   | { id: string; role: "event"; kind: "compact" | "cqs" | "error" | "info"; text: string; detail?: string; ts: number };
 
 /** A photo sent with a message (downscaled, as a data: URL). */
@@ -112,6 +112,10 @@ export interface Chat {
   updated: number;
   pinned?: boolean;
   folder: string | null;
+  /** the project it belongs to (Settings' projects) */
+  project?: string;
+  /** brought in from another app's export: where from, and its id there */
+  imported?: { from: "chatgpt" | "claude"; id: string };
   messages: Msg[];
   /** messages before the last compaction (shown, never sent) */
   archive?: Msg[];
@@ -120,9 +124,31 @@ export interface Chat {
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-export function newChat(folder: string | null): Chat {
+export function newChat(folder: string | null, project?: string): Chat {
   const t = Date.now();
-  return { id: uid(), title: "New chat", created: t, updated: t, folder, messages: [] };
+  return { id: uid(), title: "New chat", created: t, updated: t, folder, messages: [], ...(project ? { project } : {}) };
+}
+
+/** A project: chats that share instructions, files and (optionally) a folder. */
+export interface Project {
+  id: string;
+  name: string;
+  /** what every chat in it is told first */
+  instructions: string;
+  /** text files every chat in it can read (kept in the settings) */
+  files: { name: string; text: string }[];
+  /** the folder its new chats work in */
+  folder: string | null;
+  created: number;
+}
+
+/** A thing Pelica remembers about the user, across chats. */
+export interface Memory {
+  id: string;
+  text: string;
+  created: number;
+  /** who saved it: the user (Settings) or the model (the remember tool) */
+  by: "you" | "pelica";
 }
 
 // ---------- settings ----------
@@ -145,6 +171,10 @@ export interface Settings {
   /** speed up (pelica repack) DeepSeek V4 files as soon as they finish downloading */
   autoRepack: boolean;
   modelDirs: string[];
+  projects: Project[];
+  /** memory across chats: on, and what's remembered */
+  memoryOn: boolean;
+  memories: Memory[];
   mcpServers: import("./lib/bridge").McpConfig[];
   lastModel?: string;
   lastCtx: number;
@@ -191,6 +221,9 @@ export interface Settings {
   /** the OpenAI-compatible local API on a fixed port, for other programs */
   apiServer: boolean;
   apiPort: number;
+  /** Pelica on your phone (Settings → Phone): the server on this PC's network, and its port */
+  phoneOn: boolean;
+  phonePort: number;
   /** where to look for new versions (a latest.json: web address or path; empty: Pelica's GitHub releases) */
   updateFeed: string;
   /** when to check for a new version by itself */
@@ -239,6 +272,9 @@ export const DEFAULTS: Settings = {
   downloadDir: "",
   autoRepack: false,
   modelDirs: [],
+  projects: [],
+  memoryOn: true,
+  memories: [],
   mcpServers: [],
   lastCtx: 32768,
   folder: null,
@@ -265,6 +301,8 @@ export const DEFAULTS: Settings = {
   devices: [],
   apiServer: false,
   apiPort: 11435,
+  phoneOn: false,
+  phonePort: 8737,
   updateFeed: "",
   updateCheck: "start",
   updatePreview: false,
@@ -321,7 +359,9 @@ export interface AppState {
   chat: Chat | null;
   draft: Draft | null;
   running: boolean;
-  view: "chat" | "library" | "brain";
+  view: "chat" | "library" | "brain" | "projects" | "project";
+  /** the project page's project */
+  projectId: string | null;
   /** the model library's tab */
   libTab: "local" | "discover";
   settingsOpen: boolean;
@@ -390,6 +430,7 @@ export const app = createStore<AppState>({
   running: false,
   view: "chat",
   libTab: "local",
+  projectId: null,
   settingsOpen: false,
   settingsTab: "General",
   whatsNew: null,
@@ -449,7 +490,7 @@ export function toast(msg: string, action?: { label: string; run: () => void }) 
 const memChats = new Map<string, Chat>();
 
 export async function refreshChats() {
-  const chats = bridge ? await bridge.chats.list().catch(() => []) : [...memChats.values()].map((c) => ({ id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder }));
+  const chats = bridge ? await bridge.chats.list().catch(() => []) : [...memChats.values()].map((c) => ({ id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder, project: c.project }));
   app.set({ chats: chats.sort((a, b) => b.updated - a.updated) });
 }
 
@@ -475,7 +516,7 @@ export async function persist(c: Chat) {
   if (!c.messages.length && !c.archive?.length) return;
   if (bridge) await bridge.chats.save(c).catch(() => {});
   else memChats.set(c.id, c);
-  const meta = { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder };
+  const meta = { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder, project: c.project };
   app.set((s) => ({ chats: [meta, ...s.chats.filter((x) => x.id !== c.id)].sort((a, b) => b.updated - a.updated) }));
 }
 
@@ -538,8 +579,37 @@ export function toggleSidebar(show?: boolean) {
   app.set((s) => (s.compact ? { drawer: show ?? !s.drawer } : { sidebar: show ?? !s.sidebar }));
 }
 
-export function startNewChat(folder: string | null = null) {
-  app.set({ chat: newChat(folder), view: "chat", context: null });
+export function startNewChat(folder: string | null = null, project?: string) {
+  app.set({ chat: newChat(folder, project), view: "chat", context: null });
+}
+
+// ---------- projects ----------
+
+export const projectOf = (id?: string) => (id ? app.get().settings.projects.find((p) => p.id === id) : undefined);
+
+export function saveProject(p: Project) {
+  const list = app.get().settings.projects;
+  setSettings({ projects: list.some((x) => x.id === p.id) ? list.map((x) => (x.id === p.id ? p : x)) : [...list, p] });
+}
+
+export function newProject(name = "New project"): Project {
+  const p: Project = { id: uid(), name, instructions: "", files: [], folder: null, created: Date.now() };
+  saveProject(p);
+  return p;
+}
+
+/** Deletes a project; its chats stay, outside any project. */
+export async function deleteProject(id: string) {
+  const p = projectOf(id);
+  if (!p) return;
+  setSettings({ projects: app.get().settings.projects.filter((x) => x.id !== id) });
+  for (const c of app.get().chats.filter((c) => c.project === id)) await patchChat(c.id, (x) => ({ ...x, project: undefined }));
+  if (app.get().projectId === id) app.set({ view: "projects", projectId: null });
+  toast(`Deleted the project “${p.name}”. Its chats are still in your chat list.`);
+}
+
+export function openProject(id: string) {
+  app.set({ view: "project", projectId: id, drawer: false });
 }
 
 export async function deleteChat(id: string) {

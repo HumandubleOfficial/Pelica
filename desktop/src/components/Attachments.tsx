@@ -36,7 +36,7 @@ const IMAGE = /^image\/(png|jpeg|webp|gif|bmp)$/;
 const MAX_SIDE = 1568;
 
 /** A photo as a JPEG data: URL, at most MAX_SIDE pixels on its long side. */
-async function shrink(f: Blob): Promise<string> {
+export async function shrink(f: Blob): Promise<string> {
   const bmp = await createImageBitmap(f);
   const k = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
   const c = document.createElement("canvas");

@@ -15,6 +15,8 @@ import "./settings.css";
 import { checkWhatsNew } from "./components/WhatsNew";
 import { checkForUpdates } from "./components/Updates";
 import { startScheduler } from "./agent/tasks";
+import { startPhone } from "./lib/phone";
+import { startSegs } from "./lib/segs";
 import "highlight.js/styles/github-dark.css";
 
 // the store (and chat saving), for looking at the app from DevTools and tests
@@ -72,5 +74,7 @@ const quick = location.hash === "#quick";
   }
   startDesktop();
   startScheduler();
+  startPhone();
+  startSegs();
   createRoot(document.getElementById("root")!).render(<App />);
 })();

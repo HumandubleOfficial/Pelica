@@ -579,7 +579,7 @@ kbd {
   min-width: 200px;
 }
 .text-input:focus {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--text) 30%, transparent);
 }
 .text-input.wide {
   width: 100%;

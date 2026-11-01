@@ -25,6 +25,15 @@ function today() {
 
 const notes = new Map<string, string>();
 
+/** What's remembered, as each chat started (kept for the chat, so its prompt
+ *  stays the same and the engine reuses what it read; remember and forget
+ *  tell the model what changed). */
+const memoryAtStart = new Map<string, string>();
+function memoryOf(chatId: string): string {
+  if (!memoryAtStart.has(chatId)) memoryAtStart.set(chatId, app.get().settings.memories.slice(-150).map((m) => `- ${m.text}`).join("\n"));
+  return memoryAtStart.get(chatId)!;
+}
+
 /** The project's instructions: PELICA.md (or AGENTS.md / CLAUDE.md) in the
  *  folder and the folders above it, read as each chat starts (so edits show
  *  up in the next chat) and kept for the chat, so its prompt stays the same. */
@@ -147,8 +156,27 @@ Using them well:
 
   if (has("system_info") || has("read_file")) parts.push("Files the user attaches arrive in <attachment> blocks in their message: read them from there.");
   parts.push("# Style\nAnswer in Markdown. Be direct and concise unless the user asks for depth; no filler, no repeating the question back.");
+  const proj = chat.project ? s.projects.find((p) => p.id === chat.project) : undefined;
+  if (proj && (proj.instructions.trim() || proj.files.length)) {
+    // (the files that fit in about 40% of this model's context; the rest by name)
+    let room = (app.get().status?.ctx || 32768) * 0.4 * 3.5;
+    const kept: string[] = [];
+    const left: string[] = [];
+    for (const f of proj.files) {
+      if (f.text.length <= room) {
+        kept.push(`<project_file name="${f.name}">\n${f.text}\n</project_file>`);
+        room -= f.text.length;
+      } else left.push(f.name);
+    }
+    const files = kept.join("\n\n") + (left.length ? `${kept.length ? "\n\n" : ""}(Left out, too big for this model's context: ${left.join(", ")}. If one is needed, ask the user to paste the part that matters.)` : "");
+    parts.push(`# Project: ${proj.name}\nThis chat is part of the user's project "${proj.name}". Every chat in it shares these instructions and files.${proj.instructions.trim() ? `\n\n## Instructions\n${proj.instructions.trim()}` : ""}${files ? `\n\n## Files\nThe project's files, which you can read and quote:\n\n${files}` : ""}`);
+  }
   const pn = await projectNotes(chat.id, chat.folder);
   if (pn) parts.push(`# Project instructions\nFrom the project's PELICA.md (or AGENTS.md / CLAUDE.md). Follow them when you work in this folder; the user's own instructions below come first.\n\n${pn}`);
+  if (s.memoryOn) {
+    const mem = memoryOf(chat.id);
+    parts.push(`# Memory\nWhat you remember about the user from earlier chats (they can see and edit it in Settings → Memory)${mem ? `:\n${mem}` : ": nothing yet."}${has("remember") ? "\nWhen the user asks you to remember something, call remember. You may also remember a lasting fact on your own when you'll clearly need it again; mention it briefly when you do. When they ask you to forget something, or a fact changes, call forget." : ""}`);
+  }
   if (s.customInstructions.trim()) parts.push(`# The user's instructions\n${s.customInstructions.trim()}`);
   return parts.join("\n\n");
 }
@@ -173,7 +201,11 @@ export function wire(chat: Chat, trim: boolean): WireMsg[] {
       for (const c of m.tool_calls || []) {
         if (!msgs.slice(i + 1).some((x) => x.role === "tool" && x.tool_call_id === c.id)) out.push({ role: "tool", tool_call_id: c.id, name: c.name, content: "Error: interrupted by the user." });
       }
-    } else out.push({ role: "tool", tool_call_id: m.tool_call_id, name: m.name, content: trim && i < keepFrom ? clip(m.content, 600) : m.content });
+    } else {
+      // (a tool's pictures, for a model that sees; the old ones go when old results are trimmed)
+      const px = m.images?.length && app.get().status?.vision && !(trim && i < keepFrom) ? m.images.map((x) => pixelsOf(x.data)).filter((x): x is Pixels => !!x) : [];
+      out.push({ role: "tool", tool_call_id: m.tool_call_id, name: m.name, content: trim && i < keepFrom ? clip(m.content, 600) : m.content, images: px.length ? px : undefined });
+    }
   });
   return out;
 }
@@ -355,7 +387,7 @@ export async function loop(h: LoopHooks): Promise<LoopResult> {
     if (nudge) system += "\n\n" + nudge;
     nudge = "";
     // the photos resized for a model that sees them (once each)
-    if (app.get().status?.vision) await preparePixels(chat.messages.flatMap((m) => (m.role === "user" && m.images ? m.images.map((x) => x.data) : [])));
+    if (app.get().status?.vision) await preparePixels(chat.messages.flatMap((m) => ((m.role === "user" || m.role === "tool") && m.images ? m.images.map((x) => x.data) : [])));
     let msgs = wire(chat, s.trimToolResults);
     // the context: count it, compact when it's nearly full
     const ctx = app.get().status?.ctx || 32768;
@@ -422,7 +454,7 @@ export async function loop(h: LoopHooks): Promise<LoopResult> {
     const r = again ? { content: again, ui: { kind: "error" as const, title: call.name, error: "Skipped a repeated call" } } : await runTool(h.get(), call.name, call.arguments, live, stopFlag);
     app.set({ draft: null });
     if (r.ui.path && (r.ui.kind === "write" || r.ui.kind === "edit")) changed.add(r.ui.path);
-    h.set((c) => ({ ...c, todos: r.todos ?? c.todos, messages: c.messages.map((m) => (m.id === tid && m.role === "tool" ? { ...m, content: r.content, ui: r.ui } : m)) }));
+    h.set((c) => ({ ...c, todos: r.todos ?? c.todos, messages: c.messages.map((m) => (m.id === tid && m.role === "tool" ? { ...m, content: r.content, ui: r.ui, ...("images" in r && r.images ? { images: r.images } : {}) } : m)) }));
   }
   if (steps >= h.maxSteps) finish = "steps";
   return { changed, steps, finish };

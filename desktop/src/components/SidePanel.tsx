@@ -214,14 +214,16 @@ function Connectors() {
         const m = live.find((x) => x.name === c.name);
         const p = presetOf(c);
         const state = c.disabled ? "off" : m?.running ? "on" : m ? "error" : "off";
+        const n = m?.tools.filter((t) => toolPerm(c, t) !== "off").length || 0;
+        const signIn = state === "error" && m?.auth === "needed";
         return (
           <button key={c.name} className="sp-row click" onClick={() => app.set({ settingsOpen: true, settingsTab: "Connectors" })} title={state === "error" ? m?.error : c.url || `${c.command} ${(c.args || []).join(" ")}`}>
             <span className="sp-conn-ico">
               <Icon name={p?.icon || (c.url ? "globe" : "plug")} size={13} />
             </span>
             <span className="sp-label ellipsis">{p?.name || c.name}</span>
-            <span className="sp-meta">{state === "on" ? `${m!.tools.filter((t) => toolPerm(c, t) !== "off").length} tools` : state === "off" ? "off" : ""}</span>
-            <span className={`status-dot ${state === "on" ? "ready" : state === "error" ? "error" : "empty"}`} />
+            <span className="sp-meta">{state === "on" ? `${n} tool${n === 1 ? "" : "s"}` : signIn ? "Sign in" : state === "off" ? "off" : ""}</span>
+            <span className={`status-dot ${state === "on" ? "ready" : state === "error" && !signIn ? "error" : "empty"}`} />
           </button>
         );
       })}

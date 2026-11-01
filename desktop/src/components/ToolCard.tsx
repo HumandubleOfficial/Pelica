@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import hljs from "highlight.js/lib/common";
 import { bridge } from "../lib/bridge";
 import { diffLines, diffStats, hunks } from "../lib/diff";
-import { openLink, useApp, type ToolUI } from "../state";
+import { app, openLink, useApp, type Photo, type ToolUI } from "../state";
 import { Icon, TodoMark } from "./Icons";
 import { openArtifact } from "./ArtifactPanel";
 
@@ -178,6 +178,7 @@ function summarize(items: ToolUI[]): React.ReactNode {
     else if (k === "denied") say("declined", list, "a step", "steps");
     else if (k === "error") say("hit", list, "an error", "errors");
     else if (k === "trash") say("moved", list, obj, "files to the Recycle Bin");
+    else if (k === "memory") parts.push(list.every((u) => u.detail === "Forgot") ? <>forgot {list.length === 1 ? "something" : `${list.length} things`}</> : list.every((u) => u.detail === "Remembered") ? <>remembered {list.length === 1 ? "something" : `${list.length} things`}</> : <>updated its memory</>);
     else say("used", list, <span className="tool-obj">{list[0].title}</span>, "tools");
   }
   return parts.map((p, i) => (
@@ -190,7 +191,7 @@ function summarize(items: ToolUI[]): React.ReactNode {
 
 /** Tool calls in a row: one line saying what they did, opening to their rows.
  *  It's open while one runs or waits for you, and while the reply is live. */
-export function ToolGroup({ items, live }: { items: ToolUI[]; live: boolean }) {
+export function ToolGroup({ items, live, pictures = [] }: { items: ToolUI[]; live: boolean; pictures?: Photo[] }) {
   const busy = items.some((u) => u.running || u.detail === WAITING);
   const [open, setOpen] = useState<boolean | null>(null);
   const shown = open ?? (busy || live);
@@ -205,6 +206,15 @@ export function ToolGroup({ items, live }: { items: ToolUI[]; live: boolean }) {
         <div className="tool-group">
           {items.map((u, i) => (
             <ToolCard key={i} ui={u} />
+          ))}
+        </div>
+      )}
+      {pictures.length > 0 && (
+        <div className="tool-pictures">
+          {pictures.map((p, i) => (
+            <button key={i} className="tool-picture" title={p.name} onClick={() => app.set({ photo: p.data })}>
+              <img src={p.data} alt={p.name} />
+            </button>
           ))}
         </div>
       )}
@@ -338,6 +348,13 @@ export function ToolCard({ ui }: { ui: ToolUI }) {
     case "mcp":
       label = <span className="tool-obj">{ui.title}</span>;
       body = <pre className="tool-pre">{ui.output}</pre>;
+      break;
+    case "memory":
+      label = (
+        <>
+          <Verb>{ui.detail === "Forgot" ? "Forgot" : ui.detail === "Not found" ? "Couldn't find in memory" : ui.detail === "Already remembered" ? "Already remembered" : "Remembered"}</Verb> <span className="tool-obj">{ui.title}</span>
+        </>
+      );
       break;
     case "system":
       label = <Verb>Looked at this computer</Verb>;

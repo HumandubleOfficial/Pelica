@@ -12,6 +12,8 @@ import { setMaterial } from "./Palette";
 import { RELEASES, ReleaseNotes, VERSION } from "./WhatsNew";
 import { UsageTab } from "./Usage";
 import { PromptList } from "./Prompts";
+import { MemoryList } from "./Memory";
+import { PhoneTab } from "./Phone";
 import { checkNow } from "./Updates";
 import { StorageRows } from "./Storage";
 
@@ -20,8 +22,9 @@ const PREVIEW_B = "function greet(name: string) {\n  return `Hello, ${name}!`;\n
 
 /** The nav: groups as in Claude's settings; `keys` are what the search box also finds a page by. */
 const TABS: { name: string; icon: string; group: string; keys: string }[] = [
-  { name: "General", icon: "user", group: "Preferences", keys: "name instructions send enter reply length saved prompts back up restore chats" },
+  { name: "General", icon: "user", group: "Preferences", keys: "name instructions send enter reply length saved prompts back up restore chats import chatgpt claude export" },
   { name: "Appearance", icon: "palette", group: "Preferences", keys: "theme dark light warm midnight neural background backdrop mica acrylic text size font serif code animations" },
+  { name: "Memory", icon: "brain", group: "Preferences", keys: "remember forget across chats facts about me" },
   { name: "Capabilities", icon: "bolt", group: "Preferences", keys: "web search steps thinking effort" },
   { name: "Permissions", icon: "shield", group: "Preferences", keys: "manual accept edits plan bypass folders deleting recycle shell cmd powershell" },
   { name: "Context", icon: "gauge", group: "Preferences", keys: "auto-compact compact trim tool output" },
@@ -29,6 +32,7 @@ const TABS: { name: string; icon: string; group: string; keys: string }[] = [
   { name: "Usage", icon: "spark", group: "Preferences", keys: "tokens days models" },
   { name: "Desktop", icon: "monitor", group: "This computer", keys: "quick ask shortcut hotkey tray start with windows notifications computer tools" },
   { name: "Models", icon: "library", group: "This computer", keys: "storage disk space drive move delete uninstall model folders load download speed up repack local api openai port engine restart" },
+  { name: "Phone", icon: "phone", group: "This computer", keys: "mobile phone qr code wifi tailscale remote pair" },
   { name: "Devices", icon: "monitor", group: "This computer", keys: "bridge ram lend pairing network" },
   { name: "Developer", icon: "terminal", group: "This computer", keys: "versions electron engine log data folder" },
   { name: "Connectors", icon: "plug", group: "Customize", keys: "mcp servers tools github memory browser" },
@@ -129,6 +133,35 @@ const keyName = (e: KeyboardEvent) => {
 
 /** The quick-ask shortcut: shown as keys; Change records the next combination. */
 /** Back up every chat to one file, or bring chats back from one. */
+/** Settings → General: chats from ChatGPT's or Claude's data export. */
+function ImportRow() {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Row title="Import from ChatGPT or Claude" desc="Bring your chats over from their data export: in ChatGPT, Settings → Data controls → Export data; in Claude, Settings → Privacy → Export data. Pick the zip they email you. Importing it again skips the chats already here.">
+      <button
+        className="btn"
+        disabled={!bridge || busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            const r = await bridge!.chats.import();
+            if (r) {
+              await refreshChats();
+              const app = r.from === "chatgpt" ? "ChatGPT" : "Claude";
+              toast(r.added ? `Imported ${r.added} chat${r.added === 1 ? "" : "s"} from ${app}${r.same ? ` (${r.same} already here)` : ""}` : r.same ? `All ${r.same} chats from ${app} are already here.` : `No chats in that export.`);
+            }
+          } catch (e: any) {
+            toast(String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
+          }
+          setBusy(false);
+        }}
+      >
+        {busy ? "Importing…" : "Import…"}
+      </button>
+    </Row>
+  );
+}
+
 function BackupRow() {
   const [busy, setBusy] = useState(false);
   const go = async (fn: () => Promise<void>) => {
@@ -561,6 +594,7 @@ export function SettingsModal() {
           <PromptList />
           <Section title="Your chats" />
           <BackupRow />
+          <ImportRow />
         </>
       );
       break;
@@ -593,6 +627,17 @@ export function SettingsModal() {
           <Row title="Code font" desc="A monospace font for code, diffs and the terminal.">
             <input className="text-input" value={s.codeFont} placeholder="e.g. JetBrains Mono" onChange={(e) => set({ codeFont: e.target.value })} spellCheck={false} />
           </Row>
+        </>
+      );
+      break;
+    case "Memory":
+      body = (
+        <>
+          <Row title="Memory across chats" desc="Pelica keeps short facts about you and your work and sees them in every chat. It saves when you ask (“remember that…”) and sometimes on its own, always with a note in the chat.">
+            <Toggle on={s.memoryOn} set={(v) => set({ memoryOn: v })} />
+          </Row>
+          <Section title="What Pelica remembers" />
+          <MemoryList />
         </>
       );
       break;
@@ -679,6 +724,9 @@ export function SettingsModal() {
       break;
     case "Models":
       body = <ModelsTab />;
+      break;
+    case "Phone":
+      body = <PhoneTab Row={Row} Toggle={Toggle} />;
       break;
     case "Devices":
       body = <DevicesTab />;

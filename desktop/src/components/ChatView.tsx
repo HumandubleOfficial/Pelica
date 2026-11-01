@@ -378,7 +378,7 @@ const Turn = memo(
         <div className="turn-body">
           {groups.map((g, gi) =>
             Array.isArray(g) ? (
-              <ToolGroup key={g[0].id} items={g.map((m) => m.ui)} live={liveNow && gi === groups.length - 1} />
+              <ToolGroup key={g[0].id} items={g.map((m) => m.ui)} pictures={g.flatMap((m) => m.images || [])} live={liveNow && gi === groups.length - 1} />
             ) : g.role === "assistant" ? (
               <div key={g.id}>
                 {g.reasoning && <Thinking text={g.reasoning} seconds={g.stats?.think_s} />}

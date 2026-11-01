@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#262624" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pelica">
+<title>Pelica</title>
+<!-- Pelica on your phone: served by the desktop app (electron/phone.ts) on
+     this PC's network. It mirrors the window's open chat and sends what you
+     type there. The pairing key comes in the QR code's link (?k=) and is kept
+     in this browser. -->
+<style>
+:root {
+  --bg: #faf9f5; --panel: #ffffff; --text: #1f1e1c; --muted: #73716b; --line: #e6e3da;
+  --user: #f0eee6; --accent: #c96442; --accent-text: #fff; --code: #f3f1ea; --danger: #b3362c;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #262624; --panel: #30302e; --text: #ecebe6; --muted: #a09d94; --line: #3d3c39;
+    --user: #3a3936; --accent: #d97757; --accent-text: #fff; --code: #1f1e1d; --danger: #e5675c;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
+body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+header { flex: none; display: flex; align-items: center; gap: 6px; padding: calc(env(safe-area-inset-top) + 6px) 8px 6px; border-bottom: 1px solid var(--line); background: var(--bg); }
+header .title { flex: 1; min-width: 0; text-align: center; }
+header .title b { display: block; font-size: .98em; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header .title span { display: block; font-size: .75em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; }
+.icon:active { background: var(--user); }
+.icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+main { flex: 1; overflow-y: auto; padding: 14px 16px 8px; -webkit-overflow-scrolling: touch; }
+.msg { margin: 0 0 14px; overflow-wrap: anywhere; }
+.msg.user { margin-left: auto; max-width: 86%; width: fit-content; background: var(--user); padding: 9px 13px; border-radius: 16px; white-space: pre-wrap; }
+.msg.assistant { font-family: ui-serif, Georgia, "Times New Roman", serif; font-size: 1.02em; }
+.msg.assistant p { margin: 0 0 .7em; }
+.msg.assistant p:last-child { margin-bottom: 0; }
+.msg.assistant h1, .msg.assistant h2, .msg.assistant h3 { font-family: system-ui, sans-serif; font-size: 1.05em; margin: 1em 0 .4em; }
+.msg.assistant ul, .msg.assistant ol { margin: 0 0 .7em; padding-left: 1.3em; }
+.msg.assistant a { color: var(--accent); }
+.msg pre { background: var(--code); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow-x: auto; font: 13px/1.45 ui-monospace, "Cascadia Code", Menlo, monospace; white-space: pre; }
+.msg code { font: .88em ui-monospace, "Cascadia Code", Menlo, monospace; background: var(--code); padding: 1px 4px; border-radius: 4px; }
+.msg pre code { background: none; padding: 0; font-size: inherit; }
+.msg.tool, .msg.event { font-size: .82em; color: var(--muted); margin: -4px 0 10px; display: flex; gap: 6px; align-items: baseline; }
+.msg.tool::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .6; transform: translateY(-1px); }
+.msg.event.error { color: var(--danger); }
+.phase { color: var(--muted); font-size: .88em; margin: 0 0 14px; }
+.phase::after { content: ""; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.2s steps(4) infinite; }
+@keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+.empty { color: var(--muted); text-align: center; margin-top: 30vh; padding: 0 20px; }
+.empty b { display: block; color: var(--text); font-family: ui-serif, Georgia, serif; font-size: 1.5em; font-weight: 500; margin-bottom: 6px; }
+footer { flex: none; padding: 8px 10px calc(env(safe-area-inset-bottom) + 8px); background: var(--bg); }
+.box { display: flex; align-items: flex-end; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 6px 6px 6px 14px; }
+textarea { flex: 1; min-width: 0; border: 0; outline: 0; resize: none; background: none; color: var(--text); font: inherit; max-height: 40vh; padding: 6px 0; }
+.send { flex: none; width: 36px; height: 36px; border-radius: 12px; background: var(--accent); color: var(--accent-text); display: grid; place-items: center; }
+.send:disabled { opacity: .35; }
+.send svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.send.stop svg { fill: currentColor; stroke: none; }
+.note { font-size: .78em; color: var(--muted); text-align: center; margin-top: 6px; min-height: 1em; }
+.banner { flex: none; background: var(--user); color: var(--text); font-size: .85em; text-align: center; padding: 8px 12px; }
+.banner.bad { color: var(--danger); }
+.drawer { position: fixed; inset: 0; z-index: 10; display: none; }
+.drawer.open { display: block; }
+.drawer .shade { position: absolute; inset: 0; background: rgba(0,0,0,.4); }
+.drawer nav { position: absolute; top: 0; bottom: 0; left: 0; width: min(84vw, 330px); background: var(--bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top) + 10px) 8px calc(env(safe-area-inset-bottom) + 10px); }
+.drawer .new { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-weight: 600; text-align: left; }
+.drawer .list { flex: 1; overflow-y: auto; margin-top: 6px; }
+.drawer .chat { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drawer .chat.sel, .drawer .chat:active, .drawer .new:active { background: var(--user); }
+.drawer .head { font-size: .75em; color: var(--muted); padding: 12px 12px 4px; }
+.sheet { position: fixed; inset: 0; z-index: 20; display: none; align-items: flex-end; background: rgba(0,0,0,.4); }
+.sheet.open { display: flex; }
+.sheet .card { width: 100%; background: var(--panel); border-radius: 18px 18px 0 0; padding: 18px 16px calc(env(safe-area-inset-bottom) + 14px); max-height: 80vh; overflow-y: auto; }
+.sheet h2 { font-size: 1.05em; margin: 0 0 4px; }
+.sheet .why { color: var(--muted); font-size: .88em; margin: 0 0 10px; }
+.sheet pre { background: var(--code); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font: 13px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 36vh; overflow-y: auto; margin: 0 0 14px; }
+.sheet .btns { display: flex; flex-direction: column; gap: 8px; }
+.sheet .btns button { padding: 12px; border-radius: 12px; border: 1px solid var(--line); font-weight: 600; }
+.sheet .btns .yes { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.toast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 60px); transform: translateX(-50%); background: var(--text); color: var(--bg); font-size: .85em; padding: 8px 14px; border-radius: 10px; max-width: 90vw; z-index: 30; display: none; }
+.toast.show { display: block; }
+</style>
+</head>
+<body>
+<header>
+  <button class="icon" id="menu" aria-label="Chats"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <div class="title"><b id="title">Pelica</b><span id="model"></span></div>
+  <button class="icon" id="new" aria-label="New chat"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+</header>
+<div class="banner" id="banner" hidden></div>
+<main id="msgs"></main>
+<footer>
+  <div class="box">
+    <textarea id="input" rows="1" placeholder="Reply to Pelica" enterkeyhint="send"></textarea>
+    <button class="send" id="send" aria-label="Send" disabled><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+  </div>
+  <div class="note" id="note"></div>
+</footer>
+<div class="drawer" id="drawer">
+  <div class="shade" id="shade"></div>
+  <nav>
+    <button class="new" id="new2"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New chat</button>
+    <div class="head">Recents</div>
+    <div class="list" id="list"></div>
+  </nav>
+</div>
+<div class="sheet" id="sheet">
+  <div class="card">
+    <h2 id="ap-title"></h2>
+    <p class="why" id="ap-why"></p>
+    <pre id="ap-cmd"></pre>
+    <div class="btns">
+      <button class="yes" data-a="allow">Allow</button>
+      <button data-a="always">Allow for this chat</button>
+      <button data-a="deny">Deny</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+// the pairing key: from the QR code's link, then kept here
+let key = "";
+try {
+  const k = new URLSearchParams(location.search).get("k");
+  if (k) localStorage.setItem("pelica-key", k);
+  key = k || localStorage.getItem("pelica-key") || "";
+} catch (e) {
+  key = new URLSearchParams(location.search).get("k") || "";
+}
+if (location.search) history.replaceState(null, "", "/");
+
+let snap = null;
+let rev = -1;
+let sending = false;
+
+function banner(text, bad) {
+  const b = $("banner");
+  b.hidden = !text;
+  b.textContent = text || "";
+  b.classList.toggle("bad", !!bad);
+}
+
+async function api(path, body) {
+  const r = await fetch(path, {
+    method: body ? "POST" : "GET",
+    headers: Object.assign({ Authorization: "Bearer " + key }, body ? { "Content-Type": "application/json" } : {}),
+    body: body ? JSON.stringify(body) : undefined,
+    cache: "no-store",
+  });
+  if (r.status === 401) throw Object.assign(new Error("unpaired"), { unpaired: true });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+const cmd = (c) => api("/api/cmd", c).catch(() => toast("Couldn't reach Pelica."));
+
+// ---- a small Markdown reader (escaped first, so a reply can't add HTML) ----
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function inline(s) {
+  const codes = [];
+  s = s.replace(/`([^`\n]+)`/g, (_, c) => (codes.push(c), "\x00" + (codes.length - 1) + "\x00"));
+  s = esc(s)
+    .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
+    .replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, "$1<i>$2</i>")
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  return s.replace(/\x00(\d+)\x00/g, (_, i) => "<code>" + esc(codes[+i]) + "</code>");
+}
+function md(text) {
+  const out = [];
+  const parts = text.split(/^```[^\n]*\n?/m);
+  parts.forEach((part, i) => {
+    if (i % 2) {
+      out.push("<pre><code>" + esc(part.replace(/\n$/, "")) + "</code></pre>");
+      return;
+    }
+    for (const block of part.split(/\n{2,}/)) {
+      const t = block.trim();
+      if (!t) continue;
+      const lines = t.split("\n");
+      const h = /^(#{1,6})\s+(.*)$/.exec(t);
+      if (h && lines.length === 1) out.push("<h3>" + inline(h[2]) + "</h3>");
+      else if (lines.every((l) => /^\s*[-*+]\s+/.test(l))) out.push("<ul>" + lines.map((l) => "<li>" + inline(l.replace(/^\s*[-*+]\s+/, "")) + "</li>").join("") + "</ul>");
+      else if (lines.every((l) => /^\s*\d+[.)]\s+/.test(l))) out.push("<ol>" + lines.map((l) => "<li>" + inline(l.replace(/^\s*\d+[.)]\s+/, "")) + "</li>").join("") + "</ol>");
+      else out.push("<p>" + lines.map(inline).join("<br>") + "</p>");
+    }
+  });
+  return out.join("");
+}
+
+const cache = new Map();
+function render(m) {
+  const k = m.id + ":" + m.role;
+  const c = cache.get(k);
+  if (c && c.text === m.text) return c.html;
+  let html;
+  if (m.role === "assistant") html = '<div class="msg assistant">' + md(m.text) + "</div>";
+  else if (m.role === "user") html = '<div class="msg user">' + esc(m.text) + (m.photos ? '<div class="note">' + m.photos + " photo" + (m.photos > 1 ? "s" : "") + "</div>" : "") + "</div>";
+  else html = '<div class="msg ' + m.role + " " + esc(m.kind || "") + '">' + esc(m.text) + "</div>";
+  cache.set(k, { text: m.text, html });
+  return html;
+}
+
+const PHASE = { waiting: "Waiting", prefill: "Reading", thinking: "Thinking", writing: "Writing", tool: "Working", compacting: "Compacting", cqs: "Checking the code" };
+
+function draw() {
+  const s = snap;
+  if (!s) return;
+  const chat = s.chat;
+  $("title").textContent = chat && chat.messages.length ? chat.title : "New chat";
+  $("model").textContent = s.state === "ready" ? s.model : s.state === "loading" ? "Loading the model…" : "No model loaded on the PC";
+  const main = $("msgs");
+  const near = main.scrollHeight - main.scrollTop - main.clientHeight < 120;
+  let html = "";
+  if (!chat || !chat.messages.length) html = '<div class="empty"><b>How can I help?</b>' + (s.state === "ready" ? "" : "Load a model in Pelica on your PC first.") + "</div>";
+  else html = chat.messages.map(render).join("");
+  if (s.draft) {
+    if (s.draft.text.trim()) html += '<div class="msg assistant">' + md(s.draft.text) + "</div>";
+    else html += '<div class="phase">' + esc(s.draft.phase === "tool" && s.draft.tool ? "Using " + s.draft.tool : PHASE[s.draft.phase] || "Working") + "</div>";
+  } else if (s.running && !s.elsewhere) html += '<div class="phase">Working</div>';
+  if (main.dataset.html !== html) {
+    main.innerHTML = html;
+    main.dataset.html = html;
+    if (near) main.scrollTop = main.scrollHeight;
+  }
+  const busyHere = s.running && !s.elsewhere;
+  const btn = $("send");
+  btn.classList.toggle("stop", busyHere);
+  btn.innerHTML = busyHere ? '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+  btn.setAttribute("aria-label", busyHere ? "Stop" : "Send");
+  btn.disabled = !busyHere && (!$("input").value.trim() || s.state !== "ready" || !!s.elsewhere || sending);
+  $("note").textContent = s.elsewhere ? "Pelica is replying in “" + s.elsewhere + "”" : "";
+  // the chat list
+  const list = $("list");
+  const lh = s.chats.map((c) => '<button class="chat' + (chat && c.id === chat.id ? " sel" : "") + '" data-id="' + esc(c.id) + '">' + esc(c.title) + "</button>").join("");
+  if (list.dataset.html !== lh) {
+    list.innerHTML = lh;
+    list.dataset.html = lh;
+  }
+  // an approval
+  const a = s.approval;
+  $("sheet").classList.toggle("open", !!a);
+  if (a && $("sheet").dataset.id !== a.id) {
+    $("sheet").dataset.id = a.id;
+    $("ap-title").textContent = a.title;
+    $("ap-why").textContent = a.why || (a.chatTitle ? "In “" + a.chatTitle + "”" : "");
+    $("ap-cmd").textContent = a.command + (a.args ? "\n\n" + a.args : "");
+  }
+}
+
+let lastToast = null;
+let toastTimer = 0;
+function toast(t) {
+  const el = $("toast");
+  el.textContent = t;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 3500);
+}
+
+async function pollLoop() {
+  for (;;) {
+    try {
+      const s = await api("/api/state?rev=" + rev);
+      banner("");
+      if (s.rev !== rev) {
+        rev = s.rev;
+        if (s.toast && s.toast !== lastToast) toast(s.toast);
+        lastToast = s.toast;
+        snap = s;
+        draw();
+      }
+    } catch (e) {
+      if (e.unpaired) {
+        banner(key ? "This phone isn't paired anymore. Scan the QR code in Pelica → Settings → Phone again." : "Scan the QR code in Pelica → Settings → Phone to pair this phone.", true);
+        await new Promise((r) => setTimeout(r, 5000));
+      } else {
+        banner("Can't reach Pelica. Is the PC on, with Pelica open, on this network?", true);
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+    }
+  }
+}
+
+// ---- input ----
+const input = $("input");
+function grow() {
+  input.style.height = "auto";
+  input.style.height = Math.min(input.scrollHeight, window.innerHeight * 0.4) + "px";
+  draw();
+}
+input.addEventListener("input", grow);
+input.addEventListener("keydown", (e) => {
+  // (Enter sends on a hardware keyboard; phones' Enter makes a new line)
+  if (e.key === "Enter" && !e.shiftKey && matchMedia("(pointer: fine)").matches) {
+    e.preventDefault();
+    go();
+  }
+});
+async function go() {
+  if (snap && snap.running && !snap.elsewhere) return cmd({ type: "stop" });
+  const text = input.value.trim();
+  if (!text || sending) return;
+  sending = true;
+  draw();
+  try {
+    await api("/api/cmd", { type: "send", id: snap && snap.chat ? snap.chat.id : undefined, text });
+    input.value = "";
+    grow();
+  } catch (e) {
+    toast("Couldn't send. Is Pelica open on the PC?");
+  }
+  sending = false;
+  draw();
+}
+$("send").addEventListener("click", go);
+const openDrawer = (o) => $("drawer").classList.toggle("open", o);
+$("menu").addEventListener("click", () => openDrawer(true));
+$("shade").addEventListener("click", () => openDrawer(false));
+const newChat = () => (openDrawer(false), cmd({ type: "new" }));
+$("new").addEventListener("click", newChat);
+$("new2").addEventListener("click", newChat);
+$("list").addEventListener("click", (e) => {
+  const b = e.target.closest(".chat");
+  if (!b) return;
+  openDrawer(false);
+  cmd({ type: "open", id: b.dataset.id });
+});
+$("sheet").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-a]");
+  if (!b || !snap || !snap.approval) return;
+  cmd({ type: "approve", id: snap.approval.id, answer: b.dataset.a });
+});
+$("msgs").addEventListener("click", (e) => {
+  if (e.target.closest(".msg")) input.blur();
+});
+
+pollLoop();
+</script>
+</body>
+</html>

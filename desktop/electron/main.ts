@@ -19,6 +19,9 @@ import * as media from "./media";
 import { chatUsage, searchChats } from "./chatdata";
 import { checkRepo, reposIn } from "./repocheck";
 import * as updates from "./updates";
+import { importChats } from "./importer";
+import * as phone from "./phone";
+import * as oauth from "./oauth";
 
 const userDir = app.getPath("userData");
 const settingsFile = path.join(userDir, "settings.json");
@@ -185,6 +188,17 @@ function syncApi() {
   });
   srv.listen(want, "127.0.0.1");
   apiServer = srv;
+}
+
+// Pelica on your phone (Settings → Phone): the page and its pairing key
+function syncPhone() {
+  if (settings.phoneOn && !settings.phoneKey) {
+    settings.phoneKey = phone.newKey();
+    saveSettings();
+  }
+  // (the phone follows replies as they stream, also while the window is hidden in the tray)
+  win?.webContents.setBackgroundThrottling(!settings.phoneOn);
+  phone.sync(settings.phoneOn ? Number(settings.phonePort) || 8737 : 0, settings.phoneKey || "", path.resolve(__dirname, "../../dist"), (c) => win?.webContents.send("phone:cmd", c));
 }
 
 // where `pelica chat` in a terminal finds this engine, to use the loaded
@@ -701,10 +715,20 @@ function registerIpc() {
     saveSettings();
     if ("theme" in rest) syncTheme();
     if ("apiServer" in rest || "apiPort" in rest) syncApi();
+    if ("phoneOn" in rest || "phonePort" in rest) syncPhone();
     if ("modelDirs" in rest || "downloadDir" in rest) syncDirs();
     return settings;
   });
   handle("api:status", () => ({ on: !!apiServer && !apiError, port: apiPort, error: apiError }));
+  handle("phone:status", () => ({ ...phone.status(), key: settings.phoneKey || "" }));
+  handle("phone:push", (snap: any) => phone.push(snap));
+  // a new pairing key: phones paired before can't connect until they scan again
+  handle("phone:newKey", () => {
+    settings.phoneKey = phone.newKey();
+    saveSettings();
+    syncPhone();
+    return { ...phone.status(), key: settings.phoneKey };
+  });
 
   handle("folder:pick", async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ["openDirectory", "createDirectory"], title: "Choose the folder Pelica works in" });
@@ -726,7 +750,7 @@ function registerIpc() {
       .map((f) => {
         try {
           const c = JSON.parse(fs.readFileSync(path.join(chatsDir, f), "utf8"));
-          return { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder || null };
+          return { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder || null, project: c.project || undefined };
         } catch {
           return null;
         }
@@ -807,6 +831,12 @@ function registerIpc() {
       out.copies++;
     }
     return out;
+  });
+  // chats from ChatGPT's or Claude's data export (the zip, or its conversations.json)
+  handle("chats:import", async () => {
+    const r = await dialog.showOpenDialog(win!, { title: "Import chats from ChatGPT or Claude", properties: ["openFile"], filters: [{ name: "ChatGPT or Claude export", extensions: ["zip", "json"] }] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    return importChats(r.filePaths[0], chatsDir);
   });
   const chatPath = (id: string) => {
     if (!/^[\w-]+$/.test(id)) throw new Error("bad chat id");
@@ -916,6 +946,22 @@ function registerIpc() {
   // a server's tools changed by themselves (or it stopped): tell the window
   mcp.watch(() => win?.webContents.send("mcp:changed", mcp.list()));
   handle("mcp:call", (server: string, tool: string, args: unknown) => mcp.call(server, tool, args));
+  // online connectors' sign-in (the browser opens the server's sign-in page)
+  const mcpCfg = (name: string) => {
+    const c = (settings.mcpServers || []).find((x: any) => x.name === name);
+    if (!c) throw new Error(`no connector called ${name}`);
+    return c;
+  };
+  handle("mcp:signIn", async (name: string) => {
+    await mcp.signIn(mcpCfg(name), (u) => shell.openExternal(u));
+    win?.show();
+    win?.focus();
+    return mcp.list();
+  });
+  handle("mcp:signOut", async (name: string) => {
+    await mcp.signOut(mcpCfg(name));
+    return mcp.list();
+  });
 
   handle("lib:search", (q: string) => lib.searchRepos(q));
   handle("lib:files", (id: string) => lib.repoFiles(id));
@@ -1201,12 +1247,15 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    // (connector sign-ins first: connectors may start as soon as the window asks)
+    oauth.init(userDir);
     registerIpc();
     makeTray();
     registerHotkey();
     jumpList();
     await createWindow();
     syncApi();
+    syncPhone();
     mcp.startAll(settings.mcpServers || []).catch(() => {});
     if (process.argv.includes("--quick")) openQuick();
   });

@@ -1,7 +1,7 @@
 // The left sidebar (as in the Claude app): new chat, search, sections,
 // pinned and recent chats, the user chip with settings.
 import { useEffect, useRef, useState } from "react";
-import { app, deleteChat, forkChat, openChat, patchChat, searchMessages, setChatFolder, setSettings, startNewChat, toggleSidebar, updateChat, useApp } from "../state";
+import { app, deleteChat, forkChat, openChat, openProject, patchChat, searchMessages, setChatFolder, setSettings, startNewChat, toggleSidebar, updateChat, useApp } from "../state";
 import type { SearchHit } from "../../electron/chatdata";
 import { bridge } from "../lib/bridge";
 import { copyChat, exportChat } from "../lib/exportChat";
@@ -14,8 +14,9 @@ const base = (p: string) => p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || p;
 
 /** What a chat's menu offers (the sidebar's "…" and right-click, and the
  *  title bar's chevron), as in Claude's. */
-function chatMenu(id: string, o: { pinned: boolean; folder: string | null; rename: () => void; title?: boolean }): MenuItem[] {
+function chatMenu(id: string, o: { pinned: boolean; folder: string | null; project?: string; rename: () => void; title?: boolean }): MenuItem[] {
   const recent = app.get().settings.recentFolders;
+  const projects = app.get().settings.projects;
   const font = app.get().settings.replyFont;
   const items: MenuItem[] = [];
   if (o.folder && bridge) {
@@ -30,6 +31,12 @@ function chatMenu(id: string, o: { pinned: boolean; folder: string | null; renam
     { label: "Fork", key: "F", on: () => forkChat(id) },
     "sep",
   );
+  items.push({ label: "Move to project", sub: [
+    ...projects.map((p) => ({ label: p.name, icon: "layers", checked: p.id === o.project, on: () => patchChat(id, (c) => ({ ...c, project: p.id })) })),
+    ...(projects.length ? (["sep"] as MenuItem[]) : []),
+    { label: "New project…", icon: "plus", on: () => { const p = { id: Date.now().toString(36), name: "New project", instructions: "", files: [], folder: o.folder, created: Date.now() }; setSettings({ projects: [...projects, p] }); patchChat(id, (c) => ({ ...c, project: p.id })).then(() => openProject(p.id)); } },
+    { label: "No project", icon: "x", disabled: !o.project, on: () => patchChat(id, (c) => ({ ...c, project: undefined })) },
+  ] });
   if (!o.title) {
     items.push({ label: "Move to folder", sub: [
       ...recent.map((p) => ({ label: base(p), icon: "folder", checked: p === o.folder, on: () => (app.get().chat?.id === id ? setChatFolder(p) : patchChat(id, (c) => ({ ...c, folder: p }))) })),
@@ -60,8 +67,9 @@ function RenameBox({ title, done, className }: { title: string; done: (t: string
   return <input ref={ref} className={className} defaultValue={title} spellCheck={false} onBlur={(e) => done(e.target.value)} onKeyDown={(e) => (e.key === "Enter" ? e.currentTarget.blur() : e.key === "Escape" && done(null))} />;
 }
 
-function ChatRow({ id, title, pinned, active, folder, tag = true }: { id: string; title: string; pinned: boolean; active: boolean; folder: string | null; tag?: boolean }) {
+function ChatRow({ id, title, pinned, active, folder, project, tag = true }: { id: string; title: string; pinned: boolean; active: boolean; folder: string | null; project?: string; tag?: boolean }) {
   const live = useApp((s) => s.liveId === id);
+  const pname = useApp((s) => (project ? s.settings.projects.find((p) => p.id === project)?.name : undefined));
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [editing, setEditing] = useState(false);
   const more = useRef<HTMLButtonElement>(null);
@@ -82,13 +90,13 @@ function ChatRow({ id, title, pinned, active, folder, tag = true }: { id: string
         <button className="chat-row-main" onClick={() => openChat(id)} onDoubleClick={() => setEditing(true)} title={folder ? `${title}\n${folder}` : title}>
           {live && <span className="live-dot" title="Pelica is replying here" />}
           <span className="chat-row-title">{title}</span>
-          {folder && tag && <span className="chat-row-folder">{folder.split(/[\\/]/).filter(Boolean).pop()}</span>}
+          {pname ? <span className="chat-row-folder chat-row-project">{pname}</span> : folder && tag && <span className="chat-row-folder">{folder.split(/[\\/]/).filter(Boolean).pop()}</span>}
         </button>
       )}
       <button ref={more} className={`chat-row-more ${menu ? "open menu-open" : ""}`} title="More" onClick={openMenu}>
         <Icon name="more" size={16} />
       </button>
-      {menu && <Menu at={menu} ignore={more} close={() => setMenu(null)} items={chatMenu(id, { pinned, folder, rename: () => setEditing(true) })} />}
+      {menu && <Menu at={menu} ignore={more} close={() => setMenu(null)} items={chatMenu(id, { pinned, folder, project, rename: () => setEditing(true) })} />}
     </div>
   );
 }
@@ -175,13 +183,14 @@ export function Sidebar() {
           nav("Search", "search", () => setSearching(true))
         )}
         {nav("New chat", "plus", () => startNewChat())}
+        {nav("Projects", "layers", () => app.set({ view: "projects" }), view === "projects" || view === "project")}
         {nav("Models", "library", () => app.set({ view: "library" }), view === "library")}
         {nav("Brain", "brain", () => app.set({ view: "brain" }), view === "brain")}
       </nav>
       <div className="side-lists">
         {pinned.length > 0 && <div className="side-label">Pinned</div>}
         {pinned.map((c) => (
-          <ChatRow key={c.id} id={c.id} title={c.title} pinned active={c.id === cur && view === "chat"} folder={c.folder} />
+          <ChatRow key={c.id} id={c.id} title={c.title} pinned active={c.id === cur && view === "chat"} folder={c.folder} project={c.project} />
         ))}
         {[...groups].map(([k, list]) => {
           const shut = folded.includes(k);
@@ -197,13 +206,13 @@ export function Sidebar() {
                   <Icon name="plus" size={13} />
                 </button>
               </div>
-              {!shut && list.map((c) => <ChatRow key={c.id} id={c.id} title={c.title} pinned={false} active={c.id === cur && view === "chat"} folder={c.folder} tag={false} />)}
+              {!shut && list.map((c) => <ChatRow key={c.id} id={c.id} title={c.title} pinned={false} active={c.id === cur && view === "chat"} folder={c.folder} project={c.project} tag={false} />)}
             </div>
           );
         })}
         {loose.length > 0 && <div className="side-label">{q ? "Results" : groups.size ? "Chats" : "Recents"}</div>}
         {loose.map((c) => (
-          <ChatRow key={c.id} id={c.id} title={c.title} pinned={false} active={c.id === cur && view === "chat"} folder={c.folder} />
+          <ChatRow key={c.id} id={c.id} title={c.title} pinned={false} active={c.id === cur && view === "chat"} folder={c.folder} project={c.project} />
         ))}
         {msgHits.length > 0 && <div className="side-label">In messages</div>}
         {msgHits.map((h) => (
@@ -291,6 +300,7 @@ function ViewOptions() {
  *  turns it into a box in place. */
 function ChatTitle() {
   const chat = useApp((s) => s.chat);
+  const project = useApp((s) => s.settings.projects.find((p) => p.id === s.chat?.project));
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -303,6 +313,14 @@ function ChatTitle() {
   };
   return (
     <div className="title-text chat-title">
+      {project && (
+        <>
+          <button className="title-project nodrag" onClick={() => openProject(project.id)} title="Open the project">
+            {project.name}
+          </button>
+          <span className="title-slash">/</span>
+        </>
+      )}
       <div className="pop-wrap title-wrap nodrag" ref={wrap}>
         {editing ? (
           <RenameBox className="title-edit" title={chat.title} done={rename} />
@@ -312,7 +330,7 @@ function ChatTitle() {
             <Icon name="chevronDown" size={14} stroke={2.4} />
           </button>
         )}
-        {open && !editing && <Menu className="title-pop" ignore={wrap} close={() => setOpen(false)} items={chatMenu(chat.id, { pinned: !!chat.pinned, folder: chat.folder, rename: () => setEditing(true), title: true })} />}
+        {open && !editing && <Menu className="title-pop" ignore={wrap} close={() => setOpen(false)} items={chatMenu(chat.id, { pinned: !!chat.pinned, folder: chat.folder, project: chat.project, rename: () => setEditing(true), title: true })} />}
       </div>
     </div>
   );
@@ -322,7 +340,7 @@ export function TitleBar() {
   const [max, setMax] = useState(false);
   const sidebar = useApp((s) => s.sidebar);
   const compact = useApp((s) => s.compact);
-  const title = useApp((s) => (s.view === "library" ? "Models" : s.view === "brain" ? "Brain" : s.chat?.title || ""));
+  const title = useApp((s) => (s.view === "library" ? "Models" : s.view === "brain" ? "Brain" : s.view === "projects" ? "Projects" : s.view === "project" ? s.settings.projects.find((p) => p.id === s.projectId)?.name || "Project" : s.chat?.title || ""));
   const panelable = useApp((s) => s.view === "chat" && !!s.chat && (s.chat.messages.length > 0 || !!s.chat.archive?.length));
   const panel = useApp((s) => s.settings.sidePanel);
   const isChat = useApp((s) => s.view === "chat");

@@ -4,7 +4,8 @@
 // asked for, or off).
 import { bridge, need, type McpConfig, type McpToolInfo, type RepoReport, type ToolPerm } from "../lib/bridge";
 import type { ToolSpec } from "../lib/engine";
-import { app, uid, type Chat, type Todo, type ToolUI } from "../state";
+import { app, setSettings, uid, type Chat, type Photo, type Todo, type ToolUI } from "../state";
+import { shrink } from "../components/Attachments";
 
 const obj = (properties: Record<string, any>, required: string[]) => ({ type: "object", properties, required });
 const str = (description: string) => ({ type: "string", description });
@@ -40,6 +41,12 @@ const OPEN: ToolSpec = { name: "open_file", description: "Open a workspace file 
 
 const READ_ONLY = new Set(["list_files", "read_file", "search_files", "todo_write"]);
 
+/** Memory across chats (Settings → Memory): what's kept shows in every chat's system prompt. */
+const MEMORY: ToolSpec[] = [
+  { name: "remember", description: "Save one short fact to keep across all chats: something the user asked you to remember, or a lasting fact you'll need again (their name, preferences, setup, ongoing projects). One fact per call, in plain words, about the user or their work, not the conversation. Don't save passwords, keys or other secrets. The user sees what you saved.", parameters: obj({ text: str("the fact, e.g. \"Prefers answers in British English\"") }, ["text"]) },
+  { name: "forget", description: "Remove a saved memory, when the user asks you to forget something or a fact has changed (then remember the new one).", parameters: obj({ memory: str("the saved memory's text, or enough of it to tell which") }, ["memory"]) },
+];
+
 const GREETING = /^\s*(hi|hello|hey|yo|hiya|howdy|sup|hola|thanks|thank you|thx|ty|ok|okay|cool|nice|great|bye|good (morning|afternoon|evening|night)|what'?s up|how are you|who are you|what are you)\b[\s!.?,]*([a-z]+[\s!.?,]*){0,4}$/i;
 
 /** Small talk gets no tools at all: small models otherwise search for anything. */
@@ -55,6 +62,7 @@ export function toolsFor(chat: Chat, opts: { web: boolean; lastUser: string }): 
   const mode = app.get().settings.permMode;
   // plan mode: looking only
   if (chat.folder && bridge) tools.push(...(mode === "plan" ? FILES.filter((t) => READ_ONLY.has(t.name)) : FILES));
+  if (app.get().settings.memoryOn) tools.push(...MEMORY);
   if (bridge && app.get().settings.computerTools) {
     tools.push(...COMPUTER);
     if (chat.folder && mode !== "plan") tools.push(OPEN);
@@ -118,6 +126,20 @@ export interface ToolResult {
   content: string;
   ui: ToolUI;
   todos?: Todo[];
+  /** pictures it answered with (a connector's screenshot or chart) */
+  images?: Photo[];
+}
+
+/** A connector's pictures, resized like a sent photo (JPEG data: URLs). */
+async function toolPictures(list: { data: string; mimeType: string }[], tool: string): Promise<Photo[]> {
+  const out: Photo[] = [];
+  for (const [i, im] of list.entries()) {
+    try {
+      const blob = await (await fetch(`data:${im.mimeType};base64,${im.data}`)).blob();
+      out.push({ name: `${tool} ${i + 1}`, data: await shrink(blob) });
+    } catch {}
+  }
+  return out;
 }
 
 /** In Ask mode a file change waits for the user's OK; null when it may go ahead. */
@@ -200,6 +222,22 @@ export async function runTool(chat: Chat, name: string, args: any, live: (ui: Pa
         const left = todos.filter((t) => t.status !== "completed").length;
         return { content: left ? `Todo list updated: ${left} of ${todos.length} left. Continue with the next item.` : "All items completed.", ui: { kind: "todo", title: `${todos.length - left}/${todos.length} done`, todos }, todos };
       }
+      case "remember": {
+        const text = String(a.text || "").trim().replace(/\s+/g, " ").slice(0, 400);
+        if (!text) throw new Error("nothing to remember");
+        const list = app.get().settings.memories;
+        if (list.some((m) => m.text.toLowerCase() === text.toLowerCase())) return { content: `Already remembered: ${text}`, ui: { kind: "memory", title: text, detail: "Already remembered" } };
+        setSettings({ memories: [...list, { id: uid(), text, created: Date.now(), by: "pelica" }] });
+        return { content: `Saved to memory: ${text}`, ui: { kind: "memory", title: text, detail: "Remembered" } };
+      }
+      case "forget": {
+        const q = String(a.memory || "").trim().toLowerCase();
+        const list = app.get().settings.memories;
+        const hit = list.find((m) => m.text.toLowerCase() === q) || list.find((m) => m.text.toLowerCase().includes(q) || (q.length > 8 && q.includes(m.text.toLowerCase())));
+        if (!q || !hit) return { content: `No saved memory matches "${a.memory}". Saved: ${list.map((m) => m.text).join(" | ") || "nothing"}`, ui: { kind: "memory", title: String(a.memory || ""), detail: "Not found" } };
+        setSettings({ memories: list.filter((m) => m !== hit) });
+        return { content: `Forgot: ${hit.text}`, ui: { kind: "memory", title: hit.text, detail: "Forgot" } };
+      }
       case "system_info": {
         const info = await need().sys.info();
         const st = app.get().status;
@@ -274,7 +312,18 @@ export async function runTool(chat: Chat, name: string, args: any, live: (ui: Pa
             if (ok === "deny" || signal.stopped) return { content: `The user declined: ${what}. Ask them how to proceed.`, ui: { kind: "denied", title: what, detail: "Declined" } };
           }
           const r = await need().mcp.call(s.name, t.name, a);
-          return { content: clip(r, 20000), ui: { kind: "mcp", title: `${s.name} · ${t.name}`, output: r.slice(0, 20000) } };
+          const images = await toolPictures(r.images, t.name);
+          let content = clip(r.text, 20000);
+          if (images.length) {
+            const n = images.length === 1 ? "a picture" : `${images.length} pictures`;
+            if (app.get().status?.vision) content += `\n[The tool answered with ${n}, attached as image${images.length === 1 ? "" : "s"}.]`;
+            else {
+              // (a model that can't see: the text Windows reads in them, said plainly)
+              const read = await Promise.all(images.map((x) => need().media.ocr(x.data).catch(() => "")));
+              content += `\n[The tool answered with ${n}. The loaded model can't see images${read.some(Boolean) ? `; the text Windows read in ${images.length === 1 ? "it" : "them"} (OCR):\n${read.map((t, i) => (images.length > 1 ? `Picture ${i + 1}: ` : "") + (t || "(no text)")).join("\n")}` : ", and Windows found no text in it"}]`;
+            }
+          }
+          return { content, images: images.length ? images : undefined, ui: { kind: "mcp", title: `${s.name} · ${t.name}`, output: r.text.slice(0, 20000) } };
         }
         throw new Error(`there is no tool called "${name}"`);
       }

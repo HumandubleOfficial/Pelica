@@ -1978,3 +1978,47 @@ button,
 .task-when .text-input { min-width: 0; }
 .task-folder span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 380px; font-size: .9em; }
 .task-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+/* sliding segments (lib/segs.ts): one highlight block, the .seg's ::before,
+   slides to the chosen button; the chosen button itself stays clear */
+.seg {
+  position: relative;
+  --seg-chip: var(--panel-2);
+  --seg-chip-line: transparent;
+  --seg-chip-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.seg > button {
+  position: relative;
+  z-index: 1;
+}
+.seg.seg-live::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--seg-y);
+  width: var(--seg-w);
+  height: var(--seg-h);
+  transform: translateX(var(--seg-x));
+  box-sizing: border-box;
+  border-radius: 7px;
+  background: var(--seg-chip);
+  box-shadow: inset 0 0 0 1px var(--seg-chip-line), var(--seg-chip-shadow);
+  pointer-events: none;
+}
+.seg.seg-ready::before {
+  transition:
+    transform 0.26s cubic-bezier(0.3, 0.7, 0.2, 1),
+    width 0.26s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.no-anim .seg::before {
+  transition: none !important;
+}
+.seg.seg-live > button.sel {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+.nmap .seg {
+  --seg-chip: var(--sel);
+  --seg-chip-shadow: none;
+}

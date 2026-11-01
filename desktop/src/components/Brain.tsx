@@ -275,6 +275,7 @@ export function Brain() {
   const [path, setPath] = useState<string>("");
   const [info, setInfo] = useState<Info | null>(null);
   const [err, setErr] = useState("");
+  const [listed, setListed] = useState(false);
   const [group, setGroup] = useState<string>("experts");
   const [layer, setLayer] = useState(0);
   const [sel, setSel] = useState<T | null>(null);
@@ -290,10 +291,14 @@ export function Brain() {
   const running = useApp((s) => s.running);
 
   useEffect(() => {
-    engine.models().then((m) => {
-      setModels(m.models);
-      setPath((p) => p || st?.path || m.models[0]?.path || "");
-    });
+    engine
+      .models()
+      .then((m) => {
+        setModels(m.models);
+        setPath((p) => p || st?.path || m.models[0]?.path || "");
+      })
+      .catch(() => {})
+      .finally(() => setListed(true));
   }, []);
   useEffect(() => {
     if (!path) return;
@@ -389,7 +394,16 @@ export function Brain() {
         <ModelPick models={models} path={path} set={setPath} />
       </div>
       {err && <div className="err-text">{err}</div>}
-      {!info && !err && <div className="muted">Reading the model file…</div>}
+      {!info && !err && (listed && !path ? (
+        <div className="empty-note">
+          No models on this PC yet.{" "}
+          <button className="btn small primary" onClick={() => app.set({ view: "library", libTab: "discover" })}>
+            See the ones suggested for this PC
+          </button>
+        </div>
+      ) : (
+        <div className="muted">Reading the model file…</div>
+      ))}
       {info && h && (
         <>
           <NeuralMap

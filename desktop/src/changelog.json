@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.0",
+    "date": "2026-11-01",
+    "title": "Pelica 1.0: projects, memory, and Pelica on your phone",
+    "notes": [
+      "Projects: keep related chats together. Every chat in a project gets its instructions and files, and can work in its folder. Open Projects in the sidebar, or move any chat into one from its menu.",
+      "Memory across chats: ask Pelica to remember something and it will, in every chat from then on. It may also save a lasting fact on its own, always with a note in the chat. See, edit, add or remove what it remembers in Settings → Memory, or turn memory off.",
+      "Import your chats from ChatGPT or Claude: pick the zip from their data export in Settings → General. Importing the same export again skips the chats you already have.",
+      "Pelica on your phone: turn it on in Settings → Phone and scan the QR code. Your phone shows the open chat as it is written, and you can send messages, switch chats and answer approvals from it. It works over your Wi-Fi (or Tailscale), with nothing sent over the internet.",
+      "Online connectors that need an account now have a Sign in button. Your browser opens the service's own sign-in page, and Pelica keeps the sign-in encrypted and renews it by itself.",
+      "Pictures from connector tools (a screenshot, a chart) show under the tool in the chat, and a model that can see images gets them too. Other models get the text Windows reads in them.",
+      "The palette (Ctrl+K) has Projects, Memory, Pelica on your phone and Import chats.",
+      "Fixed: the side panel said \"1 tools\", and now shows \"Sign in\" for a connector waiting for one.",
+      "Settings look like Claude's: a lighter page beside a darker list of sections, finer lines, brighter selection, and buttons and fields that match. Every theme follows, Light included.",
+      "Choices like 2K / 4K / 8K now slide their highlight to the one you pick, everywhere in the app (it stays still with Animations off).",
+      "Tidied across the app: one kind of button on a project's page, the same empty-page note on Projects, Models and Brain (Brain no longer says \"Reading the model file…\" forever with no model), text boxes without a blue glow when typing, and connector cards that say they're stopped without a red outline."
+    ]
+  },
+  {
     "version": "0.15.0",
     "date": "2026-11-01",
     "title": "Models that fit your PC, and a storage manager",

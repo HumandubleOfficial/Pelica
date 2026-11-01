@@ -348,7 +348,8 @@ fn take_images(m: &Moe, msgs: &mut [Value]) -> Result<Vec<(u32, usize)>> {
     if !m.eng.vision() {
         return Ok(out);
     }
-    for msg in msgs.iter_mut().filter(|x| x["role"] == "user") {
+    // (the user's photos, and pictures a tool answered with: a connector's screenshot or chart)
+    for msg in msgs.iter_mut().filter(|x| x["role"] == "user" || x["role"] == "tool") {
         let Some(imgs) = msg["images"].as_array().cloned() else { continue };
         let mut marks = String::new();
         for im in &imgs {

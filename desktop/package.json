@@ -1,7 +1,7 @@
 {
   "name": "pelica-desktop",
   "productName": "Pelica",
-  "version": "0.15.0",
+  "version": "1.0.0",
   "description": "Pelica Desktop: local models with tools, files, commands and a browser",
   "license": "MIT",
   "author": "Humanduble",
@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.7.0",
@@ -29,6 +30,7 @@
   "dependencies": {
     "highlight.js": "^11.11.1",
     "marked": "^16.1.1",
+    "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   }
