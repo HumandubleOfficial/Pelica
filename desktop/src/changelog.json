@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.15.0",
+    "date": "2026-11-01",
+    "title": "Models that fit your PC, and a storage manager",
+    "notes": [
+      "Models → Discover starts with models suggested for this PC: the ones Pelica is tested with, marked by whether they run well on your GPU's memory and RAM, with the best fit picked out. One click downloads one (all its parts).",
+      "A new install's welcome and an empty model menu now take you straight to those suggestions.",
+      "Before a download starts, Pelica checks the drive has room for it (and the downloads already going). If not, it says how much is needed and which drive has space, instead of filling the disk.",
+      "Settings → Models → Storage shows each drive's free space and how much of it is models, with Move (to another drive, keeping the model working) and Delete for every model.",
+      "Moving a model copies it, checks the copy, and only then removes the original. Cancel leaves it where it was.",
+      "Deleting a model that's too big for the Recycle Bin (anything over about 25 GB on most PCs) now says so and asks before deleting it for good. Before, Windows could delete it for good without asking.",
+      "The download folder is automatic by default: the models folder on the drive with the most free space. Downloads always show up, even in a folder that isn't in your model folders, and changing model folders no longer needs an engine restart.",
+      "The \"Fits in VRAM\" labels in the library now use your own GPU's memory and RAM instead of a 16 GB GPU's.",
+      "A vision helper file (mmproj) or draft-model file beside a model no longer shows up as a model of its own."
+    ]
+  },
+  {
     "version": "0.14.0",
     "date": "2026-11-01",
     "title": "Online connectors, tool permissions and an Updates page",

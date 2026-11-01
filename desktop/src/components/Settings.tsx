@@ -13,6 +13,7 @@ import { RELEASES, ReleaseNotes, VERSION } from "./WhatsNew";
 import { UsageTab } from "./Usage";
 import { PromptList } from "./Prompts";
 import { checkNow } from "./Updates";
+import { StorageRows } from "./Storage";
 
 const PREVIEW_A = 'function greet(name: string) {\n  return "Hello, " + name;\n}\n';
 const PREVIEW_B = "function greet(name: string) {\n  return `Hello, ${name}!`;\n}\n";
@@ -27,7 +28,7 @@ const TABS: { name: string; icon: string; group: string; keys: string }[] = [
   { name: "CQS", icon: "scan", group: "Preferences", keys: "code quality scanner fix checkers" },
   { name: "Usage", icon: "spark", group: "Preferences", keys: "tokens days models" },
   { name: "Desktop", icon: "monitor", group: "This computer", keys: "quick ask shortcut hotkey tray start with windows notifications computer tools" },
-  { name: "Models", icon: "library", group: "This computer", keys: "model folders load download speed up repack local api openai port engine restart" },
+  { name: "Models", icon: "library", group: "This computer", keys: "storage disk space drive move delete uninstall model folders load download speed up repack local api openai port engine restart" },
   { name: "Devices", icon: "monitor", group: "This computer", keys: "bridge ram lend pairing network" },
   { name: "Developer", icon: "terminal", group: "This computer", keys: "versions electron engine log data folder" },
   { name: "Connectors", icon: "plug", group: "Customize", keys: "mcp servers tools github memory browser" },
@@ -434,21 +435,38 @@ function UpdatesTab() {
 function ModelsTab() {
   const s = useApp((x) => x.settings);
   const [dirs, setDirs] = useState(s.modelDirs.join("; "));
+  const [auto, setAuto] = useState("");
+  useEffect(() => setDirs(s.modelDirs.join("; ")), [s.modelDirs.join(";")]);
+  useEffect(() => {
+    bridge?.lib
+      .hardware()
+      .then((h) => setAuto(h.downloadDir))
+      .catch(() => {});
+  }, [s.downloadDir]);
   return (
     <>
-      <Row title="Model folders" desc="Where Pelica looks for .gguf files (separate with ;). Empty: C:\models and D:\Models. Takes effect after restarting the engine.">
+      <Section title="Storage" />
+      <StorageRows />
+      <Section title="Folders" />
+      <Row title="Model folders" desc="Where Pelica looks for models (separate with ;). Empty: C:\models and D:\Models. The download folder is always included.">
         <input className="text-input wide" value={dirs} onChange={(e) => setDirs(e.target.value)} onBlur={() => setSettings({ modelDirs: dirs.split(";").map((x) => x.trim()).filter(Boolean) })} placeholder="C:\models; D:\Models" />
       </Row>
-      <Row title="Load the last model at start" desc={s.lastModel ? `Off: Pelica starts with no model loaded, and you pick one from the model menu. On: it loads ${s.lastModel.split(/[\\/]/).pop()} as it starts.` : "Off: Pelica starts with no model loaded, and you pick one from the model menu."}>
-        <Toggle on={s.loadOnStart} set={(v) => setSettings({ loadOnStart: v })} />
-      </Row>
-      <Row title="Download folder" desc="Where the model library saves downloads.">
+      <Row title="Download folder" desc={s.downloadDir ? "Where the model library saves downloads." : `Where the model library saves downloads. Automatic: the default models folder on the drive with the most free space (now ${auto || "…"}).`}>
         <div className="inline">
-          <input className="text-input" value={s.downloadDir} onChange={(e) => setSettings({ downloadDir: e.target.value })} />
+          <input className="text-input" value={s.downloadDir} placeholder={auto ? `Automatic (${auto})` : "Automatic"} onChange={(e) => setSettings({ downloadDir: e.target.value })} />
+          {s.downloadDir && (
+            <button className="btn small ghost" onClick={() => setSettings({ downloadDir: "" })}>
+              Automatic
+            </button>
+          )}
           <button className="btn small" onClick={async () => { const d = await bridge?.lib.pickDir(); if (d) setSettings({ downloadDir: d }); }}>
             Choose…
           </button>
         </div>
+      </Row>
+      <Section title="Loading" />
+      <Row title="Load the last model at start" desc={s.lastModel ? `Off: Pelica starts with no model loaded, and you pick one from the model menu. On: it loads ${s.lastModel.split(/[\\/]/).pop()} as it starts.` : "Off: Pelica starts with no model loaded, and you pick one from the model menu."}>
+        <Toggle on={s.loadOnStart} set={(v) => setSettings({ loadOnStart: v })} />
       </Row>
       <Row title="Speed up DeepSeek V4 and Qwen3.8 downloads" desc="Rearrange a DeepSeek V4 or Qwen3.8 file as soon as it finishes downloading, so each expert loads in one read (answers about 20% faster). Other programs can't open the file afterwards; Models → Undo speed-up puts it back.">
         <Toggle on={s.autoRepack} set={(v) => setSettings({ autoRepack: v })} />

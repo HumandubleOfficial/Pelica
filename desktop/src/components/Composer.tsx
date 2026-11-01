@@ -121,7 +121,14 @@ function ModelChip() {
               </button>
             </div>
           )}
-          {models.length === 0 && <div className="muted small pad">No models found. Get one from the library.</div>}
+          {models.length === 0 && (
+            <div className="muted small pad">
+              No models on this PC yet.{" "}
+              <button className="link-btn" onClick={() => (setOpen(false), app.set({ view: "library", libTab: "discover" }))}>
+                See the suggested ones
+              </button>
+            </div>
+          )}
           {models.map((m) => (
             <button key={m.path} className={`model-row ${st?.path === m.path ? "sel" : ""}`} onClick={() => load(m)} disabled={st?.state === "loading"}>
               <span className="model-name">{m.name}</span>

@@ -226,6 +226,24 @@ is chosen, since such models describe tasks instead of doing them.
   Vals AI's independent runs where they exist, else the vendor's own
   (striped, with the setup noted); missing scores show n/a. Update the
   tables there when new numbers are published.
+- Models and storage: `lib/starters.ts` lists the tested starter models
+  (repo, exact files, size, `wont(vram, ram)`), sized from `lib:hardware`
+  (each display adapter's `HardwareInformation.qwMemorySize` from the driver
+  registry key, read once; `os.totalmem`). `getFiles` checks the download
+  drive's free space minus what running/paused downloads still need before
+  `lib:download`. The download folder is `settings.downloadDir` when its drive
+  exists, else the default folder (C:\models, D:\Models) on the drive with
+  the most free space; the engine's folders (`engineDirs`) always include it,
+  and changes go to the running engine with `POST /api/dirs`. Settings →
+  Models → Storage (`components/Storage.tsx`): drives (`lib:drives`, statfs
+  C:–Z:), Move (`lib:move`: unload, rename on one drive, else copy, size check,
+  then remove the originals; `lib:moveStop` cancels and removes only its own
+  partial copies; adds the folder to `modelDirs` when no engine folder covers
+  it; progress on `lib:move`), and Delete (`lib:uninstall`). Uninstall reads
+  the drive's Recycle Bin size (`BitBucket\Volume\{guid}\MaxCapacity`): a
+  file larger than it, or the model over 90% of it, is deleted for good after
+  a dialog that says so (Electron's `trashItem` would otherwise let Windows
+  delete it without asking).
 - Connectors (`components/Connectors.tsx`, client in `electron/mcp.ts`): one-click
   MCP presets (files, memory, sequential thinking, fetch, git, time, SQLite,
   Playwright, GitHub, Brave Search; remote DeepWiki and Context7) with the one

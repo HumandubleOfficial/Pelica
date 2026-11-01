@@ -100,6 +100,43 @@ function freePort() {
         s.on("error", bad);
     });
 }
+// ---------- models folders ----------
+/** The engine's own default folders (when none are set). */
+const DEFAULT_DIRS = ["C:\\models", "D:\\Models"];
+const sameDir = (a, b) => node_path_1.default.resolve(a).toLowerCase() === node_path_1.default.resolve(b).toLowerCase();
+const driveOk = (d) => node_fs_1.default.existsSync(node_path_1.default.parse(node_path_1.default.resolve(d)).root);
+/** Where downloads go: the folder set in Settings when its drive is there,
+ *  else whichever default folder's drive has the most free space. */
+function downloadDir() {
+    const set = String(settings.downloadDir || "");
+    if (set && driveOk(set))
+        return set;
+    const free = (d) => {
+        try {
+            const st = node_fs_1.default.statfsSync(node_path_1.default.parse(d).root);
+            return st.bavail * st.bsize;
+        }
+        catch {
+            return -1;
+        }
+    };
+    return DEFAULT_DIRS.filter(driveOk).sort((a, b) => free(b) - free(a))[0] || DEFAULT_DIRS[0];
+}
+/** Every folder the engine looks in: the ones set (or the defaults), and the
+ *  download folder, so downloads always show up. */
+function engineDirs() {
+    const dirs = [...(settings.modelDirs?.length ? settings.modelDirs : DEFAULT_DIRS)];
+    const dl = downloadDir();
+    if (!dirs.some((d) => sameDir(d, dl)))
+        dirs.push(dl);
+    return dirs;
+}
+/** Tells the running engine about changed folders (no restart). */
+function syncDirs() {
+    if (!engine)
+        return;
+    fetch(`http://127.0.0.1:${port}/api/dirs`, { method: "POST", body: JSON.stringify({ dirs: engineDirs() }) }).catch(() => { });
+}
 async function startEngine() {
     stopEngine();
     port = await freePort();
@@ -108,7 +145,7 @@ async function startEngine() {
     const args = ["app", "--no-open", "--no-autoload", "--port", String(port), "--ui", ui];
     if (settings.loadOnStart && settings.lastModel && node_fs_1.default.existsSync(settings.lastModel))
         args.push("--model", settings.lastModel, "--ctx", String(settings.lastCtx || 32768));
-    for (const d of settings.modelDirs || [])
+    for (const d of engineDirs())
         args.push("--models-dir", d);
     engineLog = `$ ${pelicaExe()} ${args.join(" ")}\n`;
     // computers lending their RAM (Settings → Devices); the app also sends changes live
@@ -226,6 +263,8 @@ async function unloadModel(p, what) {
     }
 }
 const repacks = new Map();
+/** Models being moved (Settings → Models → Storage), by their old path. */
+const moves = new Map();
 const sendRepacks = () => win?.webContents.send("lib:repack", [...repacks.values()].map(({ child, ...r }) => r));
 async function startRepack(p, undo) {
     if (repacks.get(p)?.state === "running")
@@ -684,6 +723,8 @@ function registerIpc() {
             syncTheme();
         if ("apiServer" in rest || "apiPort" in rest)
             syncApi();
+        if ("modelDirs" in rest || "downloadDir" in rest)
+            syncDirs();
         return settings;
     });
     handle("api:status", () => ({ on: !!apiServer && !apiError, port: apiPort, error: apiError }));
@@ -931,16 +972,25 @@ function registerIpc() {
         if (!m)
             throw new Error("That model isn't in your models folders.");
         const files = lib.modelFiles(p);
-        const removable = await new Promise((res) => (0, node_child_process_1.execFile)("powershell", ["-NoProfile", "-Command", `[System.IO.DriveInfo]::new('${node_path_1.default.parse(p).root.replace(/'/g, "")}').DriveType`], (_e, out) => res(String(out).trim() === "Removable")));
+        const root = node_path_1.default.parse(p).root;
+        const removable = await new Promise((res) => (0, node_child_process_1.execFile)("powershell", ["-NoProfile", "-Command", `[System.IO.DriveInfo]::new('${root.replace(/'/g, "")}').DriveType`], (_e, out) => res(String(out).trim() === "Removable")));
+        // a file bigger than the Recycle Bin can hold isn't recycled: Windows deletes it for good
+        const cap = removable ? 0 : await lib.recycleCap(root);
+        const sizes = files.map((f) => lib.bytesOf([f]));
+        const forGood = cap !== null && (cap === 0 || Math.max(...sizes) > cap || sizes.reduce((a, b) => a + b, 0) > cap * 0.9);
         const what = files.length > 1 ? `Its ${files.length} files` : "Its file";
+        const gbs = (n) => (n < 1e9 ? `${Math.max(1, Math.round(n / 1e6))} MB` : `${(n / 1e9).toFixed(n < 10e9 ? 1 : 0)} GB`);
+        const total = sizes.reduce((a, b) => a + b, 0);
         const { response } = await electron_1.dialog.showMessageBox(win, {
             type: "warning",
             title: "Uninstall model",
-            message: `Uninstall ${m.name}?`,
-            detail: removable
-                ? `${what} (${m.gb.toFixed(1)} GB) are on a removable drive, which has no Recycle Bin: Windows may delete them for good.`
-                : `${what} (${m.gb.toFixed(1)} GB) will go to the Recycle Bin. Empty it to free the space, or restore the model from there.`,
-            buttons: ["Uninstall", "Cancel"],
+            message: forGood ? `Delete ${m.name} for good?` : `Uninstall ${m.name}?`,
+            detail: forGood
+                ? removable || cap === 0
+                    ? `${what} (${gbs(total)}) are on a drive without a Recycle Bin, so they are deleted for good. This can't be undone.`
+                    : `${what} (${gbs(total)}) are too big for the Recycle Bin on ${root.slice(0, 2)}, which holds ${gbs(cap)}, so they are deleted for good and the space is free right away. This can't be undone.`
+                : `${what} (${gbs(total)}) will go to the Recycle Bin. Empty it to free the space, or restore the model from there.`,
+            buttons: [forGood ? "Delete for good" : "Uninstall", "Cancel"],
             defaultId: 1,
             cancelId: 1,
             noLink: true,
@@ -949,9 +999,23 @@ function registerIpc() {
             return false;
         // (Windows can't move a file that's open)
         await unloadModel(p, "uninstall it");
-        for (const f of files)
-            await electron_1.shell.trashItem(f);
-        return true;
+        for (const f of files) {
+            if (forGood)
+                await node_fs_1.default.promises.rm(f, { recursive: true, force: true });
+            else
+                await electron_1.shell.trashItem(f);
+        }
+        // an emptied download folder goes too
+        try {
+            const dir = node_path_1.default.dirname(files[0]);
+            if (!engineDirs().some((d) => sameDir(d, dir)) && !node_fs_1.default.readdirSync(dir).length)
+                node_fs_1.default.rmdirSync(dir);
+        }
+        catch { }
+        if (settings.lastModel && sameDir(settings.lastModel, p))
+            settings.lastModel = "";
+        saveSettings();
+        return forGood ? "deleted" : "recycled";
     });
     // speeding up a DeepSeek V4 file (pelica repack): after asking, or on its own
     // after a download when settings.autoRepack is on
@@ -992,6 +1056,64 @@ function registerIpc() {
         r.state = "stopped";
         r.child?.kill();
         sendRepacks();
+    });
+    handle("lib:hardware", async () => ({ gpus: await lib.graphics(), ram: node_os_1.default.totalmem(), downloadDir: downloadDir(), dirs: engineDirs() }));
+    handle("lib:drives", () => lib.drives());
+    handle("lib:space", (dir) => lib.freeOn(dir || downloadDir()));
+    handle("lib:moves", () => [...moves.values()].map(({ ctl, ...m }) => m));
+    handle("lib:moveStop", (p) => moves.get(p)?.ctl.abort());
+    // moving a model to another folder or drive: unloaded first; the folder is
+    // added to the engine's folders if it isn't in one
+    handle("lib:move", async (p, target) => {
+        const m = await engineModel(p);
+        if (!m)
+            throw new Error("That model isn't in your models folders.");
+        if (moves.get(p)?.state === "running")
+            return null;
+        if (!/^[a-z]:[\\/]/i.test(target || ""))
+            throw new Error("Choose a folder by its full path (like D:\\models).");
+        const files = lib.modelFiles(p);
+        const dirs = engineDirs();
+        const dest = lib.moveDest(p, files, dirs, target);
+        const bytes = lib.bytesOf(files);
+        const sameDrive = node_path_1.default.parse(node_path_1.default.resolve(p)).root.toLowerCase() === node_path_1.default.parse(node_path_1.default.resolve(dest)).root.toLowerCase();
+        const free = await lib.freeOn(dest);
+        if (!free)
+            throw new Error(`There's no drive ${node_path_1.default.parse(dest).root}`);
+        if (!sameDrive && free.free < bytes + 1e9)
+            throw new Error(`Not enough space on ${free.root.slice(0, 2)}: the model needs ${(bytes / 1e9).toFixed(1)} GB and ${(free.free / 1e9).toFixed(1)} GB is free.`);
+        if (files.some((f) => sameDir(node_path_1.default.dirname(f), dest)))
+            throw new Error("It's already in that folder.");
+        await unloadModel(p, "move it");
+        const job = { path: p, name: m.name, to: dest, got: 0, total: bytes, state: "running", error: undefined, moved: undefined, ctl: new AbortController() };
+        moves.set(p, job);
+        let last = 0;
+        const send = (force = false) => {
+            if (!force && Date.now() - last < 300)
+                return;
+            last = Date.now();
+            win?.webContents.send("lib:move", [...moves.values()].map(({ ctl, ...x }) => x));
+        };
+        send(true);
+        try {
+            job.moved = await lib.moveModel(p, files, dest, (got) => ((job.got = got), send()), job.ctl.signal);
+            job.state = "done";
+            // the engine has to see the new folder
+            if (!dirs.some((d) => { const r = node_path_1.default.resolve(d).toLowerCase() + node_path_1.default.sep; return (node_path_1.default.resolve(dest).toLowerCase() + node_path_1.default.sep).startsWith(r); })) {
+                const base = settings.modelDirs?.length ? settings.modelDirs : DEFAULT_DIRS;
+                settings.modelDirs = [...base, target];
+            }
+            if (settings.lastModel && sameDir(settings.lastModel, p))
+                settings.lastModel = job.moved;
+            saveSettings();
+            syncDirs();
+        }
+        catch (e) {
+            job.state = job.ctl.signal.aborted ? "cancelled" : "error";
+            job.error = job.ctl.signal.aborted ? undefined : e.message;
+        }
+        send(true);
+        return job.moved || null;
     });
     handle("lib:pickDir", async () => {
         const r = await electron_1.dialog.showOpenDialog(win, { properties: ["openDirectory", "createDirectory"], title: "Where models are kept" });

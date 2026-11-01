@@ -1,8 +1,9 @@
 // The model library: models on this PC (load them), and GGUF models on
 // Hugging Face to browse and download.
 import { useEffect, useState } from "react";
-import { bridge, type Download, type Repack } from "../lib/bridge";
+import { bridge, type Download, type Hardware, type Repack } from "../lib/bridge";
 import { engine, type LocalModel } from "../lib/engine";
+import { bestFor, getFiles, gib, gpuOf, STARTERS, type Starter } from "../lib/starters";
 import { app, setSettings, toast, useApp } from "../state";
 import { Icon } from "./Icons";
 
@@ -10,9 +11,24 @@ const gb = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.rou
 const SUGGEST = ["Qwen3-30B-A3B", "OLMoE", "gpt-oss-20b", "Mixtral", "DeepSeek-V2-Lite", "granite-3.1 a800m", "Qwen3-Coder-30B-A3B", "ERNIE-4.5-21B-A3B", "Ling-lite", "SmallThinker"];
 const moeish = (id: string) => /moe|a\d+(\.\d+)?b|mixtral|olmoe|gpt-oss|deepseek|qwen3-(30|235)|ernie-4\.5-21b|ling|granite.*a\d|smallthinker|phi-3\.5-moe|jamba|dbrx|grok|kimi|glm-4\.5/i.test(id);
 
-function fit(bytes: number): [string, string] {
-  if (bytes < 13e9) return ["fits", "Fits in VRAM: fastest"];
-  if (bytes < 42e9) return ["split", "VRAM + RAM: experts that don't fit stay in RAM"];
+/** This PC's GPU memory and RAM (bytes), once known. */
+function useHardware(): { hw: Hardware | null; vram: number; ram: number } {
+  const [hw, setHw] = useState<Hardware | null>(null);
+  const gpu = useApp((s) => s.status?.gpu);
+  useEffect(() => {
+    bridge?.lib
+      .hardware()
+      .then(setHw)
+      .catch(() => {});
+  }, []);
+  // (until it's known: a 16 GB GPU and 32 GB of RAM)
+  return { hw, vram: hw ? gpuOf(hw, gpu).vram : 16e9, ram: hw?.ram || 32e9 };
+}
+
+/** How a model of `bytes` sits on this PC: all in the GPU's memory, shared with RAM, or too big. */
+function fit(bytes: number, vram: number, ram: number): [string, string] {
+  if (bytes < vram - 3e9) return ["fits", "Fits in VRAM: fastest"];
+  if (bytes < vram + ram * 0.75) return ["split", "VRAM + RAM: experts that don't fit stay in RAM"];
   return ["big", "Larger than VRAM + RAM: may not load"];
 }
 
@@ -65,6 +81,7 @@ function RepackProgress({ r }: { r: Repack }) {
 
 function Local() {
   const st = useApp((s) => s.status);
+  const { vram, ram } = useHardware();
   const lastCtx = useApp((s) => s.settings.lastCtx);
   const [models, setModels] = useState<LocalModel[]>([]);
   const [dir, setDir] = useState("");
@@ -83,9 +100,10 @@ function Local() {
     if (!bridge) return toast("Uninstalling needs the Pelica desktop app.");
     setRemoving(m.path);
     try {
-      if (!(await bridge.lib.uninstall(m.path))) return;
+      const r = await bridge.lib.uninstall(m.path);
+      if (!r) return;
       if (app.get().settings.lastModel === m.path) setSettings({ lastModel: "" });
-      toast(`Uninstalled ${m.name}: it's in the Recycle Bin.`);
+      toast(r === "deleted" ? `Deleted ${m.name}: the space is free.` : `Uninstalled ${m.name}: it's in the Recycle Bin. Empty it to free the space.`);
       await refresh();
     } catch (e: any) {
       toast(cleanErr(e));
@@ -108,7 +126,7 @@ function Local() {
                 <span className="pill">{m.kind === "moe" ? "Mixture of experts" : m.kind === "gpu" ? "gpt-oss" : "Tiered (SSD)"}</span>
                 <span className="pill">{gb(m.gb * 1e9)}</span>
                 {m.max_ctx && <span className="pill">context up to {Math.round(m.max_ctx / 1024)}K</span>}
-                <span className={`pill fit-${fit(m.gb * 1e9)[0]}`}>{fit(m.gb * 1e9)[1].split(":")[0]}</span>
+                <span className={`pill fit-${fit(m.gb * 1e9, vram, ram)[0]}`}>{fit(m.gb * 1e9, vram, ram)[1].split(":")[0]}</span>
                 {m.repack === "yes" && !running && (
                   <span className="pill on" title="Rearranged with pelica repack: each expert loads in one read">
                     Sped up
@@ -171,13 +189,77 @@ function Local() {
           </div>
         );
       })}
-      {!models.length && <div className="empty-note">No models yet. Find one under Discover.</div>}
+      {!models.length && (
+        <div className="empty-note">
+          No models yet.{" "}
+          <button className="btn small primary" onClick={() => app.set({ libTab: "discover" })}>
+            See the ones suggested for this PC
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One suggested model: how it runs here, and Get / its download / Load. */
+function StarterCard({ m, best, vram, ram, have, downloads, onGet }: { m: Starter; best: boolean; vram: number; ram: number; have?: LocalModel; downloads: Download[]; onGet: (m: Starter) => void }) {
+  const st = useApp((s) => s.status);
+  const lastCtx = useApp((s) => s.settings.lastCtx);
+  const wont = m.wont(vram, ram);
+  const mine = downloads.filter((d) => d.repo === m.repo && m.files.includes(d.file));
+  const going = mine.filter((d) => d.state === "running" || d.state === "paused" || d.state === "error");
+  const got = mine.reduce((n, d) => n + d.got, 0);
+  return (
+    <div className={`starter ${best ? "best" : ""} ${wont ? "wont" : ""}`}>
+      <div className="starter-head">
+        <b>{m.name}</b>
+        {best && <span className="pill on">Best fit</span>}
+      </div>
+      <div className="muted small">{m.blurb}</div>
+      <div className="lib-tags">
+        <span className="pill">{gb(m.size)}</span>
+        <span className="pill">{m.tools ? "Uses tools and files" : "Chat only"}</span>
+        {m.vision && <span className="pill">Sees pictures</span>}
+      </div>
+      {wont && <div className="warn-note small">Too big for this PC: {wont}.</div>}
+      <div className="starter-foot">
+        {have ? (
+          st?.path === have.path && st.state === "ready" ? (
+            <span className="pill on">Loaded</span>
+          ) : (
+            <button
+              className="btn small"
+              disabled={st?.state === "loading"}
+              onClick={async () => {
+                try {
+                  await engine.load(have.path, Math.min(lastCtx, have.max_ctx || lastCtx));
+                  setSettings({ lastModel: have.path });
+                  app.set({ view: "chat" });
+                } catch (e: any) {
+                  toast(cleanErr(e));
+                }
+              }}
+            >
+              {st?.state === "loading" && st.path === have.path ? "Loading…" : "Load"}
+            </button>
+          )
+        ) : going.length ? (
+          <span className="muted small">
+            {going.some((d) => d.state === "running") ? "Downloading" : going.some((d) => d.state === "error") ? "Download stopped" : "Paused"}: {gb(got)} of {gb(m.size)} (below)
+          </span>
+        ) : (
+          <button className={`btn small ${best ? "primary" : ""}`} onClick={() => onGet(m)}>
+            <Icon name="download" size={13} /> Get
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 function Discover() {
-  const dl = useApp((s) => s.settings.downloadDir);
+  const { hw, vram, ram } = useHardware();
+  const dl = hw?.downloadDir || "…";
   const [q, setQ] = useState("Qwen3-30B-A3B");
   const [hits, setHits] = useState<{ id: string; downloads: number; likes: number; updated: string }[]>([]);
   const [busy, setBusy] = useState(false);
@@ -191,12 +273,26 @@ function Discover() {
   const [models, setModels] = useState<LocalModel[]>([]);
   const finished = downloads.filter((d) => d.state === "done").length + repacks.filter((r) => r.state !== "running").length;
   useEffect(() => {
-    if (finished)
-      engine
-        .models()
-        .then((m) => setModels(m.models))
-        .catch(() => {});
+    engine
+      .models()
+      .then((m) => setModels(m.models))
+      .catch(() => {});
   }, [finished]);
+  const best = bestFor(vram, ram);
+  // a suggested model already here: its first file is among the models
+  const haveOf = (m: Starter) => models.find((x) => m.files.some((f) => samePath(x.path.split(/[\\/]/).pop() || "", f.split("/").pop()!)));
+  async function get(repo: string, files: { path: string; size: number }[]) {
+    const why = await getFiles(repo, files, downloads).catch((e) => cleanErr(e));
+    if (why) toast(why);
+  }
+  // a starter's real sizes come from Hugging Face
+  async function getStarter(m: Starter) {
+    const listed = await bridge!.lib.files(m.repo).catch(() => [] as { path: string; size: number }[]);
+    await get(
+      m.repo,
+      m.files.map((f) => ({ path: f, size: listed.find((x) => x.path === f)?.size || m.size / m.files.length })),
+    );
+  }
 
   async function search(text = q) {
     if (!bridge) return setErr("Browsing needs the Pelica desktop app.");
@@ -213,7 +309,7 @@ function Discover() {
   useEffect(() => {
     search();
     if (!bridge) return;
-    bridge.lib.downloads(dl).then(setDownloads);
+    bridge.lib.hardware().then((h) => bridge!.lib.downloads(h.downloadDir).then(setDownloads));
     return bridge.lib.onProgress(setDownloads);
   }, []);
   useEffect(() => {
@@ -227,6 +323,16 @@ function Discover() {
 
   return (
     <div className="discover">
+      <div className="set-title starters-title">Suggested for this PC</div>
+      <div className="muted small">
+        {hw ? `${gpuOf(hw, app.get().status?.gpu).name}, ${gib(vram)} of GPU memory, ${gib(ram)} of RAM. ` : ""}These are the models Pelica is tested with.
+      </div>
+      <div className="starters">
+        {STARTERS.map((m) => (
+          <StarterCard key={m.id} m={m} best={m === best} vram={vram} ram={ram} have={haveOf(m)} downloads={downloads} onGet={getStarter} />
+        ))}
+      </div>
+      <div className="set-title starters-title">More on Hugging Face</div>
       <div className="lib-search">
         <Icon name="search" size={16} />
         <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} placeholder="Search GGUF models on Hugging Face" />
@@ -325,14 +431,14 @@ function Discover() {
               {!moeish(repo) && <div className="warn-note">This doesn't look like a mixture-of-experts model; Pelica may not run it.</div>}
               {!files && <div className="muted">Loading files…</div>}
               {files?.map((f) => {
-                const [cls, why] = fit(f.size);
+                const [cls, why] = fit(f.size, vram, ram);
                 return (
                   <div key={f.path} className="file-row">
                     <span className="mono">{f.path}</span>
                     <span className={`pill fit-${cls}`} title={why}>
                       {gb(f.size)}
                     </span>
-                    <button className="btn small" onClick={() => bridge?.lib.download(repo, f.path, dl).catch((e: any) => toast(e.message))}>
+                    <button className="btn small" onClick={() => get(repo, [f])}>
                       <Icon name="download" size={13} /> Get
                     </button>
                   </div>
@@ -348,7 +454,8 @@ function Discover() {
 }
 
 export function Library() {
-  const [tab, setTab] = useState<"local" | "discover">("local");
+  const tab = useApp((s) => s.libTab);
+  const setTab = (libTab: "local" | "discover") => app.set({ libTab });
   return (
     <div className="page">
       <div className="page-head">

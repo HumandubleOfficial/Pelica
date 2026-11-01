@@ -99,6 +99,8 @@ need(path.join(desktop, "build/electron/main.js"), "npm run build");
 need(path.join(desktop, "dist/index.html"), "npm run build");
 need(path.join(electronDist, "electron.exe"), "npm install");
 need(csc, ".NET Framework 4 is part of Windows 10 and 11");
+// a fresh layout each time (an old one kept every earlier build's UI bundles)
+fs.rmSync(stage, { recursive: true, force: true });
 fs.mkdirSync(stage, { recursive: true });
 fs.mkdirSync(work, { recursive: true });
 

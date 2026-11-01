@@ -137,9 +137,9 @@ function Welcome() {
     <div className="welcome">
       <div className="welcome-text">
         <b>Welcome to Pelica</b>
-        <span className="muted small">To chat, Pelica needs a model on this PC. The model library finds GGUF models on Hugging Face to download and shows which files fit your GPU.</span>
+        <span className="muted small">To chat, Pelica needs a model on this PC. The model library suggests the ones that run well on this PC, and finds more on Hugging Face.</span>
       </div>
-      <button className="btn primary small" onClick={() => app.set({ view: "library" })}>
+      <button className="btn primary small" onClick={() => app.set({ view: "library", libTab: "discover" })}>
         <Icon name="library" size={14} /> Get a model
       </button>
     </div>

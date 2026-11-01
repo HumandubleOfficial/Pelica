@@ -1,6 +1,6 @@
 [package]
 name = "pelica"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 description = "Tiered GPU + RAM + SSD inference engine for giant Mixture-of-Experts models"
 license = "MIT"

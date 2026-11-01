@@ -60,7 +60,8 @@ struct App {
     busy: AtomicBool,
     /// seconds since the epoch of the last request (the page pings)
     seen: AtomicU64,
-    models_dirs: Vec<PathBuf>,
+    /// where to look for models (the app changes them with POST /api/dirs)
+    models_dirs: Mutex<Vec<PathBuf>>,
     port: u16,
     /// a built UI to serve instead of app.html (Pelica Desktop)
     ui: Option<PathBuf>,
@@ -190,7 +191,7 @@ fn new_app(dirs: Vec<PathBuf>, port: u16, ui: Option<PathBuf>) -> Result<Arc<App
         stop: AtomicBool::new(false),
         busy: AtomicBool::new(false),
         seen: AtomicU64::new(now_s()),
-        models_dirs: dirs,
+        models_dirs: Mutex::new(dirs),
         port,
         ui,
     });
@@ -281,6 +282,10 @@ fn find_models(dirs: &[PathBuf]) -> Vec<(PathBuf, Kind)> {
             if p.is_dir() && depth > 0 {
                 walk(&p, depth - 1, out);
             } else if let Some(k) = kind_of(&p) {
+                let name = p.file_name().map(|n| n.to_string_lossy().to_lowercase()).unwrap_or_default();
+                if name.starts_with("mmproj") || name.starts_with("mtp-") || name.starts_with("eagle") {
+                    continue;
+                }
                 // a model split in parts shows once, as its first part
                 if split_part(&p).is_some_and(|(i, _)| i > 1) {
                     continue;
@@ -1419,14 +1424,15 @@ fn handle(app: &Arc<App>, mut s: TcpStream) -> Result<()> {
             respond_json(&mut s, 200, &st)
         }
         ("GET", "/api/models") => {
-            let v: Vec<Value> = find_models(&app.models_dirs)
+            let dirs = app.models_dirs.lock().unwrap().clone();
+            let v: Vec<Value> = find_models(&dirs)
                 .iter()
                 .map(|(p, _)| {
                     let (kind, max, repack) = ui_kind(p);
                     json!({ "path": p.to_string_lossy(), "name": display_name(p), "gb": size_of(p) as f64 / 1e9, "kind": kind, "max_ctx": max, "repack": repack })
                 })
                 .collect();
-            let dirs: Vec<String> = app.models_dirs.iter().map(|d| d.to_string_lossy().into_owned()).collect();
+            let dirs: Vec<String> = dirs.iter().map(|d| d.to_string_lossy().into_owned()).collect();
             respond_json(&mut s, 200, &json!({ "dir": dirs.join("; "), "models": v }))
         }
         ("POST", "/api/load") => {
@@ -1457,6 +1463,13 @@ fn handle(app: &Arc<App>, mut s: TcpStream) -> Result<()> {
         ("GET", "/api/devices/scan") => {
             let found: Vec<Value> = crate::bridge::scan().into_iter().map(|(addr, gb, name)| json!({ "addr": addr, "lend_gb": gb, "name": name })).collect();
             respond_json(&mut s, 200, &json!(found))
+        }
+        // the models folders, changed while running (Settings → Models, a download folder, a moved model)
+        ("POST", "/api/dirs") => {
+            let Some(list) = body["dirs"].as_array() else { return respond_json(&mut s, 400, &json!({ "error": "dirs needed" })) };
+            let dirs: Vec<PathBuf> = list.iter().filter_map(|d| d.as_str()).filter(|d| !d.trim().is_empty()).map(|d| PathBuf::from(d.trim())).collect();
+            *app.models_dirs.lock().unwrap() = dirs;
+            respond_json(&mut s, 200, &json!({ "ok": true }))
         }
         ("POST", "/api/unload") => {
             if app.busy.load(Ordering::Relaxed) || app.status.lock().unwrap()["state"] == "loading" {

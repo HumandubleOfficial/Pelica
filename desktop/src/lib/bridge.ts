@@ -50,8 +50,9 @@ export interface Bridge {
     cancel(id: string): Promise<void>;
     pause(id: string): Promise<void>;
     resume(id: string): Promise<void>;
-    /** asks first; false when the user said no */
-    uninstall(path: string): Promise<boolean>;
+    /** asks first; false when the user said no, else whether it went to the
+     *  Recycle Bin or (too big for it, or no bin on that drive) was deleted for good */
+    uninstall(path: string): Promise<false | "recycled" | "deleted">;
     /** speeds a DeepSeek V4 file up (pelica repack), or puts it back; asks
      *  first and false when the user said no. It goes on in the background. */
     repack(path: string, undo: boolean): Promise<boolean>;
@@ -60,6 +61,16 @@ export interface Bridge {
     onRepack(fn: (r: Repack[]) => void): () => void;
     pickDir(): Promise<string | null>;
     onProgress(fn: (d: Download[]) => void): () => void;
+    /** the GPUs (dedicated memory), RAM, where downloads go, and every folder the engine looks in */
+    hardware(): Promise<Hardware>;
+    drives(): Promise<DriveInfo[]>;
+    /** free space on the drive of `dir` (default: the download folder); null: no such drive */
+    space(dir?: string): Promise<DriveInfo | null>;
+    /** moves a model into `target`; its new path (null: cancelled or failed, see moves) */
+    move(path: string, target: string): Promise<string | null>;
+    moves(): Promise<ModelMove[]>;
+    moveStop(path: string): Promise<void>;
+    onMove(fn: (m: ModelMove[]) => void): () => void;
   };
   engine: { log(): Promise<string>; restart(): Promise<void>; api(): Promise<{ on: boolean; port: number; error: string }> };
   app: {
@@ -129,6 +140,31 @@ export interface McpConfig {
   tools?: Record<string, ToolPerm>;
 }
 export type ToolPerm = "allow" | "ask" | "off";
+
+export interface Hardware {
+  gpus: { name: string; vram: number }[];
+  ram: number;
+  downloadDir: string;
+  dirs: string[];
+}
+
+export interface DriveInfo {
+  /** "C:\" */
+  root: string;
+  free: number;
+  total: number;
+}
+
+export interface ModelMove {
+  path: string;
+  name: string;
+  to: string;
+  got: number;
+  total: number;
+  state: "running" | "done" | "error" | "cancelled";
+  error?: string;
+  moved?: string;
+}
 
 export interface Download {
   id: string;

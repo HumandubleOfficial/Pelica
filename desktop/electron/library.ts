@@ -1,5 +1,6 @@
 // The model library: GGUF models on Hugging Face (search, files, downloads
 // with progress and resume) and the local models folders.
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -197,4 +198,177 @@ export function download(repo: string, file: string, dir: string, onProgress: Pr
   });
   tick(true);
   return id;
+}
+
+// ---------- this PC: hardware, drives, moving models ----------
+
+export interface Gpu {
+  name: string;
+  /** dedicated memory, bytes */
+  vram: number;
+}
+
+let gpus: Promise<Gpu[]> | null = null;
+
+/** Each display adapter and its dedicated memory: Windows keeps the true size
+ *  in the driver's registry key (WMI's AdapterRAM stops at 4 GB). Read once. */
+export function graphics(): Promise<Gpu[]> {
+  gpus ??= new Promise((ok) => {
+    const ps =
+      String.raw`Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}' -ErrorAction SilentlyContinue | ForEach-Object { $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue; if ($p.DriverDesc) { '{0}|{1}' -f $p.DriverDesc, [uint64]$p.'HardwareInformation.qwMemorySize' } }`;
+    execFile("powershell", ["-NoProfile", "-Command", ps], { windowsHide: true }, (_e, out) => {
+      const list = String(out || "")
+        .split(/\r?\n/)
+        .map((l) => l.trim().split("|"))
+        .filter((x) => x.length === 2 && x[0])
+        .map(([name, b]) => ({ name, vram: Number(b) || 0 }));
+      ok(list);
+    });
+  });
+  return gpus;
+}
+
+export interface Drive {
+  /** "C:\" */
+  root: string;
+  free: number;
+  total: number;
+}
+
+/** Every drive with a file system (C: to Z:). */
+export async function drives(): Promise<Drive[]> {
+  const out: Drive[] = [];
+  for (let c = 67; c <= 90; c++) {
+    const root = String.fromCharCode(c) + ":" + path.sep;
+    try {
+      const s = await fs.promises.statfs(root);
+      if (s.blocks) out.push({ root, free: s.bavail * s.bsize, total: s.blocks * s.bsize });
+    } catch {}
+  }
+  return out;
+}
+
+/** Free bytes on the drive that holds `dir` (null: no such drive). */
+export async function freeOn(dir: string): Promise<Drive | null> {
+  const root = path.parse(path.resolve(dir)).root;
+  try {
+    const s = await fs.promises.statfs(root);
+    return { root, free: s.bavail * s.bsize, total: s.blocks * s.bsize };
+  } catch {
+    return null;
+  }
+}
+
+/** How much the Recycle Bin on `root`'s drive holds, in bytes (null: unknown).
+ *  A file bigger than that can't be recycled: Windows deletes it for good. */
+export function recycleCap(root: string): Promise<number | null> {
+  const letter = root[0];
+  if (!/^[A-Z]$/i.test(letter)) return Promise.resolve(null);
+  // the volume's GUID names its Recycle Bin settings
+  const ps =
+    `$v = (Get-Volume -DriveLetter ${letter} -ErrorAction Stop).Path; ` +
+    String.raw`$g = [regex]::Match($v, '\{[0-9a-fA-F-]+\}').Value; $p = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\BitBucket\Volume\$g" -ErrorAction Stop; if ($p.NukeOnDelete) { 0 } else { $p.MaxCapacity }`;
+  return new Promise((ok) =>
+    execFile("powershell", ["-NoProfile", "-Command", ps], { windowsHide: true }, (e, out) => {
+      const mb = Number(String(out).trim());
+      ok(e || !String(out).trim() || !isFinite(mb) ? null : mb * 1024 * 1024);
+    }),
+  );
+}
+
+/** Bytes of a model's files (`modelFiles`). */
+export function bytesOf(files: string[]): number {
+  let n = 0;
+  const walk = (f: string) => {
+    const s = fs.statSync(f);
+    if (s.isDirectory()) for (const c of fs.readdirSync(f)) walk(path.join(f, c));
+    else n += s.size;
+  };
+  for (const f of files) walk(f);
+  return n;
+}
+
+/** The folder a model's files go into in `target`: a model in its own folder
+ *  (most downloads: <models>/<repo name>/<file>) keeps that folder's name; a
+ *  checkpoint folder goes in as it is. */
+export function moveDest(p: string, files: string[], roots: string[], target: string): string {
+  const key = (x: string) => path.resolve(x).toLowerCase();
+  if (fs.statSync(p).isDirectory()) return target;
+  const parent = path.dirname(files[0]);
+  return roots.some((r) => key(r) === key(parent)) ? target : path.join(target, path.basename(parent));
+}
+
+export interface Move {
+  path: string;
+  name: string;
+  to: string;
+  got: number;
+  total: number;
+  state: "running" | "done" | "error" | "cancelled";
+  error?: string;
+  /** the model's new path, once done */
+  moved?: string;
+}
+
+/** Moves a model's files into `destDir` (made if needed): a rename on the
+ *  same drive, else a copy that is checked and only then removed from the old
+ *  drive. A cancelled or failed copy takes away only its own unfinished copies. */
+export async function moveModel(p: string, files: string[], destDir: string, onProgress: (got: number, total: number) => void, signal: AbortSignal): Promise<string> {
+  const total = bytesOf(files);
+  const same = path.parse(path.resolve(files[0])).root.toLowerCase() === path.parse(path.resolve(destDir)).root.toLowerCase();
+  fs.mkdirSync(destDir, { recursive: true });
+  const dests = files.map((f) => path.join(destDir, path.basename(f)));
+  for (const d of dests) if (fs.existsSync(d)) throw new Error(`${d} is already there`);
+  if (same) {
+    files.forEach((f, i) => fs.renameSync(f, dests[i]));
+  } else {
+    // a folder model: its files one by one
+    const pairs: [string, string][] = [];
+    const add = (src: string, dst: string) => {
+      if (fs.statSync(src).isDirectory()) {
+        fs.mkdirSync(dst, { recursive: true });
+        for (const c of fs.readdirSync(src)) add(path.join(src, c), path.join(dst, c));
+      } else pairs.push([src, dst]);
+    };
+    files.forEach((f, i) => add(f, dests[i]));
+    let got = 0;
+    const made: string[] = [];
+    try {
+      for (const [src, dst] of pairs) {
+        made.push(dst);
+        await new Promise<void>((ok, bad) => {
+          const r = fs.createReadStream(src, { highWaterMark: 4 << 20 });
+          const w = fs.createWriteStream(dst);
+          const stop = () => (r.destroy(new Error("cancelled")), w.destroy());
+          signal.addEventListener("abort", stop, { once: true });
+          r.on("data", (c) => {
+            got += c.length;
+            onProgress(got, total);
+          });
+          r.on("error", bad);
+          w.on("error", bad);
+          w.on("finish", () => (signal.removeEventListener("abort", stop), ok()));
+          r.pipe(w);
+        });
+        if (fs.statSync(dst).size !== fs.statSync(src).size) throw new Error(`the copy of ${path.basename(src)} came out the wrong size`);
+      }
+    } catch (e) {
+      for (const d of made) fs.rmSync(d, { force: true });
+      for (const d of dests) if (fs.existsSync(d) && fs.statSync(d).isDirectory()) fs.rmSync(d, { recursive: true, force: true });
+      // and the folder it made for them, if nothing else is in it
+      try {
+        if (!fs.readdirSync(destDir).length) fs.rmdirSync(destDir);
+      } catch {}
+      throw e;
+    }
+    // every copy checked: now the originals go
+    for (const f of files) fs.rmSync(f, { recursive: true, force: true });
+  }
+  // an emptied download folder goes too
+  const old = path.dirname(files[0]);
+  try {
+    if (!fs.readdirSync(old).length) fs.rmdirSync(old);
+  } catch {}
+  onProgress(total, total);
+  return path.join(destDir, path.basename(p));
 }

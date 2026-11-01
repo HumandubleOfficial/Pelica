@@ -236,7 +236,7 @@ export const DEFAULTS: Settings = {
   cqsAuto: true,
   cqsFix: true,
   shell: "cmd",
-  downloadDir: "D:\\Models",
+  downloadDir: "",
   autoRepack: false,
   modelDirs: [],
   mcpServers: [],
@@ -322,6 +322,8 @@ export interface AppState {
   draft: Draft | null;
   running: boolean;
   view: "chat" | "library" | "brain";
+  /** the model library's tab */
+  libTab: "local" | "discover";
   settingsOpen: boolean;
   settingsTab: string;
   /** What's new: the versions since the last one seen, or every release */
@@ -387,6 +389,7 @@ export const app = createStore<AppState>({
   draft: null,
   running: false,
   view: "chat",
+  libTab: "local",
   settingsOpen: false,
   settingsTab: "General",
   whatsNew: null,
