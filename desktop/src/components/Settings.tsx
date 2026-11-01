@@ -1,5 +1,6 @@
-// Settings, laid out like the Claude app's: a left nav and rows of
-// controls.
+// Settings, laid out like the Claude app's: a grouped left nav, and each
+// page's rows in titled sections (consecutive .set-row elements draw as one
+// card: settings.css).
 import { useEffect, useState } from "react";
 import { bridge, type UpdateCheck } from "../lib/bridge";
 import { app, PERM_MODES, refreshChats, setSettings, toast, useApp, type Settings as S } from "../state";
@@ -15,21 +16,76 @@ import { PromptList } from "./Prompts";
 const PREVIEW_A = 'function greet(name: string) {\n  return "Hello, " + name;\n}\n';
 const PREVIEW_B = "function greet(name: string) {\n  return `Hello, ${name}!`;\n}\n";
 
-const TABS: { name: string; icon: string }[] = [
-  { name: "General", icon: "user" },
-  { name: "Appearance", icon: "palette" },
-  { name: "Capabilities", icon: "bolt" },
-  { name: "Desktop", icon: "monitor" },
-  { name: "Permissions", icon: "shield" },
-  { name: "Context", icon: "gauge" },
-  { name: "CQS", icon: "scan" },
-  { name: "Connectors", icon: "plug" },
-  { name: "Models", icon: "library" },
-  { name: "Devices", icon: "monitor" },
-  { name: "Usage", icon: "spark" },
-  { name: "Developer", icon: "terminal" },
-  { name: "About", icon: "info" },
+const TABS: { name: string; icon: string; group: string; sub: string }[] = [
+  { name: "General", icon: "user", group: "", sub: "Your name, your instructions, and how messages are sent." },
+  { name: "Appearance", icon: "palette", group: "", sub: "Theme, text and code." },
+  { name: "Desktop", icon: "monitor", group: "", sub: "How Pelica fits into Windows." },
+  { name: "Capabilities", icon: "bolt", group: "Assistant", sub: "What models can do on their own." },
+  { name: "Permissions", icon: "shield", group: "Assistant", sub: "What Pelica may do without asking you." },
+  { name: "Context", icon: "gauge", group: "Assistant", sub: "How long chats stay within what the model can hold." },
+  { name: "CQS", icon: "scan", group: "Assistant", sub: "Checks on the code Pelica writes." },
+  { name: "Connectors", icon: "plug", group: "Assistant", sub: "Tools from MCP servers." },
+  { name: "Models", icon: "library", group: "Engine", sub: "Where models live, the local API and the engine." },
+  { name: "Devices", icon: "monitor", group: "Engine", sub: "Other computers lending their RAM to the model." },
+  { name: "Usage", icon: "spark", group: "Engine", sub: "What you've used, by day and by model." },
+  { name: "Developer", icon: "terminal", group: "More", sub: "Versions and the engine's log." },
+  { name: "About", icon: "info", group: "More", sub: "Version, updates and release notes." },
 ];
+
+/** What each theme looks like, for the picker (the colours in styles.css / polish.css). */
+const THEMES: { id: S["theme"]; name: string; bg: string; side: string; panel: string; text: string; accent: string }[] = [
+  { id: "dark", name: "Dark", bg: "#191919", side: "#1f1f1f", panel: "#2a2a2a", text: "#ececec", accent: "#338ced" },
+  { id: "warm", name: "Warm", bg: "#262624", side: "#1f1e1d", panel: "#30302e", text: "#ecebe6", accent: "#d97757" },
+  { id: "light", name: "Light", bg: "#faf9f5", side: "#f3f1ea", panel: "#ffffff", text: "#1f1e1c", accent: "#c96442" },
+  { id: "midnight", name: "Midnight", bg: "#0f1420", side: "#0b0f18", panel: "#161d2c", text: "#e4e9f4", accent: "#6d8dff" },
+  { id: "neural", name: "Neural", bg: "#0b0a0c", side: "#141215", panel: "#1c191b", text: "#f1ece8", accent: "#ff8a4c" },
+];
+
+function ThemePicker({ value, onChange }: { value: string; onChange: (v: S["theme"]) => void }) {
+  return (
+    <div className="theme-cards">
+      {THEMES.map((t) => (
+        <button key={t.id} className={`theme-card ${t.id === value ? "sel" : ""}`} onClick={() => onChange(t.id)} aria-pressed={t.id === value}>
+          <span className="theme-mini" style={{ background: t.bg }}>
+            <span className="theme-mini-side" style={{ background: t.side }} />
+            <span className="theme-mini-main">
+              <span className="theme-mini-line" style={{ background: t.text, width: "70%" }} />
+              <span className="theme-mini-line" style={{ background: t.text, width: "45%" }} />
+              <span className="theme-mini-box" style={{ background: t.panel }}>
+                <span className="theme-mini-dot" style={{ background: t.accent }} />
+              </span>
+            </span>
+          </span>
+          <span className="theme-name">{t.name}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Text size as "Aa" at each size (Ctrl+= / Ctrl+- / Ctrl+0 do the same). */
+const SIZES: [number, string][] = [[13, "Smaller"], [14, "Small"], [15, "Default"], [16, "Large"], [17, "Larger"], [18, "Largest"]];
+function SizePicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="seg size-seg">
+      {SIZES.map(([v, l], i) => (
+        <button key={v} className={v === value ? "sel" : ""} onClick={() => onChange(v)} title={l} aria-label={l} style={{ fontSize: 11 + i * 1.6 }}>
+          Aa
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A page's heading inside it: a title over a card of rows. */
+function Section({ title, children }: { title: string; children?: React.ReactNode }) {
+  return (
+    <>
+      <div className="set-section">{title}</div>
+      {children}
+    </>
+  );
+}
 
 function Seg<T extends string | number | boolean>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (v: T) => void }) {
   return (
@@ -194,7 +250,7 @@ function DesktopTab() {
       <Row title="Computer tools" desc="Lets models see facts about this PC (Windows, CPU, GPU, memory, disks), copy text for you, and read your clipboard or open a workspace file in its app (both ask first).">
         <Toggle on={s.computerTools} set={(v) => setSettings({ computerTools: v })} />
       </Row>
-      <p className="set-desc">
+      <p className="set-note">
         Right-click Pelica's taskbar button for New chat and Quick ask. Drop files anywhere on the window to attach them. <kbd>Ctrl</kbd>+<kbd>K</kbd> opens the command palette.
       </p>
     </>
@@ -313,7 +369,7 @@ function UpdateRows() {
         </Row>
       )}
       {s.updateFeed && (
-        <Row title={res?.newer && res.latest ? `Pelica ${res.latest.version} is available` : res && !res.error ? `Pelica ${res.current} is the newest version` : "Updates"} desc={status}>
+        <Row title={res?.newer && res.latest ? `Pelica ${res.latest.version} is available` : res && !res.error ? `Pelica ${res.current} is the newest version` : "Check for updates"} desc={status}>
           <div className="inline">
             {res?.newer && (
               <button className="btn small primary" disabled={!!busy} onClick={install}>
@@ -342,6 +398,7 @@ function ModelsTab() {
   const [dirs, setDirs] = useState(s.modelDirs.join("; "));
   return (
     <>
+      <Section title="Model files" />
       <Row title="Model folders" desc="Where Pelica looks for .gguf files (separate with ;). Empty: C:\models and D:\Models. Takes effect after restarting the engine.">
         <input className="text-input wide" value={dirs} onChange={(e) => setDirs(e.target.value)} onBlur={() => setSettings({ modelDirs: dirs.split(";").map((x) => x.trim()).filter(Boolean) })} placeholder="C:\models; D:\Models" />
       </Row>
@@ -359,8 +416,10 @@ function ModelsTab() {
       <Row title="Speed up DeepSeek V4 and Qwen3.8 downloads" desc="Rearrange a DeepSeek V4 or Qwen3.8 file as soon as it finishes downloading, so each expert loads in one read (answers about 20% faster). Other programs can't open the file afterwards; Models → Undo speed-up puts it back.">
         <Toggle on={s.autoRepack} set={(v) => setSettings({ autoRepack: v })} />
       </Row>
+      <Section title="Local API" />
       <ApiRows />
-      <Row title="Engine" desc="Restart pelica.exe (after changing folders or rebuilding it).">
+      <Section title="Engine" />
+      <Row title="Restart the engine" desc="Restarts pelica.exe, after changing folders or rebuilding it.">
         <button className="btn small" onClick={() => bridge?.engine.restart()}>
           Restart engine
         </button>
@@ -379,17 +438,34 @@ function DevTab() {
   return (
     <>
       {info && (
-        <div className="muted small">
-          Pelica Desktop {info.version} · Electron {info.electron} · engine {info.pelica} · data {info.userDir}
-        </div>
+        <>
+          <Section title="Versions" />
+          <Row title="Pelica Desktop">
+            <span className="muted mono small">{info.version}</span>
+          </Row>
+          <Row title="Electron">
+            <span className="muted mono small">{info.electron}</span>
+          </Row>
+          <Row title="Engine">
+            <span className="muted mono small set-path">{info.pelica}</span>
+          </Row>
+          <Row title="Your data">
+            <span className="inline">
+              <span className="muted mono small set-path">{info.userDir}</span>
+              <button className="btn ghost small" onClick={() => bridge?.sys.reveal(info.userDir)}>
+                Show
+              </button>
+            </span>
+          </Row>
+        </>
       )}
-      <div className="set-title" style={{ marginTop: 14 }}>
+      <div className="set-section set-section-row">
         Engine log
+        <button className="btn ghost small" onClick={() => bridge?.engine.log().then(setLog)}>
+          Refresh
+        </button>
       </div>
       <pre className="log-pre">{log.slice(-12000) || "(empty)"}</pre>
-      <button className="btn small" onClick={() => bridge?.engine.log().then(setLog)}>
-        Refresh
-      </button>
     </>
   );
 }
@@ -411,12 +487,14 @@ export function SettingsModal() {
     case "General":
       body = (
         <>
+          <Section title="Profile" />
           <Row title="What should Pelica call you?">
             <input className="text-input" value={s.userName} placeholder="Your name" onChange={(e) => set({ userName: e.target.value })} />
           </Row>
           <Row title="Instructions for every chat" desc="How you like answers: tone, format, things to always keep in mind.">
             <textarea className="text-input wide" rows={4} value={s.customInstructions} onChange={(e) => set({ customInstructions: e.target.value })} placeholder="e.g. Keep answers short. I use Windows and Python 3.12." />
           </Row>
+          <Section title="Messages" />
           <Row title="Send with">
             <Seg value={s.sendOnEnter} options={[[true, "Enter"], [false, "Ctrl+Enter"]]} onChange={(v) => set({ sendOnEnter: v })} />
           </Row>
@@ -424,7 +502,7 @@ export function SettingsModal() {
             <Seg value={s.maxTokens} options={[[2048, "2K"], [4096, "4K"], [8192, "8K"], [16384, "16K"], [32768, "32K"]]} onChange={(v) => set({ maxTokens: v })} />
           </Row>
           <div className="set-section">Saved prompts</div>
-          <p className="set-desc">Text you send often. Type / and its name in the message box, or pick it from the + menu or the palette (Ctrl+K).</p>
+          <p className="set-intro">Text you send often. Type / and its name in the message box, or pick it from the + menu or the palette (Ctrl+K).</p>
           <PromptList />
           <div className="set-section">Your chats</div>
           <BackupRow />
@@ -434,28 +512,31 @@ export function SettingsModal() {
     case "Appearance":
       body = (
         <>
-          <Row title="Theme">
-            <Seg value={s.theme} options={[["dark", "Dark"], ["warm", "Warm"], ["light", "Light"], ["midnight", "Midnight"], ["neural", "Neural"]]} onChange={(v) => set({ theme: v })} />
-          </Row>
+          <Section title="Theme" />
+          <div className="set-row set-row-block">
+            <ThemePicker value={s.theme} onChange={(v) => set({ theme: v })} />
+          </div>
           <Row title="Background" desc="Live experts: the model's experts as a grid behind the chat, lighting up as the model uses them (mixture-of-experts models). The Neural theme turns it on.">
             <Seg value={s.background} options={[["none", "Plain"], ["experts", "Live experts"]]} onChange={(v) => set({ background: v })} />
           </Row>
           <Row title="Window backdrop" desc="Windows 11's Mica or Acrylic material shows softly through the window.">
             <Seg value={bridge ? s.material : "none"} options={[["none", "Solid"], ["mica", "Mica"], ["acrylic", "Acrylic"]]} onChange={(v) => setMaterial(v)} />
           </Row>
-          <Row title="Text size" desc="Ctrl+= and Ctrl+- change it anywhere; Ctrl+0 goes back to Default.">
-            <Seg value={s.fontSize} options={[[13, "Smaller"], [14, "Small"], [15, "Default"], [16, "Large"], [17, "Larger"], [18, "Largest"]]} onChange={(v) => set({ fontSize: v })} />
+          <Section title="Text" />
+          <Row title="Text size" desc={`${SIZES.find((x) => x[0] === s.fontSize)?.[1] ?? "Default"}. Ctrl+= and Ctrl+- change it anywhere; Ctrl+0 goes back to Default.`}>
+            <SizePicker value={s.fontSize} onChange={(v) => set({ fontSize: v })} />
           </Row>
           <Row title="Reply font" desc="Replies in a serif face, as in Claude, or the same sans as the rest of the app.">
             <Seg value={s.replyFont} options={[["serif", "Serif"], ["sans", "Sans"]]} onChange={(v) => set({ replyFont: v })} />
           </Row>
-          <div className="set-section">Code appearance</div>
-          <div className="code-preview">
+          <Section title="Code" />
+          <div className="set-row set-row-block code-preview">
             <Diff before={PREVIEW_A} after={PREVIEW_B} path="greet.ts" />
           </div>
           <Row title="Code font" desc="A monospace font for code, diffs and the terminal.">
             <input className="text-input" value={s.codeFont} placeholder="e.g. JetBrains Mono" onChange={(e) => set({ codeFont: e.target.value })} spellCheck={false} />
           </Row>
+          <Section title="Motion" />
           <Row title="Animations" desc="Effort orbs, the shimmer while working, the expert grid.">
             <Toggle on={s.animations} set={(v) => set({ animations: v })} />
           </Row>
@@ -483,7 +564,7 @@ export function SettingsModal() {
     case "Permissions":
       body = (
         <>
-          <p className="set-desc">What Pelica may do without asking you. Switch any time from the chip under the message box, or with <kbd>Shift</kbd>+<kbd>Tab</kbd> in it.</p>
+          <p className="set-intro">Switch any time from the chip under the message box, or with <kbd>Shift</kbd>+<kbd>Tab</kbd> in it.</p>
           <div className="perm-cards">
             {PERM_MODES.map((m) => (
               <button key={m.id} className={`perm-card ${s.permMode === m.id ? "sel" : ""}`} onClick={() => set({ permMode: m.id })}>
@@ -496,6 +577,7 @@ export function SettingsModal() {
             ))}
           </div>
           {s.permMode === "auto" && <div className="warn-text">Bypass permissions runs commands without asking. Use it for folders you can afford to lose: deletes still go to the Recycle Bin, but a command can do anything you can.</div>}
+          <Section title="Files and commands" />
           <Row title="Folders" desc="Each chat has its own folder, picked from the folder chip under the message box. Files and commands stay inside that chat's folder; paths outside it are refused.">
             <span className="muted small">{s.recentFolders.length ? `${s.recentFolders.length} recent` : "none yet"}</span>
           </Row>
@@ -514,7 +596,7 @@ export function SettingsModal() {
           <Row title="Auto-compact" desc="When the context is nearly full, the conversation is summarized (by the model) and continues from the summary.">
             <Toggle on={s.autocompact} set={(v) => set({ autocompact: v })} />
           </Row>
-          <Row title="Compact at">
+          <Row title="Compact at" desc="How full the context gets before it is summarized.">
             <Seg value={s.compactAt} options={[[0.6, "60%"], [0.7, "70%"], [0.8, "80%"], [0.9, "90%"]]} onChange={(v) => set({ compactAt: v })} />
           </Row>
           <Row title="Trim old tool output" desc="Search results, pages and files from earlier turns are cut to a short preview, so long tasks fill the context much more slowly.">
@@ -526,7 +608,7 @@ export function SettingsModal() {
     case "CQS":
       body = (
         <>
-          <p className="set-desc">CQS (code quality scanner) checks code after Pelica writes it: syntax, brackets, tags, leftover placeholders, and your project's own compilers. It hands what it finds to a fixer subagent, then checks again. Run it any time with /cqs, or /cqs polish to also tidy code and UI.</p>
+          <p className="set-intro">CQS (code quality scanner) checks code after Pelica writes it: syntax, brackets, tags, leftover placeholders, and your project's own compilers. It hands what it finds to a fixer subagent, then checks again. Run it any time with /cqs, or /cqs polish to also tidy code and UI.</p>
           <Row title="Scan after changes" desc="Run CQS when a reply changed files.">
             <Toggle on={s.cqsAuto} set={(v) => set({ cqsAuto: v })} />
           </Row>
@@ -536,7 +618,7 @@ export function SettingsModal() {
           <Row title="Run checkers without asking" desc="Your project's own checkers (tsc, eslint, python, node --check…) only read the code, so CQS runs them quietly. Cargo still asks (build scripts can run code), and Manual mode asks for everything.">
             <Toggle on={s.cqsQuiet} set={(v) => set({ cqsQuiet: v })} />
           </Row>
-          <p className="set-desc">Besides syntax and compilers, CQS catches files that are imported or linked but were never written, and has the fixer create them. It runs up to two fix rounds, checking again after each.</p>
+          <p className="set-note">Besides syntax and compilers, CQS catches files that are imported or linked but were never written, and has the fixer create them. It runs up to two fix rounds, checking again after each.</p>
         </>
       );
       break;
@@ -558,13 +640,19 @@ export function SettingsModal() {
     case "About":
       body = (
         <div className="about">
-          <p>
-            <b>Pelica</b> runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow.
+          <div className="about-hero">
+            <img src="logo.svg" alt="" className="about-logo" />
+            <div>
+              <div className="about-name">Pelica {VERSION}</div>
+              <div className="muted small">{st?.gpu ? `Running on ${st.gpu}` : "Mixture-of-experts models on your own PC"}</div>
+            </div>
+          </div>
+          <p className="set-intro">
+            Pelica runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow.
           </p>
-          <p className="muted small">{st?.gpu ? `GPU: ${st.gpu}` : ""}</p>
-          <div className="set-section">Updates</div>
+          <Section title="Updates" />
           <UpdateRows />
-          <div className="set-section">Pelica {VERSION}: release notes</div>
+          <Section title="Release notes" />
           <ReleaseNotes releases={RELEASES.filter((r) => r.version !== "next")} />
         </div>
       );
@@ -575,21 +663,30 @@ export function SettingsModal() {
       <div className="modal settings">
         <nav className="set-nav">
           <div className="set-head">Settings</div>
-          {TABS.map((t) => (
-            <button key={t.name} className={t.name === tab ? "sel" : ""} onClick={() => app.set({ settingsTab: t.name })}>
-              <Icon name={t.icon} size={15} />
-              {t.name}
-            </button>
+          {TABS.map((t, i) => (
+            <div key={t.name} className="set-nav-item">
+              {t.group && t.group !== TABS[i - 1]?.group && <div className="set-group">{t.group}</div>}
+              <button className={t.name === tab ? "sel" : ""} onClick={() => app.set({ settingsTab: t.name })}>
+                <Icon name={t.icon} size={15} />
+                {t.name}
+              </button>
+            </div>
           ))}
+          <div className="set-nav-foot">Pelica {VERSION}</div>
         </nav>
         <div className="set-body">
           <div className="set-body-head">
-            <h2>{tab}</h2>
-            <button className="ghost-btn" onClick={() => app.set({ settingsOpen: false })}>
+            <div>
+              <h2>{tab}</h2>
+              <div className="set-sub">{TABS.find((t) => t.name === tab)?.sub}</div>
+            </div>
+            <button className="ghost-btn" onClick={() => app.set({ settingsOpen: false })} aria-label="Close settings">
               <Icon name="x" size={16} />
             </button>
           </div>
-          {body}
+          <div className="set-page" key={tab}>
+            {body}
+          </div>
         </div>
       </div>
     </div>

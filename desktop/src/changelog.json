@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.13.1",
+    "date": "2026-11-01",
+    "title": "A cleaner Settings window",
+    "notes": [
+      "Settings has a new look: settings are grouped into titled cards, the list on the left is sorted into sections, and each page keeps its title and a one-line summary at the top while you scroll.",
+      "Themes are picked from small previews of each one, and text size from “Aa” samples at each size.",
+      "About shows Pelica’s logo and version up front, with release notes in cards; Developer lists the versions and folders neatly, with a button to show your data folder."
+    ]
+  },
+  {
     "version": "0.13.0",
     "date": "2026-11-01",
     "title": "Runs on more PCs, and updates itself",

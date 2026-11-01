@@ -11,6 +11,7 @@ import "./features.css";
 import "./panel.css";
 import "./rail.css";
 import "./polish.css";
+import "./settings.css";
 import { checkWhatsNew } from "./components/WhatsNew";
 import { checkForUpdates } from "./components/Updates";
 import { startScheduler } from "./agent/tasks";
