@@ -841,30 +841,27 @@ kbd,
 :root .hljs-template-variable {
   color: #79c0ff;
 }
+/* (code and command output sit on a dark box in every theme, Light too, so
+   these colours stay; in Light, words and buttons in those boxes take Dark's
+   light text instead of the page's dark text) */
+:root[data-theme="light"] :is(.code, .term, .tool-cmd, .artifact-code, .conn-cmd, .runbox, .diff, .code-input, .log-pre, .approval-cmd) {
+  --text: #ececec;
+  --text-2: #cccccc;
+  --muted: #959595;
+  --icon: #ececec;
+  --hover: color-mix(in srgb, #ececec 8%, transparent);
+  --btn-on: color-mix(in srgb, #ececec 8%, transparent);
+  --press: color-mix(in srgb, #ececec 16%, transparent);
+}
 :root .hljs-subst {
-  color: var(--text);
+  color: inherit;
 }
 :root .hljs-name,
 :root .hljs-tag {
   color: #e8875f;
 }
 :root .hljs-params {
-  color: var(--text);
-}
-:root[data-theme="light"] .hljs-keyword,
-:root[data-theme="light"] .hljs-name {
-  color: #c2410c;
-}
-:root[data-theme="light"] .hljs-title,
-:root[data-theme="light"] .hljs-title.function_ {
-  color: #1d63c9;
-}
-:root[data-theme="light"] .hljs-type,
-:root[data-theme="light"] .hljs-built_in {
-  color: #8250df;
-}
-:root[data-theme="light"] .hljs-string {
-  color: #1a7f37;
+  color: inherit;
 }
 
 /* ---------- replies: serif, as in Claude ---------- */

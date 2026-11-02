@@ -406,7 +406,7 @@ fn prefetch_thread() -> std::sync::mpsc::Sender<Vec<(usize, usize)>> {
 }
 
 /// Bytes free for this user on the drive holding `dir`.
-fn disk_free(dir: &Path) -> Option<u64> {
+pub(crate) fn disk_free(dir: &Path) -> Option<u64> {
     #[cfg(windows)]
     {
         use std::os::windows::ffi::OsStrExt;
@@ -425,7 +425,7 @@ fn disk_free(dir: &Path) -> Option<u64> {
 
 /// Where the drive part of the cache goes: PELICA_KV_DIR, else
 /// %LOCALAPPDATA%\Pelica\kv (the temp directory elsewhere).
-fn kv_dir() -> PathBuf {
+pub(crate) fn kv_dir() -> PathBuf {
     if let Some(d) = std::env::var_os("PELICA_KV_DIR") {
         return PathBuf::from(d);
     }
@@ -627,6 +627,28 @@ impl Any {
             Inner::Gpu(e) => e.reusable(cached, prompt),
             Inner::Ds4(e) => e.reusable(cached, prompt),
             Inner::Q4x(e) => e.reusable(cached, prompt),
+        }
+    }
+
+    /// Saving the cache for later (`kvsave`): this module's engine only for now.
+    pub fn pos_bytes(&self) -> Option<usize> {
+        match &self.inner {
+            Inner::Gpu(e) => Some(e.pos_bytes()),
+            _ => None,
+        }
+    }
+
+    pub fn read_rows(&self, a: usize, b: usize, stride: usize, out: &mut [u8]) -> Result<()> {
+        match &self.inner {
+            Inner::Gpu(e) => e.read_rows(a, b, stride, out),
+            _ => anyhow::bail!("this engine can't save its cache"),
+        }
+    }
+
+    pub fn write_rows(&self, a: usize, b: usize, stride: usize, src: &[u8]) -> Result<()> {
+        match &self.inner {
+            Inner::Gpu(e) => e.write_rows(a, b, stride, src),
+            _ => anyhow::bail!("this engine can't load a saved cache"),
         }
     }
 
@@ -2192,6 +2214,75 @@ impl Engine {
     /// ran `cached` through the model.
     pub fn reusable(&self, cached: &[u32], prompt: &[u32]) -> usize {
         cached.iter().zip(prompt).take_while(|(a, b)| a == b).count().min(prompt.len().saturating_sub(1))
+    }
+
+    /// Bytes of cache one position takes (keys and values, every layer).
+    pub fn pos_bytes(&self) -> usize {
+        self.rowb * 2 * self.cfg.n_layer
+    }
+
+    /// Cache rows of positions [a, b) into `out`, laid out for saving (`kvsave`):
+    /// layer by layer, keys then values, `stride` rows each (b - a <= stride).
+    pub fn read_rows(&self, a: usize, b: usize, stride: usize, out: &mut [u8]) -> Result<()> {
+        let (nv, rowb, nl) = (self.kv_vram, self.rowb, self.cfg.n_layer);
+        assert!(a < b && b - a <= stride && out.len() >= nl * 2 * stride * rowb && b <= self.cfg.ctx);
+        let at = |l: usize, half: usize, p: usize| ((l * 2 + half) * stride + p - a) * rowb;
+        if a < nv {
+            let n = (b.min(nv) - a) * rowb;
+            let rb = self.device.create_buffer(&wgpu::BufferDescriptor { label: Some("saved rows"), size: (nl * 2 * n) as u64, usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+            let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+            for (l, (kc, vc)) in self.kv.iter().enumerate() {
+                for (half, buf) in [kc, vc].into_iter().enumerate() {
+                    enc.copy_buffer_to_buffer(buf, (a * rowb) as u64, &rb, ((l * 2 + half) * n) as u64, n as u64);
+                }
+            }
+            let idx = self.queue.submit([enc.finish()]);
+            rb.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+            self.wait(idx)?;
+            let m = rb.slice(..).get_mapped_range().context("mapping")?;
+            for l in 0..nl {
+                for half in 0..2 {
+                    out[at(l, half, a)..][..n].copy_from_slice(&m[(l * 2 + half) * n..][..n]);
+                }
+            }
+        }
+        for (x, y) in self.pieces(a.max(nv), b) {
+            for l in 0..nl {
+                for half in 0..2 {
+                    let len = (y - x) * rowb;
+                    // SAFETY: `rows` is in bounds; nothing writes it meanwhile
+                    unsafe { std::ptr::copy_nonoverlapping(self.rows(l, half, x, y), out[at(l, half, x)..].as_mut_ptr(), len) };
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// The other way: rows of positions [a, b) from `src` (as `read_rows`
+    /// lays them out) into the cache.
+    pub fn write_rows(&self, a: usize, b: usize, stride: usize, src: &[u8]) -> Result<()> {
+        let (nv, rowb, nl) = (self.kv_vram, self.rowb, self.cfg.n_layer);
+        assert!(a < b && b - a <= stride && src.len() >= nl * 2 * stride * rowb && b <= self.cfg.ctx);
+        let at = |l: usize, half: usize, p: usize| ((l * 2 + half) * stride + p - a) * rowb;
+        if a < nv {
+            let n = (b.min(nv) - a) * rowb;
+            for (l, (kc, vc)) in self.kv.iter().enumerate() {
+                for (half, buf) in [kc, vc].into_iter().enumerate() {
+                    self.queue.write_buffer(buf, (a * rowb) as u64, &src[at(l, half, a)..][..n]);
+                }
+            }
+            self.queue.submit(std::iter::empty::<wgpu::CommandBuffer>());
+        }
+        for (x, y) in self.pieces(a.max(nv), b) {
+            for l in 0..nl {
+                for half in 0..2 {
+                    let len = (y - x) * rowb;
+                    // SAFETY: `rows` is in bounds; nothing reads it meanwhile
+                    unsafe { std::ptr::copy_nonoverlapping(src[at(l, half, x)..].as_ptr(), self.rows(l, half, x, y), len) };
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Adds this session's expert use to the counts next to the model (the

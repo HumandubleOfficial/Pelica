@@ -49,6 +49,8 @@ enum Job {
     Load { path: PathBuf, ctx: usize },
     Unload,
     Chat { req: Value, tx: Sender<Value> },
+    /// forget the saved chats (kvsave)
+    ClearSaved,
 }
 
 struct App {
@@ -432,6 +434,8 @@ struct Moe {
     levels: bool,
     /// tokens whose cache entries are valid
     cached: Vec<u32>,
+    /// long chats' caches on the drive (None: this engine can't save them)
+    saved: Option<crate::kvsave::Saved>,
 }
 
 enum Backend {
@@ -479,6 +483,16 @@ fn engine_thread(app: &App, rx: Receiver<Job>) {
                     }
                 }
             }
+            Job::ClearSaved => {
+                if let Some(Backend::Moe(m)) = be.as_mut() {
+                    if let Some(s) = m.saved.as_mut() {
+                        s.clear();
+                    }
+                }
+                if let Err(e) = crate::kvsave::clear_all() {
+                    eprintln!("[pelica] {e:#}");
+                }
+            }
             Job::Unload => {
                 be = None;
                 *app.tok.lock().unwrap() = None;
@@ -523,6 +537,7 @@ fn load(path: &Path, ctx: usize) -> Result<(Backend, Value)> {
                 let ds4 = crate::ds4::handles(&g);
                 drop(g);
                 let eng = crate::moe::Any::load(path, ctx)?;
+                let saved = crate::kvsave::Saved::open(path, &eng);
                 let total = eng.vram_experts + eng.host_experts;
                 let st = json!({
                     "kind": "moe", "ctx": eng.cfg.ctx, "max_ctx": eng.max_ctx, "gpu": eng.name, "arch": eng.cfg.arch,
@@ -531,7 +546,7 @@ fn load(path: &Path, ctx: usize) -> Result<(Backend, Value)> {
                     "efforts": if ds4 { json!(["off", "low", "high", "max"]) } else if levels && think { json!(["off", "low", "medium", "high"]) } else if levels { json!(["low", "medium", "high"]) } else if think { json!(["off", "on"]) } else { json!([]) },
                     "effort": if ds4 { "low" } else if levels { "medium" } else if think { "on" } else { "" },
                 });
-                return Ok((Backend::Moe(Box::new(Moe { eng, tok, template, think, ds4, levels, cached: Vec::new() })), st));
+                return Ok((Backend::Moe(Box::new(Moe { eng, tok, template, think, ds4, levels, cached: Vec::new(), saved })), st));
             }
             drop(g);
             let eng = Engine::load(path, ctx)?;
@@ -1506,6 +1521,11 @@ fn handle(app: &Arc<App>, mut s: TcpStream) -> Result<()> {
                 Ok(v) => respond_json(&mut s, 200, &v),
                 Err(e) => respond_json(&mut s, 400, &json!({ "error": format!("{e:#}") })),
             }
+        }
+        ("GET", "/api/saved") => respond_json(&mut s, 200, &json!({ "bytes": crate::kvsave::all_bytes(), "min_tokens": crate::kvsave::MIN })),
+        ("POST", "/api/saved/clear") => {
+            app.jobs.lock().unwrap().send(Job::ClearSaved)?;
+            respond_json(&mut s, 200, &json!({ "ok": true }))
         }
         ("POST", "/api/stop") => {
             app.stop.store(true, Ordering::Relaxed);

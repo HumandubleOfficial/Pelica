@@ -16,6 +16,7 @@ import * as ws from "./workspace";
 import * as mcp from "./mcp";
 import * as lib from "./library";
 import * as media from "./media";
+import * as docs from "./docs";
 import { chatUsage, searchChats } from "./chatdata";
 import { checkRepo, reposIn } from "./repocheck";
 import * as updates from "./updates";
@@ -1263,6 +1264,12 @@ function registerIpc() {
   });
   // photos for models that read text, and voice for the message box
   handle("media:ocr", (dataUrl: string) => media.ocr(dataUrl));
+  // a project's documents: folders picked with the folder dialog (so in roots)
+  docs.init(userDir);
+  handle("docs:index", (folder: string) => docs.index(checkRoot(folder), (p) => win?.webContents.send("docs:progress", p)).then(() => docs.info(checkRoot(folder))));
+  handle("docs:info", (folder: string) => docs.info(checkRoot(folder)));
+  handle("docs:search", (folders: string[], query: string, k?: number) => docs.search(folders.map(checkRoot), String(query || ""), k));
+  handle("docs:forget", (folder: string) => docs.forget(path.resolve(folder)));
   handle("media:dictateStart", () => media.dictateStart((e) => win?.webContents.send("media:dictate", e)));
   handle("media:dictateStop", () => media.dictateStop());
 }

@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.2.0",
+    "date": "2026-11-02",
+    "title": "Chat with your documents, voice conversations, and long chats that reopen instantly",
+    "notes": [
+      "Going back to a long chat answers right away: Pelica keeps what the model has already read of chats over about 750 words on the drive, so it doesn't read the whole conversation again after you switch chats, change models or restart. In a test chat of 2,300 tokens, getting back in took 0.07 s instead of 1.2 s, and on big models it saves seconds to minutes. The reply is exactly the one you'd have got without leaving. This works with most mixture-of-experts models; gpt-oss, GLM, DeepSeek V4 and Qwen3.8 still read the chat again for now. Settings → Models → Keep long chats ready shows the space it uses (up to 8 GB) and clears it.",
+      "Chat with your documents: add folders to a project (Documents → Add folder) and its chats search them. PDFs, Word, PowerPoint and Excel files, notes and code all work, and PDF pages are read with Windows' own text recognition. The passages that match your question go along with it, and the reply shows which files and pages it used. Click one to open it. Everything stays on your PC.",
+      "Voice mode: click the sound-wave button next to the microphone and just talk. Pelica answers out loud a sentence at a time while it writes, then listens again. Press Space or Interrupt to cut it off, and Esc to end. It uses Windows' own speech recognition and voices, so nothing is downloaded.",
+      "Tidier chats: the numbers under a reply (speed, tokens, context) now sit on one clean line instead of a cramped grid, and the side panel's rows no longer break onto two lines.",
+      "Light mode works properly again: the message box is white instead of dark grey, and buttons are white instead of dark with unreadable letters.",
+      "In light mode, code in replies is readable again: plain words and the Copy button no longer turn dark on the code's dark box. Command output, diffs and the terminal get the same fix.",
+      "The first time you open Pelica, it asks you to sign up or log in with Google, so your chats sync between your PCs. Not now skips it, and you can sign in later in Settings → Account. If you're already signed in, you won't see it."
+    ]
+  },
+  {
     "version": "1.1.0",
     "date": "2026-11-02",
     "title": "Your Pelica account, and Experimental features",

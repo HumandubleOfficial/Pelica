@@ -5,6 +5,7 @@
 import { bridge } from "../lib/bridge";
 import { app, toast, useApp, type Photo } from "../state";
 import { Icon } from "./Icons";
+import { withoutDocs } from "../lib/docs";
 
 export interface Attached {
   name: string;
@@ -22,6 +23,8 @@ const BLOCK = /\n*<attachment name="([^"]*)"( kind="image")?>\n([\s\S]*?)\n<\/at
 
 /** A message's own text and the attachments in it (photos matched to their images). */
 export function splitAttachments(content: string, photos: Photo[] = []): { text: string; files: Attached[] } {
+  // (the passages from the project's documents are shown apart: lib/docs.ts)
+  content = withoutDocs(content);
   if (!content.includes("<attachment ")) return { text: content, files: [] };
   const files: Attached[] = [];
   const text = content

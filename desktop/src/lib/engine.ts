@@ -117,10 +117,13 @@ export const engine = {
   devices: () => j<{ active: boolean; devices: Device[] }>("/api/devices"),
   setDevices: (devices: { addr: string; code: string }[]) => j<{ active: boolean; devices: Device[] }>("/api/devices", { devices }),
   scanDevices: () => j<{ addr: string; lend_gb: number; name: string }[]>("/api/devices/scan"),
+  /** long chats kept on the drive (bytes, every model) */
+  saved: () => j<{ bytes: number; min_tokens: number }>("/api/saved"),
+  clearSaved: () => j("/api/saved/clear", {}),
   tensor: (path: string, name: string) => j<{ n: number; buckets: [number, number][]; mean: number; sd: number }>("/api/tensor", { path, name }),
 
   /** One v2 completion; events stream to `on`. Resolves with the `done` event (or throws). */
-  async chat(req: { messages: WireMsg[]; tools: ToolSpec[]; effort?: string; max_tokens?: number; experts?: boolean }, on: (e: ChatEvent) => void, signal?: AbortSignal): Promise<Extract<ChatEvent, { t: "done" }>> {
+  async chat(req: { messages: WireMsg[]; tools: ToolSpec[]; effort?: string; max_tokens?: number; experts?: boolean; save?: boolean }, on: (e: ChatEvent) => void, signal?: AbortSignal): Promise<Extract<ChatEvent, { t: "done" }>> {
     const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ v: 2, ...req }), signal });
     if (!r.ok || !r.body) {
       const v = await r.json().catch(() => ({}));

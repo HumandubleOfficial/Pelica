@@ -549,13 +549,6 @@ pub struct Mat {
     pub wpr: u32,
 }
 
-impl Mat {
-    /// rows [a, a + n) of this matrix
-    pub fn rows(&self, a: usize, n: usize) -> Mat {
-        Mat { base: self.base + (a as u32) * self.wpr, rows: n, ..*self }
-    }
-}
-
 struct Op {
     pipe: wgpu::ComputePipeline,
     group: usize,

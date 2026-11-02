@@ -10,6 +10,8 @@ import { ToolGroup } from "./ToolCard";
 import { SpeedGraph, TweenNum } from "./Speed";
 import { FindBar } from "./FindBar";
 import { editPrompt } from "./Prompts";
+import { cited, docName, excerptsOf, projectDocs, rootOf } from "../lib/docs";
+import { bridge } from "../lib/bridge";
 
 /** Keeps a scroll box at its bottom as it grows, until the user scrolls up;
  *  scrolling back down to the bottom picks it up again. Content growing never
@@ -245,9 +247,15 @@ const EventRow = memo(function EventRow({ m }: { m: Extract<Msg, { role: "event"
 const UserMsg = memo(function UserMsg({ m }: { m: Extract<Msg, { role: "user" }> }) {
   if (m.summary) return null;
   const { text, files } = splitAttachments(m.content, m.images);
+  const found = excerptsOf(m.content).length;
   return (
     <div className="user-row">
       <AttachChips files={files} />
+      {found > 0 && (
+        <div className="docs-note" title="The passages of the project's documents that match this question went along with it">
+          <Icon name="search" size={12} /> Searched your documents · {found} passage{found === 1 ? "" : "s"}
+        </div>
+      )}
       {text && <div className="user-bubble">{text}</div>}
       <div className="msg-actions">
         <button className="ghost-btn" title="Copy" onClick={() => navigator.clipboard.writeText(m.content)}>
@@ -279,6 +287,40 @@ const UserMsg = memo(function UserMsg({ m }: { m: Extract<Msg, { role: "user" }>
 });
 
 type ToolMsg = Extract<Msg, { role: "tool" }>;
+
+/** Under a reply: the passages of the project's documents it cites, each
+ *  opening its file (or, citing none, the ones it was given). */
+function Sources({ src, reply }: { src: string; reply: string }) {
+  const projects = useApp((s) => s.settings.projects);
+  const chat = useApp((s) => s.chat);
+  const ex = excerptsOf(src);
+  if (!ex.length) return null;
+  const nums = cited(reply).filter((n) => ex.some((e) => e.n === n));
+  const show = nums.length ? nums.map((n) => ex.find((e) => e.n === n)!) : ex;
+  const folders = projectDocs(chat, projects);
+  return (
+    <div className="sources">
+      <span className="sources-head">{nums.length ? "Sources" : "Passages it read"}</span>
+      {show.map((e) => (
+        <button
+          key={e.n}
+          className="source-chip"
+          title={`${e.file}${e.page ? `, page ${e.page}` : ""}
+
+${e.text.slice(0, 400)}${e.text.length > 400 ? "…" : ""}`}
+          onClick={() => {
+            const root = rootOf(e.file, folders);
+            if (!root || !bridge) return toast("That folder isn't one of the project's documents any more.");
+            bridge.sys.open(root, e.file.slice(root.replace(/[\\/]+$/, "").length + 1)).catch((err) => toast(String(err?.message || err)));
+          }}
+        >
+          <b>{e.n}</b> {docName(e.file)}
+          {e.page ? <span className="muted"> · p. {e.page}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Drops the last reply (and its tool calls) and answers the last message again. */
 function retryLast() {
@@ -360,7 +402,7 @@ function groupTools(msgs: Msg[]): (Msg | ToolMsg[])[] {
 
 /** Consecutive assistant and tool messages: one turn of Pelica's. */
 const Turn = memo(
-  function Turn({ msgs, last }: { msgs: Msg[]; last: boolean }) {
+  function Turn({ msgs, last, src }: { msgs: Msg[]; last: boolean; src: string }) {
     const text = msgs
       .filter((m) => m.role === "assistant")
       .map((m) => (m as any).content)
@@ -386,7 +428,7 @@ const Turn = memo(
               </div>
             ) : null,
           )}
-          {final && !last && null}
+          {final && !liveNow && <Sources src={src} reply={text} />}
           {final && !liveNow && (
             <div className={`turn-foot ${last ? "last" : ""}`}>
               <div className="msg-actions">
@@ -411,7 +453,7 @@ const Turn = memo(
       </div>
     );
   },
-  (a, b) => a.last === b.last && a.msgs.length === b.msgs.length && a.msgs.every((m, i) => m === b.msgs[i]),
+  (a, b) => a.last === b.last && a.src === b.src && a.msgs.length === b.msgs.length && a.msgs.every((m, i) => m === b.msgs[i]),
 );
 
 function PhaseLine({ d }: { d: Draft }) {
@@ -598,14 +640,16 @@ export function ChatView() {
   }, []);
 
   if (!chat) return null;
-  const rows: { key: string; node: React.ReactNode | Msg[]; ts: number }[] = [];
+  const rows: { key: string; node: React.ReactNode | Msg[]; ts: number; src?: string }[] = [];
   const list = [...(showArchive ? (chat.archive || []).map((m) => ({ ...m, id: "a" + m.id })) : []), ...chat.messages];
   let turn: Msg[] = [];
   // the last turn is the one after the last message of yours, even with a
   // note (length limit, CQS) under it: it gets Retry and the live orbs
   let lastTurn = -1;
+  // (the question a turn answers: its passages from the project's documents)
+  let asked = "";
   const flush = () => {
-    if (turn.length) (lastTurn = rows.length), rows.push({ key: turn[0].id, node: turn, ts: turn[0].ts });
+    if (turn.length) (lastTurn = rows.length), rows.push({ key: turn[0].id, node: turn, ts: turn[0].ts, src: asked });
     turn = [];
   };
   for (const m of list) {
@@ -614,13 +658,13 @@ export function ChatView() {
       continue;
     }
     flush();
-    if (m.role === "user") (lastTurn = -1), rows.push({ key: m.id, node: <UserMsg m={m} />, ts: m.ts });
+    if (m.role === "user") (lastTurn = -1), (asked = m.content), rows.push({ key: m.id, node: <UserMsg m={m} />, ts: m.ts });
     else rows.push({ key: m.id, node: <EventRow m={m} />, ts: m.ts });
   }
   // (the last message is Pelica's: a reply being written carries that turn on)
   const turn0 = !!list.length && (list[list.length - 1].role === "assistant" || list[list.length - 1].role === "tool");
   flush();
-  for (let i = 0; i < rows.length; i++) if (Array.isArray(rows[i].node)) rows[i].node = <Turn msgs={rows[i].node as Msg[]} last={i === lastTurn} />;
+  for (let i = 0; i < rows.length; i++) if (Array.isArray(rows[i].node)) rows[i].node = <Turn msgs={rows[i].node as Msg[]} last={i === lastTurn} src={rows[i].src || ""} />;
   // a chat that spans more than one day gets a line where each day starts
   const days = rows.length > 1 && !!rows[0].ts && dayOf(rows[0].ts) !== dayOf(rows[rows.length - 1].ts || Date.now());
 

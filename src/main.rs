@@ -18,6 +18,7 @@ mod forward;
 mod gguf;
 mod gpu;
 mod iq_tables;
+mod kvsave;
 mod model;
 mod moe;
 mod moe_kernels;

@@ -793,16 +793,7 @@ impl Store {
         self.sh.st.lock().unwrap().slots[pin.slot].fill == Fill::Ready
     }
 
-    /// Reads one expert into a new buffer, outside the cache (warm-up).
-    pub fn read_now(&self, key: u32) -> Result<Vec<u8>> {
-        let pins = self.request(&[key])?;
-        self.wait(&pins[0])?;
-        let mut v = Vec::new();
-        for p in 0..3 {
-            v.extend_from_slice(pins[0].piece(p));
-        }
-        Ok(v)
-    }
+
 }
 
 impl Drop for Store {

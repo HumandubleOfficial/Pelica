@@ -7,6 +7,8 @@ import { engine, type ChatEvent, type ToolSpec, type WireCall, type WireMsg } fr
 import { app, beginLive, endLive, experts, liveChat, refreshChats, toast, uid, updateChat, updateLive, type Chat, type Draft, type Msg, type Photo, type SpeedParts, type ToolUI } from "../state";
 import { runTool, toolsFor } from "./tools";
 import { pixelsOf, preparePixels, type Pixels } from "../lib/pixels";
+import { docName, excerptsFor, projectDocs } from "../lib/docs";
+import { splitAttachments } from "../components/Attachments";
 
 let stopFlag = { stopped: false };
 let ctl: AbortController | null = null;
@@ -171,12 +173,15 @@ Using them well:
     const files = kept.join("\n\n") + (left.length ? `${kept.length ? "\n\n" : ""}(Left out, too big for this model's context: ${left.join(", ")}. If one is needed, ask the user to paste the part that matters.)` : "");
     parts.push(`# Project: ${proj.name}\nThis chat is part of the user's project "${proj.name}". Every chat in it shares these instructions and files.${proj.instructions.trim() ? `\n\n## Instructions\n${proj.instructions.trim()}` : ""}${files ? `\n\n## Files\nThe project's files, which you can read and quote:\n\n${files}` : ""}`);
   }
+  if (proj?.docs?.length) parts.push(`# The project's documents
+The user keeps documents for this project (${proj.docs.map(docName).join(", ")}). When passages from them match the user's question, they arrive in a <documents> block in the message, each <excerpt> numbered with its file and page. Answer from those passages and cite them by number right after what they support, like [1] or [2, 3]. Quote exact figures and names as they appear. If the passages don't answer the question, say that the documents don't seem to cover it rather than guessing; the user can rephrase or add documents.`);
   const pn = await projectNotes(chat.id, chat.folder);
   if (pn) parts.push(`# Project instructions\nFrom the project's PELICA.md (or AGENTS.md / CLAUDE.md). Follow them when you work in this folder; the user's own instructions below come first.\n\n${pn}`);
   if (s.memoryOn) {
     const mem = memoryOf(chat.id);
     parts.push(`# Memory\nWhat you remember about the user from earlier chats (they can see and edit it in Settings → Memory)${mem ? `:\n${mem}` : ": nothing yet."}${has("remember") ? "\nWhen the user asks you to remember something, call remember. You may also remember a lasting fact on your own when you'll clearly need it again; mention it briefly when you do. When they ask you to forget something, or a fact changes, call forget." : ""}`);
   }
+  if (app.get().voice) parts.push("# Voice\nThe user is talking to you by voice and hears your reply read aloud. Answer in a few short, plain spoken sentences, the way you'd say it out loud. No tables, lists, code or Markdown unless they ask for them.");
   if (s.customInstructions.trim()) parts.push(`# The user's instructions\n${s.customInstructions.trim()}`);
   return parts.join("\n\n");
 }
@@ -404,7 +409,7 @@ export async function loop(h: LoopHooks): Promise<LoopResult> {
     ctl = new AbortController();
     let done;
     try {
-      done = await engine.chat({ messages: [{ role: "system", content: system }, ...msgs], tools: all, effort: effortNow(), max_tokens: s.maxTokens, experts: true }, dr.on, ctl.signal);
+      done = await engine.chat({ messages: [{ role: "system", content: system }, ...msgs], tools: all, effort: effortNow(), max_tokens: s.maxTokens, experts: true, save: s.saveChats }, dr.on, ctl.signal);
     } finally {
       dr.end();
     }
@@ -486,6 +491,12 @@ export async function send(text: string, images?: Photo[]) {
   if (st.running) return toast(st.liveId && st.liveId !== st.chat?.id ? "Pelica is replying in another chat: wait for it, or stop it." : "Wait for the reply to finish, or stop it first.");
   if (st.status?.state !== "ready") return toast(st.status?.state === "loading" ? "The model is still loading." : "Load a model first (model menu under the message box).");
   if (!st.chat) return;
+  // a project with documents: the passages that match the question go with it
+  const folders = projectDocs(st.chat, st.settings.projects);
+  if (folders.length && !text.includes("<documents>")) {
+    const before = [...st.chat.messages].reverse().find((x) => x.role === "user");
+    text += await excerptsFor(folders, splitAttachments(text).text, before ? splitAttachments(before.content).text : "");
+  }
   const m: Msg = { id: uid(), role: "user", content: text, ts: Date.now(), images: images?.length ? images : undefined };
   updateChat((c) => ({ ...c, title: c.messages.length ? c.title : titleFrom(text), messages: [...c.messages, m] }));
   await run();

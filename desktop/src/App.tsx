@@ -7,6 +7,7 @@ import { Composer } from "./components/Composer";
 import { Sidebar, TitleBar } from "./components/Sidebar";
 import { SettingsModal } from "./components/Settings";
 import { WhatsNew } from "./components/WhatsNew";
+import { SignUp } from "./components/SignUp";
 import { TasksModal } from "./components/Tasks";
 import { Shortcuts } from "./components/Shortcuts";
 import { PromptEditor } from "./components/Prompts";
@@ -312,6 +313,7 @@ export function App() {
       <DropZone />
       <SettingsModal />
       <WhatsNew />
+      <SignUp />
       <TasksModal />
       <Shortcuts />
       <PromptEditor />

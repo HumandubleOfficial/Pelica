@@ -280,8 +280,10 @@ fn vnni() -> bool {
     false
 }
 
-/// out[r] = row r of Q4_K matrix `w` (rows of x.len() values) . x
-pub fn q4k_rows(w: &[u8], x: &Q8x, out: &mut [f32]) {
+/// out[r] = row r of Q4_K matrix `w` (rows of x.len() values) . x (the
+/// one-vector check for `q4k_rows_multi`)
+#[cfg(test)]
+fn q4k_rows(w: &[u8], x: &Q8x, out: &mut [f32]) {
     let bpr = x.d.len() * 144;
     for (r, o) in out.iter_mut().enumerate() {
         *o = row(&w[r * bpr..(r + 1) * bpr], x);

@@ -19,6 +19,7 @@ import { startScheduler } from "./agent/tasks";
 import { startPhone } from "./lib/phone";
 import { startSegs } from "./lib/segs";
 import { loadAccount } from "./components/Account";
+import { checkSignUp } from "./components/SignUp";
 import "highlight.js/styles/github-dark.css";
 
 // the store (and chat saving), for looking at the app from DevTools and tests
@@ -77,7 +78,7 @@ const quick = location.hash === "#quick";
     bridge.mcp.onChanged((mcp) => app.set({ mcp }));
   }
   if (bridge) {
-    loadAccount();
+    loadAccount().then(checkSignUp);
     bridge.account.onChanged(loadAccount);
     bridge.settings.onPushed((patch) => app.set({ settings: { ...app.get().settings, ...patch } }));
     bridge.account.onSynced(async (c) => {

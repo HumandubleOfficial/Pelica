@@ -17,6 +17,7 @@ import { PhoneTab } from "./Phone";
 import { AccountTab } from "./Account";
 import { checkNow } from "./Updates";
 import { StorageRows } from "./Storage";
+import { engine } from "../lib/engine";
 
 const PREVIEW_A = 'function greet(name: string) {\n  return "Hello, " + name;\n}\n';
 const PREVIEW_B = "function greet(name: string) {\n  return `Hello, ${name}!`;\n}\n";
@@ -33,7 +34,7 @@ const TABS: { name: string; icon: string; group: string; keys: string }[] = [
   { name: "CQS", icon: "scan", group: "Preferences", keys: "code quality scanner fix checkers" },
   { name: "Usage", icon: "spark", group: "Preferences", keys: "tokens days models" },
   { name: "Desktop", icon: "monitor", group: "This computer", keys: "quick ask shortcut hotkey tray start with windows notifications computer tools" },
-  { name: "Models", icon: "library", group: "This computer", keys: "storage disk space drive move delete uninstall model folders load download speed up repack local api openai port engine restart" },
+  { name: "Models", icon: "library", group: "This computer", keys: "storage disk space drive move delete uninstall model folders load download speed up repack local api openai port engine restart keep long chats ready saved cache clear" },
   { name: "Phone", icon: "phone", group: "This computer", keys: "mobile phone qr code wifi tailscale remote pair" },
   { name: "Devices", icon: "monitor", group: "This computer", keys: "bridge ram lend pairing network" },
   { name: "Developer", icon: "terminal", group: "This computer", keys: "versions electron engine log data folder" },
@@ -161,6 +162,38 @@ function ImportRow() {
       >
         {busy ? "Importing…" : "Import…"}
       </button>
+    </Row>
+  );
+}
+
+/** Long chats kept on the drive (the engine's kvsave): on/off, the space they take, and Clear. */
+function SavedChatsRow() {
+  const on = useApp((s) => s.settings.saveChats);
+  const [bytes, setBytes] = useState<number | null>(null);
+  const read = () => engine.saved().then((v) => setBytes(v.bytes)).catch(() => setBytes(null));
+  useEffect(() => {
+    read();
+  }, []);
+  const gb = bytes === null ? "" : bytes < 1e9 ? ` They take ${Math.round(bytes / 1e6)} MB now.` : ` They take ${(bytes / 1e9).toFixed(1)} GB now.`;
+  return (
+    <Row
+      title="Keep long chats ready"
+      desc={`Keeps what the model has read of chats over about 750 words on the drive, so going back to one answers right away instead of reading it all again (a few seconds to minutes on big models). Up to 8 GB, the oldest chats first to go.${gb}`}
+    >
+      <div className="row-btns">
+        <button
+          className="btn small"
+          disabled={!bytes}
+          onClick={async () => {
+            await engine.clearSaved().catch(() => {});
+            setTimeout(read, 400);
+            toast("Cleared the saved chats. Your chats themselves are untouched.");
+          }}
+        >
+          Clear
+        </button>
+        <Toggle on={on} set={(v) => setSettings({ saveChats: v })} />
+      </div>
     </Row>
   );
 }
@@ -504,6 +537,7 @@ function ModelsTab() {
       <Row title="Load the last model at start" desc={s.lastModel ? `Off: Pelica starts with no model loaded, and you pick one from the model menu. On: it loads ${s.lastModel.split(/[\\/]/).pop()} as it starts.` : "Off: Pelica starts with no model loaded, and you pick one from the model menu."}>
         <Toggle on={s.loadOnStart} set={(v) => setSettings({ loadOnStart: v })} />
       </Row>
+      <SavedChatsRow />
       <Row title="Speed up DeepSeek V4 and Qwen3.8 downloads" desc="Rearrange a DeepSeek V4 or Qwen3.8 file as soon as it finishes downloading, so each expert loads in one read (answers about 20% faster). Other programs can't open the file afterwards; Models → Undo speed-up puts it back.">
         <Toggle on={s.autoRepack} set={(v) => setSettings({ autoRepack: v })} />
       </Row>

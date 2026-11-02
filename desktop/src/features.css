@@ -1445,3 +1445,125 @@ kbd {
 .user-chip img.avatar {
   object-fit: cover;
 }
+
+/* ---------- a project's documents (lib/docs.ts) ---------- */
+.proj-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.proj-doc-state {
+  padding-left: 21px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* on the question: the passages that went with it */
+.docs-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 0.8em;
+  color: var(--muted);
+}
+/* under the reply: what it cites, each opening its file */
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 8px;
+}
+.sources-head {
+  margin-right: 2px;
+  font-size: 0.8em;
+  color: var(--muted);
+}
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 260px;
+  padding: 3px 9px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.8em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background-color 0.14s ease;
+}
+.source-chip:hover {
+  background: var(--hover);
+}
+.source-chip b {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+/* ---------- voice mode (Voice.tsx): a bar over the message box ---------- */
+.voice-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 8px;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid var(--rim, var(--line-2));
+  border-radius: 14px;
+  background: var(--input-bg, var(--panel));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  animation: page-in 0.24s var(--ease-out, ease-out);
+}
+.voice-orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+}
+.voice-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  animation: voicering 1.5s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes voicering {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+.voice-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.voice-words .small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.voice-btn.on {
+  background: var(--btn-on);
+  color: var(--accent);
+}

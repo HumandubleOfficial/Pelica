@@ -15,7 +15,9 @@ use std::path::{Path, PathBuf};
 
 /// The longest side the app sends is limited by pixels, as Qwen's processor
 /// does: at most this many (768 x 768 = 576 rows for the model).
+#[cfg(test)]
 pub const MAX_PIXELS: usize = 768 * 768;
+#[cfg(test)]
 pub const MIN_PIXELS: usize = 8 * 32 * 32;
 
 /// An encoded picture: `nx` x `ny` rows of the text model's width, row-major.
@@ -37,6 +39,7 @@ pub fn find_mmproj(model: &Path) -> Option<PathBuf> {
 /// The size Qwen's processor resizes a w x h picture to: sides multiples of
 /// 32 (two 16-pixel patches), the area kept within MIN..MAX_PIXELS, the
 /// shape kept ("smart_resize").
+#[cfg(test)]
 pub fn target_size(w: usize, h: usize) -> (usize, usize) {
     let f = 32.0;
     let (wf, hf) = (w.max(1) as f64, h.max(1) as f64);

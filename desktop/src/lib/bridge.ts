@@ -104,6 +104,8 @@ export interface Bridge {
   };
   quick: { submit(text: string, reply?: string): Promise<void>; hide(): Promise<void>; resize(h: number): Promise<void>; clip(): Promise<string>; onShown(fn: () => void): () => void };
   sys: { info(): Promise<Record<string, string>>; open(root: string, rel: string): Promise<void>; clipRead(): Promise<string>; clipWrite(t: string): Promise<void>; external(url: string): Promise<void>; saveAs(name: string, text: string, dir?: string): Promise<string | null>; reveal(path: string): Promise<void>; awake(on: boolean): Promise<boolean> };
+  /** a project's documents (electron/docs.ts) */
+  docs: { index(folder: string): Promise<DocsInfo>; info(folder: string): Promise<DocsInfo>; search(folders: string[], query: string, k?: number): Promise<DocPassage[]>; forget(folder: string): Promise<void>; onProgress(fn: (p: { folder: string; done: number; total: number; file: string }) => void): () => void };
   media: { ocr(dataUrl: string): Promise<string>; dictateStart(): Promise<void>; dictateStop(): Promise<void>; onDictate(fn: (e: DictateEvent) => void): () => void };
   pathFor(f: File): string;
 }
@@ -249,6 +251,26 @@ export interface PhoneCmd {
 }
 
 /** Settings → Account: the Google account, and the sync through its Drive. */
+/** A folder of documents a project searches: how much of it is read. */
+export interface DocsInfo {
+  folder: string;
+  /** when it was last read (ms; 0: never) */
+  at: number;
+  files: number;
+  passages: number;
+  unreadable: { file: string; error: string }[];
+  busy: boolean;
+}
+
+/** A passage of a document that matches a question. */
+export interface DocPassage {
+  file: string;
+  /** PDF page or slide, from 1 */
+  page?: number;
+  text: string;
+  score: number;
+}
+
 export interface AccountStatus {
   profile: { name: string; email: string; picture: string } | null;
   sync: { busy: boolean; lastSync: number; error: string };

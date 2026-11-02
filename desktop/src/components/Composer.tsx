@@ -7,6 +7,7 @@ import { bridge } from "../lib/bridge";
 import { engine, type LocalModel } from "../lib/engine";
 import { app, openChat, PERM_MODES, setChatFolder, setSettings, toast, useApp, type Photo } from "../state";
 import { ContextMeter } from "./ContextMeter";
+import { VoiceBar, VoiceButton } from "./Voice";
 import { EffortPicker } from "./Effort";
 import { Icon } from "./Icons";
 import { Menu, type MenuItem } from "./Menu";
@@ -319,6 +320,8 @@ function MicButton({ onText }: { onText: (t: string) => void }) {
   useEffect(() => {
     if (!bridge) return;
     const off = bridge.media.onDictate((e) => {
+      // (voice mode listens for itself)
+      if (app.get().voice) return;
       if (e.kind === "ready") setState("on");
       else if (e.kind === "text") cb.current(e.text);
       else if (e.kind === "error") toast(e.error);
@@ -577,6 +580,7 @@ export function Composer({ big = false }: { big?: boolean }) {
 
   return (
     <div className={`composer-wrap ${big ? "big" : ""}`}>
+    <VoiceBar />
     <div className={`composer slim ${big ? "big" : ""}`}>
       <AgentHint folder={folder} />
       {elsewhere && (
@@ -653,6 +657,7 @@ export function Composer({ big = false }: { big?: boolean }) {
         </button>
       )}
       <MicButton onText={(t) => setText((x) => (x && !/\s$/.test(x) ? x + " " : x) + t)} />
+      <VoiceButton />
       </div>
       <input ref={picker} type="file" multiple hidden onChange={(e) => (e.target.files && attach(e.target.files), (e.target.value = ""))} />
     </div>

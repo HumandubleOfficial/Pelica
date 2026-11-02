@@ -32,7 +32,7 @@ export async function loadAccount() {
 }
 
 /** The Google "G", drawn as Google draws it. */
-function GoogleG() {
+export function GoogleG() {
   return (
     <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
       <path

@@ -2,10 +2,11 @@
 // a folder. The list of projects, and a project's page with its chats on the
 // left and what every chat in it gets (instructions, files, folder) on the
 // right. The agent puts a chat's project into its system prompt (agent.ts).
-import { useMemo, useRef, useState } from "react";
-import { bridge } from "../lib/bridge";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { bridge, type DocsInfo } from "../lib/bridge";
 import { app, deleteProject, newProject, openChat, openProject, projectOf, saveProject, startNewChat, toast, useApp, type Project } from "../state";
 import { Icon } from "./Icons";
+import { docName } from "../lib/docs";
 
 /** How much file text a project keeps (it goes into every chat's prompt). */
 const FILE_MAX = 300_000;
@@ -54,6 +55,77 @@ export function ProjectsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/** Folders of documents the project's chats search: PDFs, Word, PowerPoint,
+ *  notes. Read once on this PC (electron/docs.ts), then again only for what
+ *  changed, each time the page opens. */
+function DocsSection({ p, set }: { p: Project; set: (patch: Partial<Project>) => void }) {
+  const docs = p.docs || [];
+  const [info, setInfo] = useState<Record<string, DocsInfo>>({});
+  const [now, setNow] = useState<Record<string, string>>({});
+  const read = (d: string) =>
+    bridge?.docs
+      .index(d)
+      .then((v) => (setInfo((x) => ({ ...x, [d]: v })), setNow((x) => ({ ...x, [d]: "" }))))
+      .catch((e) => toast(String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "")));
+  useEffect(() => {
+    if (!bridge) return;
+    const off = bridge.docs.onProgress((e) => setNow((x) => ({ ...x, [e.folder]: e.file ? `Reading ${e.file}… (${e.done + 1} of ${e.total})` : "" })));
+    for (const d of docs) {
+      bridge.docs.info(d).then((v) => setInfo((x) => ({ ...x, [d]: v }))).catch(() => {});
+      read(d);
+    }
+    return off;
+  }, [p.id, docs.join("|")]);
+  return (
+    <section>
+      <div className="proj-side-head">
+        Documents
+        <button
+          className="btn small ghost"
+          disabled={!bridge}
+          onClick={async () => {
+            const d = await bridge?.folder.pick();
+            if (!d || docs.some((x) => x.toLowerCase() === d.toLowerCase())) return;
+            set({ docs: [...docs, d] });
+          }}
+        >
+          <Icon name="plus" size={12} /> Add folder
+        </button>
+      </div>
+      {docs.map((d) => {
+        const v = info[d];
+        return (
+          <div key={d} className="proj-doc">
+            <div className="proj-file">
+              <Icon name="folder" size={13} />
+              <span className="proj-file-name" title={d}>
+                {docName(d)}
+              </span>
+              <button className="ghost-btn" title="Read it again" disabled={!!now[d]} onClick={() => read(d)}>
+                <Icon name="reload" size={12} />
+              </button>
+              <button
+                className="ghost-btn"
+                title="Stop searching this folder (its files stay where they are)"
+                onClick={() => {
+                  set({ docs: docs.filter((x) => x !== d) });
+                  bridge?.docs.forget(d);
+                }}
+              >
+                <Icon name="x" size={12} />
+              </button>
+            </div>
+            <div className="muted small proj-doc-state">
+              {now[d] || (v ? (v.files ? `${v.files} file${v.files === 1 ? "" : "s"} · ${v.passages} passages${v.unreadable.length ? ` · ${v.unreadable.length} couldn't be read` : ""}` : "No documents found in it yet.") : "…")}
+            </div>
+          </div>
+        );
+      })}
+      {!docs.length && <div className="muted small">Folders of PDFs, Word and PowerPoint files and notes. Chats in the project search them and cite what they use. Everything stays on this PC.</div>}
+    </section>
   );
 }
 
@@ -163,6 +235,7 @@ export function ProjectPage() {
             {!p.files.length && <div className="muted small">Text files (notes, docs, code) every chat in the project can read.</div>}
             {used > 100_000 && <div className="warn-note">That's a lot for a local model: files that don't fit in about 40% of its context are left out (by name) in its chats.</div>}
           </section>
+          <DocsSection p={p} set={set} />
           <section>
             <div className="proj-side-head">Folder</div>
             {p.folder ? (

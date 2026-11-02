@@ -207,11 +207,6 @@ impl Shards {
         self.gs.iter().any(|g| g.tensors.contains_key(name))
     }
 
-    fn bytes(&self, name: &str) -> Result<&[u8]> {
-        let (i, t) = self.find(name)?;
-        Ok(self.gs[i].bytes(t))
-    }
-
     fn floats(&self, name: &str) -> Result<Vec<f32>> {
         let (i, t) = self.find(name)?;
         let b = self.gs[i].bytes(t);
@@ -2619,7 +2614,6 @@ impl Engine {
                     }
                     tick(15, &mut ts);
                 }
-                drop(pins);
             }
             if !small {
                 // the GPU experts' sum, once they've all run

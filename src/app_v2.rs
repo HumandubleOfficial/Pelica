@@ -423,10 +423,23 @@ pub(super) fn chat_moe(m: &mut Moe, req: &Value, tx: &Sender<Value>, stop: &Atom
     let room = ctx - ids.len() - 4;
     let answer_cap = (req["max_tokens"].as_u64().unwrap_or(8192) as usize).clamp(1, room);
     let n = if text.trim_end().ends_with("<think>") { room } else { answer_cap };
-    let reuse = m.eng.reusable(&m.cached, &ids);
-    m.cached.clear();
+    let mut reuse = m.eng.reusable(&m.cached, &ids);
+    // a long chat read before: its cache from the drive instead of reading it again
+    let save = req["save"].as_bool().unwrap_or(true);
     let t0 = Instant::now();
-    let _ = tx.send(json!({ "t": "start", "prompt": ids.len(), "reused": reuse, "ctx": ctx }));
+    let mut restored = 0;
+    if let (Some(s), true) = (m.saved.as_mut(), save) {
+        match s.restore(&m.eng, &ids, reuse) {
+            Ok(Some((n, toks))) => {
+                (reuse, restored) = (n, n);
+                m.cached = toks;
+            }
+            Ok(None) => {}
+            Err(e) => eprintln!("[pelica] couldn't load a saved chat: {e:#}"),
+        }
+    }
+    m.cached.clear();
+    let _ = tx.send(json!({ "t": "start", "prompt": ids.len(), "reused": reuse, "restored": restored, "restore_s": t0.elapsed().as_secs_f64(), "ctx": ctx }));
     let want_experts = req["experts"].as_bool().unwrap_or(false);
     if want_experts {
         let (l, e) = m.eng.expert_grid();
@@ -549,6 +562,12 @@ pub(super) fn chat_moe(m: &mut Moe, req: &Value, tx: &Sender<Value>, stop: &Atom
         let _ = tx.send(json!({ "t": "cut", "while": if split.think { "thinking" } else { "answer" }, "context": gen.len() + 1 >= n && n == room }));
     }
     done(tx, ids.len(), reuse, gen.len(), think_n, answer_n, think_s, first.map(|f| (f - t0).as_secs_f64()), stats.prefill_s, stats.decode_s, ctx, finish);
+    // (after the reply ends, so saving never holds it up)
+    if let (Some(s), true) = (m.saved.as_mut(), save) {
+        if let Err(e) = s.keep(&m.eng, &m.cached) {
+            eprintln!("[pelica] couldn't save the chat's cache: {e:#}");
+        }
+    }
     Ok(())
 }
 

@@ -139,6 +139,8 @@ export interface Project {
   files: { name: string; text: string }[];
   /** the folder its new chats work in */
   folder: string | null;
+  /** folders of documents its chats search (PDFs, Word, notes…; electron/docs.ts) */
+  docs?: string[];
   created: number;
 }
 
@@ -170,6 +172,8 @@ export interface Settings {
   downloadDir: string;
   /** speed up (pelica repack) DeepSeek V4 files as soon as they finish downloading */
   autoRepack: boolean;
+  /** keep long chats' model memory on the drive, so reopening one answers at once (engine kvsave) */
+  saveChats: boolean;
   modelDirs: string[];
   projects: Project[];
   /** memory across chats: on, and what's remembered */
@@ -230,6 +234,8 @@ export interface Settings {
   googleClientId: string;
   googleClientSecret: string;
   syncOn: boolean;
+  /** the first start's "Sign up or log in" was answered (or the user was already signed in) */
+  accountAsked: boolean;
   /** where to look for new versions (a latest.json: web address or path; empty: Pelica's GitHub releases) */
   updateFeed: string;
   /** when to check for a new version by itself */
@@ -277,6 +283,7 @@ export const DEFAULTS: Settings = {
   shell: "cmd",
   downloadDir: "",
   autoRepack: false,
+  saveChats: true,
   modelDirs: [],
   projects: [],
   memoryOn: true,
@@ -313,6 +320,7 @@ export const DEFAULTS: Settings = {
   googleClientId: "",
   googleClientSecret: "",
   syncOn: true,
+  accountAsked: false,
   updateFeed: "",
   updateCheck: "start",
   updatePreview: false,
@@ -385,6 +393,10 @@ export interface AppState {
   approval: Approval | null;
   /** the Pelica account (Google) and its sync (Settings → Account) */
   account: import("./lib/bridge").AccountStatus | null;
+  /** the first start's "Sign up or log in" (SignUp.tsx) */
+  signUp: boolean;
+  /** voice mode (Voice.tsx): what it's doing, and what it last heard */
+  voice: { phase: "starting" | "listening" | "thinking" | "speaking"; heard: string } | null;
   context: ContextInfo | null;
   mcp: McpServer[];
   sidebar: boolean;
@@ -450,6 +462,8 @@ export const app = createStore<AppState>({
   tasksOpen: false,
   approval: null,
   account: null,
+  signUp: false,
+  voice: null,
   context: null,
   mcp: [],
   sidebar: true,
