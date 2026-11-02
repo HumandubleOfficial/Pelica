@@ -55,6 +55,7 @@ const mcp = __importStar(require("./mcp"));
 const lib = __importStar(require("./library"));
 const media = __importStar(require("./media"));
 const docs = __importStar(require("./docs"));
+const authwin_1 = require("./authwin");
 const chatdata_1 = require("./chatdata");
 const repocheck_1 = require("./repocheck");
 const updates = __importStar(require("./updates"));
@@ -932,9 +933,22 @@ function registerIpc() {
     const client = () => (settings.googleClientId ? { id: settings.googleClientId, secret: settings.googleClientSecret || "" } : builtIn);
     const accountStatus = () => ({ profile: google.profile(), sync: sync.status(), clientId: client().id, hasSecret: !!client().secret, builtIn: !!builtIn.id });
     handle("account:status", accountStatus);
+    // sign-in pages open in a small browser window over Pelica (authwin.ts)
+    const signInWindow = async (go, cancel) => {
+        let w = null;
+        try {
+            const r = await go((u) => (w = (0, authwin_1.openSmall)(u, node_path_1.default.join(userDir, "sign-in"), win?.getBounds(), cancel)));
+            w?.close(1200);
+            return r;
+        }
+        catch (e) {
+            w?.close();
+            throw e;
+        }
+    };
     handle("account:signIn", async () => {
         const c = client();
-        const p = await google.signIn(c.id, c.secret, (u) => electron_1.shell.openExternal(u));
+        const p = await signInWindow((open) => google.signIn(c.id, c.secret, open), google.cancelSignIn);
         // (another Google account than before: its Drive starts a fresh sync)
         if (settings.accountEmail !== p.email) {
             sync.reset();
@@ -1042,7 +1056,7 @@ function registerIpc() {
         return c;
     };
     handle("mcp:signIn", async (name) => {
-        await mcp.signIn(mcpCfg(name), (u) => electron_1.shell.openExternal(u));
+        await signInWindow((open) => mcp.signIn(mcpCfg(name), open), oauth.cancelSignIn);
         win?.show();
         win?.focus();
         return mcp.list();

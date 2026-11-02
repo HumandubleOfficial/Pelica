@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.2.1",
+    "date": "2026-11-02",
+    "title": "Signing in opens a small window",
+    "notes": [
+      "Signing in with Google, or to an online connector, now opens a small window over Pelica instead of a full browser tab, and it closes by itself once you're signed in. Closing it yourself cancels the sign-in straight away. It's Microsoft Edge (or Chrome) in a compact window, since Google only allows signing in in a real browser; the first time, you sign in to Google there, and it remembers you after that."
+    ]
+  },
+  {
     "version": "1.2.0",
     "date": "2026-11-02",
     "title": "Chat with your documents, voice conversations, and long chats that reopen instantly",

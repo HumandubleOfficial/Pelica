@@ -17,6 +17,7 @@ import * as mcp from "./mcp";
 import * as lib from "./library";
 import * as media from "./media";
 import * as docs from "./docs";
+import { openSmall, type AuthWindow } from "./authwin";
 import { chatUsage, searchChats } from "./chatdata";
 import { checkRepo, reposIn } from "./repocheck";
 import * as updates from "./updates";
@@ -892,9 +893,21 @@ function registerIpc() {
   const client = () => (settings.googleClientId ? { id: settings.googleClientId, secret: settings.googleClientSecret || "" } : builtIn);
   const accountStatus = () => ({ profile: google.profile(), sync: sync.status(), clientId: client().id, hasSecret: !!client().secret, builtIn: !!builtIn.id });
   handle("account:status", accountStatus);
+  // sign-in pages open in a small browser window over Pelica (authwin.ts)
+  const signInWindow = async <T>(go: (open: (u: string) => void) => Promise<T>, cancel: () => void): Promise<T> => {
+    let w: AuthWindow | null = null;
+    try {
+      const r = await go((u) => (w = openSmall(u, path.join(userDir, "sign-in"), win?.getBounds(), cancel)));
+      (w as AuthWindow | null)?.close(1200);
+      return r;
+    } catch (e) {
+      (w as AuthWindow | null)?.close();
+      throw e;
+    }
+  };
   handle("account:signIn", async () => {
     const c = client();
-    const p = await google.signIn(c.id, c.secret, (u) => shell.openExternal(u));
+    const p = await signInWindow((open) => google.signIn(c.id, c.secret, open), google.cancelSignIn);
     // (another Google account than before: its Drive starts a fresh sync)
     if (settings.accountEmail !== p.email) {
       sync.reset();
@@ -1000,7 +1013,7 @@ function registerIpc() {
     return c;
   };
   handle("mcp:signIn", async (name: string) => {
-    await mcp.signIn(mcpCfg(name), (u) => shell.openExternal(u));
+    await signInWindow((open) => mcp.signIn(mcpCfg(name), open), oauth.cancelSignIn);
     win?.show();
     win?.focus();
     return mcp.list();
