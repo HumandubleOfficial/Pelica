@@ -4,54 +4,422 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="google-site-verification" content="H6VPt3M420qazfkiC__d6l_v82eIASzSNAzDq10w2cA" />
-    <title>Pelica</title>
-    <meta name="description" content="Pelica runs giant AI models on your own Windows PC, using your GPU, RAM and SSD together." />
+    <title>Pelica: giant AI models on your own PC</title>
+    <meta name="description" content="Pelica is a free, open-source AI app for Windows that runs models far bigger than your graphics card, using your GPU, RAM and SSD as one. Private by design." />
+    <meta property="og:title" content="Pelica: giant AI models on your own PC" />
+    <meta property="og:description" content="Run a 164 GB model on a 16 GB graphics card. Free, open source, and private: everything runs on your PC." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://humandubleofficial.github.io/Pelica/" />
+    <meta name="theme-color" content="#0d0c0b" />
     <link rel="icon" href="logo.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header>
+    <nav class="nav">
       <div class="wrap">
         <a class="brand" href="./"><img src="logo.svg" alt="" />Pelica</a>
-        <nav>
-          <a href="./" aria-current="page">Home</a>
-          <a href="privacy.html">Privacy</a>
-          <a href="terms.html">Terms</a>
-        </nav>
+        <div class="nav-links">
+          <a href="#how">How it works</a>
+          <a href="#features">Features</a>
+          <a href="#speed">Speed</a>
+          <a href="#privacy">Privacy</a>
+          <a href="#faq">FAQ</a>
+        </div>
+        <div class="nav-cta">
+          <a class="btn btn-ghost btn-sm" href="https://github.com/HumandubleOfficial/Pelica">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg>
+            GitHub
+          </a>
+          <a class="btn btn-primary btn-sm" href="https://github.com/HumandubleOfficial/Pelica/releases/latest">Download</a>
+        </div>
       </div>
-    </header>
-    <main>
-      <div class="wrap">
-        <h1>Big AI models, on your own PC.</h1>
-        <p class="lead">
-          Pelica is a free chat app for Windows that runs large AI models on your computer, using your graphics card, memory and SSD together. Your chats stay on your PC.
-        </p>
-        <a class="btn" href="https://github.com/HumandubleOfficial/Pelica/releases/latest">Download for Windows</a>
-        <a class="btn ghost" href="https://github.com/HumandubleOfficial/Pelica">Source on GitHub</a>
-        <p class="small">Windows 10 or 11, 64-bit, a processor with AVX2 and a graphics card with Vulkan drivers.</p>
+    </nav>
 
-        <div class="grid">
-          <div class="card">
-            <h3>Runs on your PC</h3>
-            <p>Models run on your own hardware. There's no Pelica server, and nothing is sent anywhere unless you use a feature that needs the internet.</p>
-          </div>
-          <div class="card">
-            <h3>Models bigger than your GPU</h3>
-            <p>Pelica treats graphics memory, RAM and your SSD as one, so models far bigger than your graphics card still run.</p>
-          </div>
-          <div class="card">
-            <h3>Works with your files</h3>
-            <p>Pick a folder and Pelica can read, edit and run things in it, asking you first. Projects, memory and connectors are built in.</p>
-          </div>
-          <div class="card">
-            <h3>Sync with Google, if you like</h3>
-            <p>Sign in with Google to keep your chats the same on every PC, through a private folder in your own Google Drive.</p>
+    <header class="hero">
+      <div class="wrap">
+        <a class="pill" href="https://github.com/HumandubleOfficial/Pelica/releases/latest"><b id="ver">NEW</b> <span id="ver-text">Pelica 1.0: projects, memory and Pelica on your phone</span></a>
+        <h1>Giant AI models, on <em>your own PC.</em></h1>
+        <p class="lead">Pelica runs models far bigger than your graphics card by treating your GPU, RAM and SSD as one. Chat, code and get work done, all on your own computer, with nothing sent to anyone.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="https://github.com/HumandubleOfficial/Pelica/releases/latest">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3zm0 13 7.5 1.1v-7H3zm8.4 1.2L21 21V12.6h-9.6zm0-15.4v7.2H21V3z" /></svg>
+            Download for Windows
+          </a>
+          <a class="btn btn-ghost" href="#how">See how it works</a>
+        </div>
+        <p class="fine">Free and open source · Windows 10 and 11 · <span id="size">No account needed</span></p>
+
+        <div class="window-stage">
+          <div class="window" id="win" aria-hidden="true">
+            <div class="w-side">
+              <div class="w-dots"><i></i><i></i><i></i></div>
+              <div class="w-item on">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                New chat
+              </div>
+              <div class="w-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
+                Projects
+              </div>
+              <div class="w-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+                Models
+              </div>
+              <div class="w-label">Recents</div>
+              <div class="w-chat on">Clean up the photo script</div>
+              <div class="w-chat">Why is the sky blue?</div>
+              <div class="w-chat">Trip plan for Lisbon</div>
+              <div class="w-chat">Budget spreadsheet formulas</div>
+              <div class="w-chat">Explain mixture of experts</div>
+              <div class="w-user">
+                <span>S</span>
+                <div>Sam<small>Synced with Google</small></div>
+              </div>
+            </div>
+            <div class="w-main">
+              <div class="w-top">
+                <span class="w-model"><i></i><span id="w-model">DeepSeek V4 Flash · 164 GB</span></span>
+                <span class="w-path" id="w-path">~/photos</span>
+                <span class="w-speed" id="w-speed">0.0 tok/s</span>
+              </div>
+              <div class="w-body">
+                <div class="msg-user" id="w-q"></div>
+                <div class="msg-bot" id="w-a"></div>
+              </div>
+              <div class="w-tiers">
+                <div class="tier-meter">GPU <div><span id="m-vram" style="background: var(--vram)"></span></div></div>
+                <div class="tier-meter">RAM <div><span id="m-ram" style="background: var(--ram)"></span></div></div>
+                <div class="tier-meter">SSD <div><span id="m-ssd" style="background: var(--ssd)"></span></div></div>
+              </div>
+              <div class="w-input">
+                Reply to Pelica…
+                <span class="chip">Web</span>
+                <span class="chip" id="w-chip">~/photos</span>
+                <span class="send"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a0d07" stroke-width="2.6" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg></span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </main>
+    </header>
+
+    <div class="wrap">
+      <div class="stats reveal">
+        <div class="stat"><b>164<small>GB</small></b><span>model running on a 16 GB graphics card</span></div>
+        <div class="stat"><b>~4×</b><span>faster than Colibrì on the same 320B model and PC</span></div>
+        <div class="stat"><b>141<small>tok/s</small></b><span>gpt-oss-20b, fully on the GPU</span></div>
+        <div class="stat"><b>0</b><span>servers. No account, no telemetry, no cloud</span></div>
+      </div>
+    </div>
+
+    <section id="how">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="eyebrow">How it works</div>
+          <h2>One memory, <em>three tiers.</em></h2>
+          <p>The biggest open models are mixtures of experts: each word only wakes a handful of the model's thousands of experts. Pelica keeps the busy ones close to the GPU and streams the rest from your SSD, before they're needed.</p>
+        </div>
+        <div class="tiers">
+          <div class="tier-viz reveal">
+            <canvas id="tiers" width="1040" height="802" aria-label="Animation: experts move from the SSD to RAM to the GPU as they get used"></canvas>
+            <div class="tier-legend">
+              <span><i style="background: var(--vram)"></i>Hot experts on the GPU</span>
+              <span><i style="background: var(--ram)"></i>Warm in RAM</span>
+              <span><i style="background: var(--ssd)"></i>Cold on the SSD</span>
+            </div>
+          </div>
+          <div class="tier-list">
+            <div class="tier-card reveal">
+              <div class="n" style="background: rgba(242, 120, 75, 0.14); color: var(--vram)">GPU</div>
+              <div>
+                <h3>Graphics memory: the essentials</h3>
+                <p>The parts every word needs, plus the hottest experts, live on the GPU, where the work is fastest. Attention runs entirely there.</p>
+              </div>
+            </div>
+            <div class="tier-card reveal">
+              <div class="n" style="background: rgba(232, 180, 92, 0.14); color: var(--ram)">RAM</div>
+              <div>
+                <h3>Memory: the warm core</h3>
+                <p>The next-hottest experts wait in RAM. Pelica tracks how highly the model ranks every expert, so one that's almost picked is already warm.</p>
+              </div>
+            </div>
+            <div class="tier-card reveal">
+              <div class="n" style="background: rgba(125, 143, 168, 0.16); color: var(--ssd)">SSD</div>
+              <div>
+                <h3>Your drive: everything else</h3>
+                <p>The rest streams from your SSD. Pelica guesses the next layer's experts ahead of time (right about 99% of the time for the top pick) and keeps the drive busy every millisecond.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="eyebrow">Features</div>
+          <h2>Not just a chat box. <em>A real assistant.</em></h2>
+          <p>Everything you'd expect from the best AI apps, built to run on your own machine.</p>
+        </div>
+        <div class="bento">
+          <div class="card xl reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6M12 19h8" /></svg></div>
+            <h3>Works on your files, asks before it acts</h3>
+            <p>Pick a folder and Pelica reads, writes and edits files there, showing every change, and runs commands, asking you first each time. Long tasks get a to-do list you can follow.</p>
+            <div class="demo demo-2">
+              <div class="approve">
+                <span style="color: var(--muted)">Pelica wants to run a command</span>
+                <code>python -m pytest tests/ -q</code>
+                <div class="row"><span class="yes">Allow</span><span>Always allow</span><span>Deny</span></div>
+              </div>
+              <div class="diff">
+                <div class="ctx">  def load(path):</div>
+                <div class="del">-     f = open(path)</div>
+                <div class="del">-     data = f.read()</div>
+                <div class="add">+     data = Path(path).read_text()</div>
+                <div class="ctx">      return parse(data)</div>
+              </div>
+            </div>
+          </div>
+          <div class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg></div>
+            <h3>A model library that knows your PC</h3>
+            <p>Browse models on Hugging Face and see which ones fit your hardware before you download. Pelica picks the right engine for each.</p>
+            <div class="demo chips"><span>gpt-oss</span><span>Qwen3</span><span>DeepSeek V4</span><span>GLM</span><span>OLMoE</span><span>Mixtral</span></div>
+          </div>
+          <div class="card wide reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg></div>
+            <h3>Projects</h3>
+            <p>Keep related chats together. Every chat in a project shares its instructions, its files and its folder.</p>
+          </div>
+          <div class="card wide reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-6 6c0 2.2 1.2 3.6 2.4 4.8.8.8 1.1 1.5 1.1 2.2h5c0-.7.3-1.4 1.1-2.2C16.8 12.6 18 11.2 18 9a6 6 0 0 0-6-6zM9.5 19h5M10.5 22h3" /></svg></div>
+            <h3>Memory across chats</h3>
+            <p>Ask Pelica to remember something and it will, in every chat from then on. See and edit everything it remembers.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9S14.5 18.3 12 21c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" /></svg></div>
+            <h3>Web search</h3>
+            <p>Any model can search the web and read pages when a question needs fresh facts.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5" /></svg></div>
+            <h3>Connectors</h3>
+            <p>Plug in MCP tools on your PC or online, or bring yours over from Claude, Cursor or VS Code in one click.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5" /><path d="M11 18h2" /></svg></div>
+            <h3>Pelica on your phone</h3>
+            <div class="demo phone-demo">
+              <canvas class="qr" id="qr" width="62" height="62"></canvas>
+              <p>Scan once and follow the chat from your phone, send messages and answer approvals, over your own Wi-Fi.</p>
+            </div>
+          </div>
+          <div class="card wide reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.5 12a3.5 3.5 0 0 0 1 6.9z" /><path d="M9.5 14.5 12 12l2.5 2.5M12 12v6" /></svg></div>
+            <h3>Your chats on every PC</h3>
+            <p>Sign in with Google to sync chats, projects and memory between your computers, through a private folder in your own Google Drive. There's no Pelica server in between.</p>
+          </div>
+          <div class="card wide reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8M12 17v4" /></svg></div>
+            <h3>Borrow another PC's memory</h3>
+            <p>Have a second computer on your network? Pelica can use its RAM too, for models even bigger than one machine holds.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 9l3 3-3 3M13 15h4" /></svg></div>
+            <h3>In the terminal too</h3>
+            <p>Type <code style="font-family: var(--mono); font-size: 0.9em">pelica</code> in any terminal for the same chat, sharing the app's engine.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M14 5l-4 14" /></svg></div>
+            <h3>A local API</h3>
+            <p>An OpenAI-compatible server on your PC, so your own apps and scripts can use your models.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg></div>
+            <h3>Bring your history</h3>
+            <p>Import your chats from ChatGPT or Claude straight from their data export.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="speed">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="eyebrow">Speed</div>
+          <h2>Bigger than your GPU. <em>Still fast.</em></h2>
+          <p>Model size against a mid-range gaming PC, and how fast Pelica writes with each. Past the dashed lines a model no longer fits in graphics memory, then not even in graphics memory and RAM together.</p>
+        </div>
+        <div class="speed reveal">
+          <div class="chart" id="chart">
+            <div class="refs" aria-hidden="true">
+              <div></div>
+              <div class="mid">
+                <i class="ref" style="left: 9.4%"><span>Graphics card · 16 GB</span></i>
+                <i class="ref low" style="left: 28.2%"><span>Graphics card + RAM · 48 GB</span></i>
+              </div>
+              <div></div>
+            </div>
+            <div class="row">
+              <div class="name">OLMoE 1B-7B<small>All on the GPU · 4.2 GB</small></div>
+              <div class="track"><div class="bar" style="--w: 2.5%" data-tip="<b>OLMoE 1B-7B</b> · 4.2 GB<br>Fits entirely in graphics memory: 180 tok/s, prompts at 2,155 tok/s."></div></div>
+              <div class="tps">180<small>tok/s</small></div>
+            </div>
+            <div class="row">
+              <div class="name">gpt-oss-20b<small>All on the GPU · 12.3 GB</small></div>
+              <div class="track"><div class="bar" style="--w: 7.2%" data-tip="<b>gpt-oss-20b</b> · 12.3 GB<br>Runs whole on the GPU: 112–141 tok/s, prompts at 1,773 tok/s. Exactly the same words, even with drafting."></div></div>
+              <div class="tps">141<small>tok/s</small></div>
+            </div>
+            <div class="row">
+              <div class="name">Qwen3-30B-A3B<small>GPU + RAM · 18.6 GB</small></div>
+              <div class="track"><div class="bar" style="--w: 10.9%" data-tip="<b>Qwen3-30B-A3B</b> · 18.6 GB<br>Bigger than the graphics card: 15.2 GB on the GPU, the rest in RAM. 78 tok/s."></div></div>
+              <div class="tps">78<small>tok/s</small></div>
+            </div>
+            <div class="row">
+              <div class="name">Qwen3.8 Flash Next<small>GPU + RAM + SSD · 94 GB</small></div>
+              <div class="track"><div class="bar" style="--w: 55.3%" data-tip="<b>Qwen3.8 Flash Next</b> · 94 GB<br>Twice the size of GPU and RAM together, streamed from the SSD: ~16.5 tok/s, and it can see images."></div></div>
+              <div class="tps">16.5<small>tok/s</small></div>
+            </div>
+            <div class="row">
+              <div class="name">DeepSeek V4 Flash<small>GPU + RAM + SSD · 164 GB</small></div>
+              <div class="track"><div class="bar" style="--w: 96.5%" data-tip="<b>DeepSeek V4 Flash</b> · 164 GB<br>Ten times the graphics card: ~4.5 tok/s, about as fast as people read aloud."></div></div>
+              <div class="tps">4.5<small>tok/s</small></div>
+            </div>
+            <div class="axis"><span></span><div><span style="left: 0">0</span><span style="left: 29.4%">50 GB</span><span style="left: 58.8%">100 GB</span><span style="left: 88.2%">150 GB</span></div><span></span></div>
+          </div>
+          <table class="speed-table">
+            <caption>Model size and writing speed on the test PC</caption>
+            <tr><th>Model</th><th>Size</th><th>Speed</th></tr>
+            <tr><td>OLMoE 1B-7B</td><td>4.2 GB</td><td>180 tok/s</td></tr>
+            <tr><td>gpt-oss-20b</td><td>12.3 GB</td><td>112–141 tok/s</td></tr>
+            <tr><td>Qwen3-30B-A3B</td><td>18.6 GB</td><td>78 tok/s</td></tr>
+            <tr><td>Qwen3.8 Flash Next</td><td>94 GB</td><td>16.5 tok/s</td></tr>
+            <tr><td>DeepSeek V4 Flash</td><td>164 GB</td><td>4.5 tok/s</td></tr>
+          </table>
+          <div class="speed-note">
+            <span>Measured on a Ryzen 5 8400F, 32 GB DDR5, RTX 5060 Ti 16 GB and one PCIe 4 NVMe SSD. tok/s = tokens (word pieces) written per second.</span>
+            <span>Every speedup is lossless: the same words as the original model.</span>
+          </div>
+        </div>
+        <div class="callout">
+          <div class="reveal"><b>~4× Colibrì</b><span>On GLM-5.3-Flash (320 billion parameters), same PC and prompt: 3.2 tokens a second against 0.76.</span></div>
+          <div class="reveal"><b>No CUDA needed</b><span>Pelica talks to your graphics card through Vulkan, so there's no toolkit to install. The engine is written in Rust.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="privacy">
+      <div class="wrap">
+        <div class="privacy-band reveal">
+          <div>
+            <div class="eyebrow">Privacy</div>
+            <h2>Yours, <em>by design.</em></h2>
+            <p style="color: var(--text-2); font-size: 18px; margin: 0">Pelica isn't a service. It's an app on your computer, and it's open source, so anyone can check what it does. <a href="privacy.html" style="color: var(--accent-2)">Read the privacy policy.</a></p>
+          </div>
+          <ul class="checks">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg><span><b>The model runs on your PC.</b> What you type never leaves it unless you use web search or a connector.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg><span><b>No account needed,</b> no telemetry, no ads and no usage tracking.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg><span><b>Sync stays yours.</b> Signing in with Google syncs through a hidden folder in your own Drive. Pelica can't see your other files.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg><span><b>You approve every action.</b> Commands and tools ask first, and you choose what's always allowed.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="start">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <div class="eyebrow">Get started</div>
+          <h2>Up and running <em>in minutes.</em></h2>
+        </div>
+        <div class="steps">
+          <div class="step reveal"><h3>Install Pelica</h3><p>Download the installer and run it. It sets everything up, with nothing else to install.</p></div>
+          <div class="step reveal"><h3>Pick a model</h3><p>Open Models. Pelica suggests ones that fit your PC and downloads the one you choose.</p></div>
+          <div class="step reveal"><h3>Start chatting</h3><p>Ask anything, choose a folder to work in, and turn on web search or connectors when you need them.</p></div>
+        </div>
+        <div class="req">
+          <span><b>Windows</b> 10 or 11, 64-bit</span>
+          <span><b>Processor</b> with AVX2 (Intel 2013+, AMD 2015+)</span>
+          <span><b>Graphics card</b> with Vulkan drivers</span>
+          <span><b>SSD</b> recommended for big models</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="wrap narrow">
+        <div class="section-head center reveal">
+          <div class="eyebrow">FAQ</div>
+          <h2>Questions, <em>answered.</em></h2>
+        </div>
+        <div class="faq reveal">
+          <details>
+            <summary>Is Pelica really free?</summary>
+            <p>Yes. Pelica is open source under the MIT license, with no paid tier, no subscription and no limits. The models you download are free to use under their own licenses.</p>
+          </details>
+          <details>
+            <summary>Do I need a powerful computer?</summary>
+            <p>A gaming PC from the last few years is plenty. Small models run on most graphics cards with Vulkan drivers. The giant ones want a 12–16 GB graphics card, 32 GB of RAM and a fast NVMe SSD, and they get faster the faster your SSD is.</p>
+          </details>
+          <details>
+            <summary>How can a 164 GB model run on a 16 GB graphics card?</summary>
+            <p>Models like DeepSeek V4 are mixtures of experts: each word only uses a few of their thousands of experts. Pelica keeps the most-used experts on the GPU and in RAM, and streams the rest from your SSD, guessing which ones come next before they're needed.</p>
+          </details>
+          <details>
+            <summary>Does it work offline?</summary>
+            <p>Yes. Once a model is downloaded, chatting needs no internet at all. Web search, connectors, updates and Google sync are the only things that go online, and only when you use them.</p>
+          </details>
+          <details>
+            <summary>Does Pelica see my chats?</summary>
+            <p>No. There is no Pelica server. Your chats are saved on your PC, and if you turn on sync, in a hidden folder in your own Google Drive. Read the <a href="privacy.html" style="color: var(--accent-2)">privacy policy</a> for the details.</p>
+          </details>
+          <details>
+            <summary>Which models can I run?</summary>
+            <p>gpt-oss, Qwen3 and Qwen3.8, DeepSeek V4, GLM, OLMoE, Mixtral-style models and other mixture-of-experts GGUF files from Hugging Face. The model library shows which fit your PC.</p>
+          </details>
+          <details>
+            <summary>What about Mac or Linux?</summary>
+            <p>Pelica is Windows-only for now. The engine is written in Rust and talks to the GPU through Vulkan, so other systems are possible later.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <div class="final">
+      <div class="wrap">
+        <img src="logo.svg" alt="" class="reveal" />
+        <h2 class="reveal">Your PC is more capable <em>than you think.</em></h2>
+        <p class="reveal">Free, open source, and ready in minutes.</p>
+        <div class="hero-cta reveal">
+          <a class="btn btn-primary" href="https://github.com/HumandubleOfficial/Pelica/releases/latest">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3zm0 13 7.5 1.1v-7H3zm8.4 1.2L21 21V12.6h-9.6zm0-15.4v7.2H21V3z" /></svg>
+            Download for Windows
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/HumandubleOfficial/Pelica">Star on GitHub</a>
+        </div>
+      </div>
+    </div>
+
     <footer>
-      <div class="wrap">Pelica is open source under the MIT license. <a href="privacy.html">Privacy policy</a> · <a href="terms.html">Terms</a> · <a href="https://github.com/HumandubleOfficial/Pelica/issues">Contact</a></div>
+      <div class="wrap">
+        <a class="brand" href="./"><img src="logo.svg" alt="" />Pelica</a>
+        <span>Open source under the MIT license.</span>
+        <div class="links">
+          <a href="https://github.com/HumandubleOfficial/Pelica/releases">Releases</a>
+          <a href="https://github.com/HumandubleOfficial/Pelica">GitHub</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="terms.html">Terms</a>
+          <a href="https://github.com/HumandubleOfficial/Pelica/issues">Contact</a>
+        </div>
+      </div>
     </footer>
+
+    <div class="tip" id="tip" role="tooltip"></div>
+    <script src="app.js"></script>
   </body>
 </html>
