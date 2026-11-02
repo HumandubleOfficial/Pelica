@@ -1441,3 +1441,7 @@ kbd {
 .tool-pictures { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
 .tool-picture { padding: 0; border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; background: var(--hover); cursor: zoom-in; }
 .tool-picture img { display: block; max-width: 260px; max-height: 200px; object-fit: contain; }
+
+.user-chip img.avatar {
+  object-fit: cover;
+}

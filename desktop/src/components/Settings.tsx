@@ -1,7 +1,7 @@
 // Settings, laid out like the Claude app's: a title bar, a nav with a
 // search box and groups, and pages of headed sections whose rows are split
 // by thin lines (settings.css).
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { bridge, type UpdateCheck } from "../lib/bridge";
 import { app, PERM_MODES, refreshChats, setSettings, toast, useApp, type Settings as S } from "../state";
 import { ConnectorsTab } from "./Connectors";
@@ -14,6 +14,7 @@ import { UsageTab } from "./Usage";
 import { PromptList } from "./Prompts";
 import { MemoryList } from "./Memory";
 import { PhoneTab } from "./Phone";
+import { AccountTab } from "./Account";
 import { checkNow } from "./Updates";
 import { StorageRows } from "./Storage";
 
@@ -23,6 +24,7 @@ const PREVIEW_B = "function greet(name: string) {\n  return `Hello, ${name}!`;\n
 /** The nav: groups as in Claude's settings; `keys` are what the search box also finds a page by. */
 const TABS: { name: string; icon: string; group: string; keys: string }[] = [
   { name: "General", icon: "user", group: "Preferences", keys: "name instructions send enter reply length saved prompts back up restore chats import chatgpt claude export" },
+  { name: "Account", icon: "user-circle", group: "Preferences", keys: "account google sign in sync drive profile other pc" },
   { name: "Appearance", icon: "palette", group: "Preferences", keys: "theme dark light warm midnight neural background backdrop mica acrylic text size font serif code animations" },
   { name: "Memory", icon: "brain", group: "Preferences", keys: "remember forget across chats facts about me" },
   { name: "Capabilities", icon: "bolt", group: "Preferences", keys: "web search steps thinking effort" },
@@ -37,6 +39,7 @@ const TABS: { name: string; icon: string; group: string; keys: string }[] = [
   { name: "Developer", icon: "terminal", group: "This computer", keys: "versions electron engine log data folder" },
   { name: "Connectors", icon: "plug", group: "Customize", keys: "mcp servers tools github memory browser" },
   { name: "Updates", icon: "download", group: "Customize", keys: "update version check install feed preview pre-release skip github releases daily" },
+  { name: "Experimental", icon: "flask", group: "Customize", keys: "experimental brain experts 3d labs beta" },
   { name: "About", icon: "info", group: "Customize", keys: "version release notes github" },
 ];
 
@@ -563,12 +566,34 @@ export function SettingsModal() {
   const s = useApp((x) => x.settings);
   const st = useApp((x) => x.status);
   const [q, setQ] = useState("");
+  // a section eases in when you switch to it, but not as Settings opens
+  const [moved, setMoved] = useState(false);
+  const lastTab = useRef(tab);
+  useEffect(() => {
+    if (!open) setMoved(false);
+    else if (lastTab.current !== tab) setMoved(true);
+    lastTab.current = tab;
+  }, [open, tab]);
+  // closing: it stays a moment to zoom out (motion.css), unless animations are off
+  const [leaving, setLeaving] = useState(false);
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    if (wasOpen.current && !open && app.get().settings.animations) {
+      setLeaving(true);
+      const t = setTimeout(() => setLeaving(false), 170);
+      wasOpen.current = open;
+      return () => clearTimeout(t);
+    }
+    if (open) setLeaving(false);
+    wasOpen.current = open;
+  }, [open]);
   useEffect(() => {
     const f = (e: KeyboardEvent) => e.key === "Escape" && app.set({ settingsOpen: false });
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
   }, []);
-  if (!open) return null;
+  // (the render right after closing, before the effect above has run, counts as leaving too)
+  if (!open && !leaving && !(wasOpen.current && s.animations)) return null;
   const set = (p: Partial<S>) => setSettings(p);
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const shown = TABS.filter((t) => words.every((w) => `${t.name} ${t.group} ${t.keys}`.toLowerCase().includes(w)));
@@ -617,7 +642,7 @@ export function SettingsModal() {
           <Row title="Reply font" desc="Replies in a serif face, as in Claude, or the same sans as the rest of the app.">
             <Seg value={s.replyFont} options={[["serif", "Serif"], ["sans", "Sans"]]} onChange={(v) => set({ replyFont: v })} />
           </Row>
-          <Row title="Animations" desc="Effort orbs, the shimmer while working, the expert grid.">
+          <Row title="Animations" desc="Buttons that spring back, highlights that slide, pages that ease in, effort orbs, the shimmer while working, the expert grid.">
             <Toggle on={s.animations} set={(v) => set({ animations: v })} />
           </Row>
           <Section title="Code appearance" />
@@ -725,6 +750,19 @@ export function SettingsModal() {
     case "Models":
       body = <ModelsTab />;
       break;
+    case "Account":
+      body = <AccountTab Row={Row} Toggle={Toggle} />;
+      break;
+    case "Experimental":
+      body = (
+        <>
+          <p className="set-intro">Features still being worked on. They may change, or go away.</p>
+          <Row title="Brain" desc="A page that shows the loaded model's experts in 3D, lighting up as it writes, and which experts each word goes to. It appears in the sidebar, the palette and the tray menu.">
+            <Toggle on={s.brainMenu} set={(v) => set({ brainMenu: v })} />
+          </Row>
+        </>
+      );
+      break;
     case "Phone":
       body = <PhoneTab Row={Row} Toggle={Toggle} />;
       break;
@@ -764,7 +802,7 @@ export function SettingsModal() {
       break;
   }
   return (
-    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && app.set({ settingsOpen: false })}>
+    <div className={`modal-back${open ? "" : " closing"}`} onMouseDown={(e) => e.target === e.currentTarget && app.set({ settingsOpen: false })}>
       <div className="modal settings">
         <div className="set-top">
           <span>Settings</span>
@@ -801,7 +839,7 @@ export function SettingsModal() {
             </div>
           </nav>
           <div className="set-body">
-            <div className="set-page" key={tab}>
+            <div className={`set-page${moved ? " moved" : ""}`} key={tab}>
               <div className="set-section set-page-title">{tab}</div>
               {body}
             </div>

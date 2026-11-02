@@ -128,6 +128,9 @@ export function Sidebar() {
   const chats = useApp((s) => s.chats);
   const cur = useApp((s) => s.chat?.id);
   const view = useApp((s) => s.view);
+  const brainMenu = useApp((s) => s.settings.brainMenu);
+  const acct = useApp((s) => s.account?.profile);
+  const syncOn = useApp((s) => s.settings.syncOn);
   const name = useApp((s) => s.settings.userName);
   const search = useApp((s) => s.search);
   const [searching, setSearching] = useState(false);
@@ -185,7 +188,7 @@ export function Sidebar() {
         {nav("New chat", "plus", () => startNewChat())}
         {nav("Projects", "layers", () => app.set({ view: "projects" }), view === "projects" || view === "project")}
         {nav("Models", "library", () => app.set({ view: "library" }), view === "library")}
-        {nav("Brain", "brain", () => app.set({ view: "brain" }), view === "brain")}
+        {brainMenu && nav("Brain", "brain", () => app.set({ view: "brain" }), view === "brain")}
       </nav>
       <div className="side-lists">
         {pinned.length > 0 && <div className="side-label">Pinned</div>}
@@ -221,11 +224,11 @@ export function Sidebar() {
         {q && !shown.length && !msgHits.length && <div className="side-empty">No chats mention “{search.trim()}”.</div>}
         {!chats.length && <div className="side-empty">Your chats will show up here.</div>}
       </div>
-      <button className="user-chip" onClick={() => app.set({ settingsOpen: true, settingsTab: "General" })}>
-        <span className="avatar">{(name || "You").slice(0, 1).toUpperCase()}</span>
+      <button className="user-chip" onClick={() => app.set({ settingsOpen: true, settingsTab: acct ? "Account" : "General" })}>
+        {acct?.picture ? <img className="avatar" src={acct.picture} alt="" /> : <span className="avatar">{(name || acct?.name || "You").slice(0, 1).toUpperCase()}</span>}
         <span className="user-name">
-          {name || "You"}
-          <small>Local · private</small>
+          {name || acct?.name || "You"}
+          <small>{acct ? (syncOn ? "Synced with Google" : "Signed in · not syncing") : "Local · private"}</small>
         </span>
         <Icon name="settings" size={15} />
       </button>

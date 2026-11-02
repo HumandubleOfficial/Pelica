@@ -114,6 +114,9 @@ fs.mkdirSync(app, { recursive: true });
 fs.writeFileSync(path.join(app, "package.json"), JSON.stringify({ name: pkg.name, productName: pkg.productName, version, description: pkg.description, main: pkg.main }, null, 2));
 fs.cpSync(path.join(desktop, "build/electron"), path.join(app, "build/electron"), { recursive: true, force: true });
 fs.cpSync(path.join(desktop, "dist"), path.join(app, "dist"), { recursive: true, force: true });
+// Pelica's Google sign-in client (Settings → Account), kept out of git
+if (fs.existsSync(path.join(desktop, "google-client.json"))) fs.copyFileSync(path.join(desktop, "google-client.json"), path.join(app, "google-client.json"));
+else console.log("  (no google-client.json: Google sign-in will ask for a client of the user's own)");
 fs.copyFileSync(engine, path.join(stage, "resources", "pelica.exe"));
 // Pelica's license (MIT) beside Electron's LICENSE and Chromium's LICENSES.chromium.html
 fs.copyFileSync(path.resolve(desktop, "../LICENSE"), path.join(stage, "LICENSE.Pelica.txt"));

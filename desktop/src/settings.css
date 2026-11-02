@@ -2,7 +2,7 @@
    Loaded last, so it decides how the settings window looks: Claude's
    settings. A title bar across the top; a nav with a search box and
    groups; on the right, headed sections whose rows are split by thin
-   lines (no cards). No opening animation. */
+   lines (no cards). It opens and closes with a short zoom (motion.css). */
 
 .modal.settings {
   --set-page: color-mix(in srgb, var(--text) 3%, var(--bg));
@@ -26,7 +26,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: none;
   border-radius: 12px;
 }
 /* Claude's light settings: a white page beside a cream nav */
@@ -45,9 +44,6 @@
   --set-chip: #fff;
   --set-chip-line: color-mix(in srgb, var(--text) 16%, transparent);
   --set-title: var(--text);
-}
-.modal-back:has(> .modal.settings) {
-  animation: none;
 }
 
 /* the title bar */
@@ -505,4 +501,60 @@
 }
 .settings .btn.danger:not(.primary) {
   color: var(--bad);
+}
+
+/* account */
+.acct-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  margin: 4px 0 18px;
+  border: 1px solid var(--set-line);
+  border-radius: 12px;
+  background: var(--set-field);
+}
+.acct-card.signed-out {
+  align-items: center;
+}
+.acct-pic {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  font-size: 1.2em;
+}
+.acct-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  line-height: 1.45;
+}
+.settings .google-btn {
+  gap: 9px;
+  padding: 8px 14px;
+}
+.acct-steps {
+  margin: 0 0 8px;
+  padding-left: 20px;
+  color: var(--text-2);
+  font-size: 0.92em;
+  line-height: 1.7;
+}
+.acct-steps a {
+  color: var(--accent);
+}
+.acct-steps code {
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--set-field);
+}
+.settings .text-input.acct-field:not(.wide):not(.narrow) {
+  width: 320px;
 }

@@ -19,7 +19,15 @@ export interface RunResult {
 
 export interface Bridge {
   win: { minimize(): Promise<void>; maximize(): Promise<void>; close(): Promise<void>; isMaximized(): Promise<boolean>; onState(fn: (s: { maximized: boolean }) => void): () => void; material(m: Material): Promise<Material> };
-  settings: { get(): Promise<Record<string, any>>; set(p: Record<string, any>): Promise<Record<string, any>> };
+  settings: { get(): Promise<Record<string, any>>; set(p: Record<string, any>): Promise<Record<string, any>>; onPushed(fn: (patch: Record<string, unknown>) => void): () => void };
+  account: {
+    status(): Promise<AccountStatus>;
+    signIn(): Promise<AccountStatus>;
+    signOut(): Promise<AccountStatus>;
+    syncNow(): Promise<AccountStatus>;
+    onChanged(fn: () => void): () => void;
+    onSynced(fn: (c: { chats: string[]; settings: boolean }) => void): () => void;
+  };
   folder: { pick(): Promise<string | null>; open(root: string): Promise<string>; restore(root: string): Promise<string[]> };
   chats: { list(): Promise<ChatMeta[]>; load(id: string): Promise<any>; save(c: any): Promise<boolean>; remove(id: string): Promise<void>; search(q: string): Promise<SearchHit[]>; usage(): Promise<Usage>; backup(): Promise<{ path: string; count: number } | null>; restore(): Promise<{ added: number; copies: number; same: number } | null>; import(): Promise<{ from: "chatgpt" | "claude"; added: number; same: number; empty: number } | null> };
   fs: {
@@ -238,4 +246,14 @@ export interface PhoneCmd {
   id?: string;
   text?: string;
   answer: "allow" | "always" | "deny";
+}
+
+/** Settings → Account: the Google account, and the sync through its Drive. */
+export interface AccountStatus {
+  profile: { name: string; email: string; picture: string } | null;
+  sync: { busy: boolean; lastSync: number; error: string };
+  clientId: string;
+  hasSecret: boolean;
+  /** Pelica has its own Google client (used unless one is set in Settings) */
+  builtIn: boolean;
 }

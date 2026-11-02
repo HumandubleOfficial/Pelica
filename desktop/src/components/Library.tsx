@@ -80,6 +80,7 @@ function RepackProgress({ r }: { r: Repack }) {
 }
 
 function Local() {
+  const brainMenu = useApp((s) => s.settings.brainMenu);
   const st = useApp((s) => s.status);
   const { vram, ram } = useHardware();
   const lastCtx = useApp((s) => s.settings.lastCtx);
@@ -179,9 +180,11 @@ function Local() {
               <button className="btn ghost small" onClick={() => app.set({ compare: m.name })} title="Compare with flagship models">
                 <Icon name="compare" size={14} />
               </button>
-              <button className="btn ghost small" onClick={() => app.set({ view: "brain" })} title="Look inside">
-                <Icon name="brain" size={14} />
-              </button>
+              {brainMenu && (
+                <button className="btn ghost small" onClick={() => app.set({ view: "brain" })} title="Look inside">
+                  <Icon name="brain" size={14} />
+                </button>
+              )}
               <button className="btn ghost small lib-uninstall" disabled={!!removing || running || (st?.state === "loading" && st.path === m.path)} onClick={() => uninstall(m)} title="Uninstall (moves it to the Recycle Bin)">
                 <Icon name="trash" size={14} />
               </button>

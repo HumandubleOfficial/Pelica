@@ -250,6 +250,7 @@ function Toast() {
 export function App() {
   useShortcuts();
   const view = useApp((s) => s.view);
+  const brainMenu = useApp((s) => s.settings.brainMenu);
   const sidebar = useApp((s) => s.sidebar);
   const compact = useApp((s) => s.compact);
   const drawer = useApp((s) => s.drawer);
@@ -289,7 +290,7 @@ export function App() {
               <ProjectsPage />
             ) : view === "project" ? (
               <ProjectPage />
-            ) : view === "brain" ? (
+            ) : view === "brain" && brainMenu ? (
               <Brain />
             ) : empty ? (
               <Home />

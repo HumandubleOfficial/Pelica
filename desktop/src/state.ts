@@ -224,6 +224,12 @@ export interface Settings {
   /** Pelica on your phone (Settings → Phone): the server on this PC's network, and its port */
   phoneOn: boolean;
   phonePort: number;
+  /** Settings → Experimental: the Brain page (the model's experts in 3D) in the sidebar and menus */
+  brainMenu: boolean;
+  /** Settings → Account: the Google OAuth client (the user's), and syncing through its Drive */
+  googleClientId: string;
+  googleClientSecret: string;
+  syncOn: boolean;
   /** where to look for new versions (a latest.json: web address or path; empty: Pelica's GitHub releases) */
   updateFeed: string;
   /** when to check for a new version by itself */
@@ -303,6 +309,10 @@ export const DEFAULTS: Settings = {
   apiPort: 11435,
   phoneOn: false,
   phonePort: 8737,
+  brainMenu: false,
+  googleClientId: "",
+  googleClientSecret: "",
+  syncOn: true,
   updateFeed: "",
   updateCheck: "start",
   updatePreview: false,
@@ -373,6 +383,8 @@ export interface AppState {
   /** the Scheduled tasks window */
   tasksOpen: boolean;
   approval: Approval | null;
+  /** the Pelica account (Google) and its sync (Settings → Account) */
+  account: import("./lib/bridge").AccountStatus | null;
   context: ContextInfo | null;
   mcp: McpServer[];
   sidebar: boolean;
@@ -437,6 +449,7 @@ export const app = createStore<AppState>({
   update: null,
   tasksOpen: false,
   approval: null,
+  account: null,
   context: null,
   mcp: [],
   sidebar: true,
@@ -606,6 +619,12 @@ export async function deleteProject(id: string) {
   for (const c of app.get().chats.filter((c) => c.project === id)) await patchChat(c.id, (x) => ({ ...x, project: undefined }));
   if (app.get().projectId === id) app.set({ view: "projects", projectId: null });
   toast(`Deleted the project “${p.name}”. Its chats are still in your chat list.`);
+}
+
+/** Opens Brain, if it's turned on in Settings → Experimental. */
+export function openBrain() {
+  if (app.get().settings.brainMenu) return app.set({ view: "brain", settingsOpen: false });
+  toast("Brain is experimental: turn it on in Settings → Experimental.", { label: "Open", run: () => app.set({ settingsOpen: true, settingsTab: "Experimental" }) });
 }
 
 export function openProject(id: string) {

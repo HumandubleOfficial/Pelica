@@ -70,13 +70,13 @@
   gap: 7px;
   min-width: 0;
   font-size: 0.8em;
-  color: var(--muted);
+  color: var(--text-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .side-group-name:hover {
-  color: var(--text-2);
+  color: var(--text);
 }
 .side-group.folded .sp-caret {
   transform: rotate(-90deg);

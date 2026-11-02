@@ -1,5 +1,22 @@
 [
   {
+    "version": "1.1.0",
+    "date": "2026-11-02",
+    "title": "Your Pelica account, and Experimental features",
+    "notes": [
+      "Sign in to Pelica with your Google account in Settings → Account. Your chats, projects, memory, saved prompts, your name and your instructions then stay the same on every PC you sign in on. They sync through a hidden folder in your own Google Drive: there is no Pelica server, and Pelica can't see your other Drive files.",
+      "A chat changed on two PCs keeps both versions, and a chat you delete on one PC goes to the Recycle Bin on the others. Syncing happens a few seconds after a change and every 3 minutes, or right away with Sync now. You can turn it off and stay signed in.",
+      "There's nothing to set up: click Sign in with Google and pick your account in the browser.",
+      "The sidebar shows your Google picture and name once you sign in.",
+      "New Settings → Experimental section, for features still being worked on. Brain (the model's experts in 3D) lives there now and is off by default. While it's off, it's hidden from the sidebar, the palette, the tray menu and the Models page.",
+      "Smoother motion everywhere: buttons give a little when pressed and spring back, toggles slide with a bounce, and hover colours fade instead of snapping.",
+      "The highlight now slides to what you pick in the sidebar (your chats, Projects, Models) and in Settings' list of sections, the way the 2K / 4K / 8K choices already did.",
+      "Pages ease in as you switch: Models, Projects, a chat opened from Home, and each section of Settings. The sidebar and side panel slide in when you show them. Menus still open instantly, and Settings → Appearance → Animations turns all of it off.",
+      "Settings zooms in softly when it opens and fades away when it closes.",
+      "Your chats and the sidebar's pages are now white instead of grey, and Recents and folder names are easier to read."
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-11-01",
     "title": "Pelica 1.0: projects, memory, and Pelica on your phone",

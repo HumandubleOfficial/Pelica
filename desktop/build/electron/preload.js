@@ -10,7 +10,8 @@ const on = (name) => (fn) => {
 };
 electron_1.contextBridge.exposeInMainWorld("pelica", {
     win: { minimize: call("win:minimize"), maximize: call("win:maximize"), close: call("win:close"), isMaximized: call("win:isMaximized"), onState: on("win:state"), material: call("win:material") },
-    settings: { get: call("settings:get"), set: call("settings:set") },
+    settings: { get: call("settings:get"), set: call("settings:set"), onPushed: on("settings:pushed") },
+    account: { status: call("account:status"), signIn: call("account:signIn"), signOut: call("account:signOut"), syncNow: call("sync:now"), onChanged: on("account:changed"), onSynced: on("sync:changed") },
     folder: { pick: call("folder:pick"), open: call("folder:open"), restore: call("folder:restore") },
     chats: { list: call("chats:list"), load: call("chats:load"), save: call("chats:save"), remove: call("chats:delete"), search: call("chats:search"), usage: call("chats:usage"), backup: call("chats:backup"), restore: call("chats:restore"), import: call("chats:import") },
     fs: { list: call("fs:list"), read: call("fs:read"), write: call("fs:write"), edit: call("fs:edit"), search: call("fs:search"), find: call("fs:find"), raw: call("fs:raw"), notes: call("fs:notes"), trash: call("fs:trash"), reveal: call("fs:reveal") },

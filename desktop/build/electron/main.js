@@ -60,6 +60,8 @@ const updates = __importStar(require("./updates"));
 const importer_1 = require("./importer");
 const phone = __importStar(require("./phone"));
 const oauth = __importStar(require("./oauth"));
+const google = __importStar(require("./google"));
+const sync = __importStar(require("./sync"));
 const userDir = electron_1.app.getPath("userData");
 const settingsFile = node_path_1.default.join(userDir, "settings.json");
 const chatsDir = node_path_1.default.join(userDir, "chats");
@@ -473,7 +475,7 @@ function trayMenu() {
         { label: "New chat", click: () => action({ kind: "new-chat" }) },
         { label: "Quick ask…", click: openQuick, accelerator: k || undefined, registerAccelerator: false },
         { type: "separator" },
-        { label: "Brain", click: () => action({ kind: "view", view: "brain" }) },
+        ...(settings.brainMenu ? [{ label: "Brain", click: () => action({ kind: "view", view: "brain" }) }] : []),
         { label: "Models", click: () => action({ kind: "view", view: "library" }) },
         { label: "Settings", click: () => action({ kind: "settings" }) },
         { type: "separator" },
@@ -738,6 +740,12 @@ function registerIpc() {
             syncApi();
         if ("phoneOn" in rest || "phonePort" in rest)
             syncPhone();
+        if ("brainMenu" in rest)
+            trayMenu();
+        if (sync.SYNCED.some((k) => k in rest))
+            sync.noteProfile();
+        if ("syncOn" in rest && rest.syncOn)
+            sync.soon(300);
         if ("modelDirs" in rest || "downloadDir" in rest)
             syncDirs();
         return settings;
@@ -868,7 +876,9 @@ function registerIpc() {
         const r = await electron_1.dialog.showOpenDialog(win, { title: "Import chats from ChatGPT or Claude", properties: ["openFile"], filters: [{ name: "ChatGPT or Claude export", extensions: ["zip", "json"] }] });
         if (r.canceled || !r.filePaths[0])
             return null;
-        return (0, importer_1.importChats)(r.filePaths[0], chatsDir);
+        const out = await (0, importer_1.importChats)(r.filePaths[0], chatsDir);
+        sync.soon();
+        return out;
     });
     const chatPath = (id) => {
         if (!/^[\w-]+$/.test(id))
@@ -893,6 +903,7 @@ function registerIpc() {
         const file = chatPath(chat.id);
         node_fs_1.default.writeFileSync(file + ".tmp", JSON.stringify(chat));
         node_fs_1.default.renameSync(file + ".tmp", file);
+        sync.soon();
         if (was && was !== chat.folder)
             projQueue(was, chat.id, null);
         if (chat.folder)
@@ -902,7 +913,45 @@ function registerIpc() {
     // (to the Recycle Bin, not gone)
     handle("chats:delete", (id) => {
         chatFolder.delete(id);
+        sync.noteDelete(id);
         return electron_1.shell.trashItem(chatPath(id));
+    });
+    // the Pelica account (Settings → Account)
+    // Pelica's own Google client (google-client.json, Google's download, kept out
+    // of git and copied in by the installer); one set in Settings wins
+    const builtIn = (() => {
+        try {
+            const j = JSON.parse(node_fs_1.default.readFileSync(node_path_1.default.join(__dirname, "../../google-client.json"), "utf8")).installed;
+            return { id: String(j.client_id || ""), secret: String(j.client_secret || "") };
+        }
+        catch {
+            return { id: "", secret: "" };
+        }
+    })();
+    const client = () => (settings.googleClientId ? { id: settings.googleClientId, secret: settings.googleClientSecret || "" } : builtIn);
+    const accountStatus = () => ({ profile: google.profile(), sync: sync.status(), clientId: client().id, hasSecret: !!client().secret, builtIn: !!builtIn.id });
+    handle("account:status", accountStatus);
+    handle("account:signIn", async () => {
+        const c = client();
+        const p = await google.signIn(c.id, c.secret, (u) => electron_1.shell.openExternal(u));
+        // (another Google account than before: its Drive starts a fresh sync)
+        if (settings.accountEmail !== p.email) {
+            sync.reset();
+            settings.accountEmail = p.email;
+            saveSettings();
+        }
+        win?.show();
+        win?.focus();
+        sync.soon(300);
+        return accountStatus();
+    });
+    handle("account:signOut", async () => {
+        await google.signOut();
+        return accountStatus();
+    });
+    handle("sync:now", async () => {
+        await sync.syncNow();
+        return accountStatus();
     });
     handle("fs:list", (root, rel, depth) => ws.listFiles(checkRoot(root), rel, depth));
     handle("fs:read", (root, rel, offset, limit) => ws.readFile(checkRoot(root), rel, offset, limit));
@@ -1314,6 +1363,18 @@ else {
     electron_1.app.whenReady().then(async () => {
         // (connector sign-ins first: connectors may start as soon as the window asks)
         oauth.init(userDir);
+        // the Pelica account (Google) and the sync through its Drive app folder
+        google.init(userDir, () => win?.webContents.send("account:changed"));
+        sync.init(userDir, chatsDir, {
+            settings: () => settings,
+            apply: (patch) => {
+                settings = { ...settings, ...patch };
+                saveSettings();
+                win?.webContents.send("settings:pushed", patch);
+            },
+            changed: (c) => win?.webContents.send("sync:changed", c),
+            on: () => settings.syncOn !== false,
+        });
         registerIpc();
         makeTray();
         registerHotkey();
@@ -1321,6 +1382,8 @@ else {
         await createWindow();
         syncApi();
         syncPhone();
+        sync.soon(3000);
+        setInterval(() => sync.soon(0), 3 * 60_000);
         mcp.startAll(settings.mcpServers || []).catch(() => { });
         if (process.argv.includes("--quick"))
             openQuick();

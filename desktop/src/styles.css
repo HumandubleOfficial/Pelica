@@ -282,7 +282,7 @@ kbd {
   gap: 11px;
   padding: 7px 10px;
   border-radius: 8px;
-  color: var(--text-2);
+  color: var(--text);
   text-align: left;
 }
 .nav-item:hover,
@@ -314,7 +314,7 @@ kbd {
 }
 .side-label {
   font-size: 0.78em;
-  color: var(--muted);
+  color: var(--text-2);
   padding: 14px 10px 4px;
   letter-spacing: 0.3px;
 }
@@ -341,7 +341,7 @@ kbd {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--text-2);
+  color: var(--text);
   font-size: 0.93em;
 }
 .chat-row.active .chat-row-main {

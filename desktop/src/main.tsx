@@ -12,11 +12,13 @@ import "./panel.css";
 import "./rail.css";
 import "./polish.css";
 import "./settings.css";
+import "./motion.css";
 import { checkWhatsNew } from "./components/WhatsNew";
 import { checkForUpdates } from "./components/Updates";
 import { startScheduler } from "./agent/tasks";
 import { startPhone } from "./lib/phone";
 import { startSegs } from "./lib/segs";
+import { loadAccount } from "./components/Account";
 import "highlight.js/styles/github-dark.css";
 
 // the store (and chat saving), for looking at the app from DevTools and tests
@@ -34,6 +36,8 @@ app.sub(() => {
   el.classList.toggle("serif-replies", s.replyFont !== "sans");
   el.classList.toggle("no-anim", !s.animations);
 });
+// pages and panels slide in only after the window has come up (motion.css)
+setTimeout(() => document.documentElement.classList.add("booted"), 1200);
 
 // the engine's status: often while loading, now and then otherwise
 let lastPath = "";
@@ -71,6 +75,22 @@ const quick = location.hash === "#quick";
     bridge.mcp.list().then((mcp) => app.set({ mcp })).catch(() => {});
     // servers coming up, stopping, or changing their tools
     bridge.mcp.onChanged((mcp) => app.set({ mcp }));
+  }
+  if (bridge) {
+    loadAccount();
+    bridge.account.onChanged(loadAccount);
+    bridge.settings.onPushed((patch) => app.set({ settings: { ...app.get().settings, ...patch } }));
+    bridge.account.onSynced(async (c) => {
+      await refreshChats();
+      loadAccount();
+      const open = app.get().chat;
+      // (the open chat changed on another PC, and no reply is being written in it)
+      if (open && c.chats.includes(open.id) && app.get().liveId !== open.id) {
+        const fresh = await bridge!.chats.load(open.id).catch(() => null);
+        if (fresh && app.get().chat?.id === open.id) app.set({ chat: fresh });
+        else if (!fresh) app.set({ chat: newChat(null) });
+      }
+    });
   }
   startDesktop();
   startScheduler();

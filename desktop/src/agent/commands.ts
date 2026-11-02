@@ -1,7 +1,7 @@
 // Slash commands typed in the message box.
 import { bridge } from "../lib/bridge";
 import { copyChat, exportChat } from "../lib/exportChat";
-import { app, PERM_MODES, setChatFolder, setSettings, startNewChat, toast, updateChat } from "../state";
+import { app, openBrain, PERM_MODES, setChatFolder, setSettings, startNewChat, toast, updateChat } from "../state";
 import { compactNow, forgetNotes, pushEvent, refreshContext, run, send } from "./agent";
 import { runCQS } from "./cqs";
 import { startBackground } from "./tasks";
@@ -57,7 +57,7 @@ export const COMMANDS: Command[] = [
     },
   },
   { name: "web", args: "[on|off]", help: "Turn web search on or off", run: (a) => { setSettings({ web: a ? a.trim() === "on" : !app.get().settings.web }); toast(`Web search ${app.get().settings.web ? "on" : "off"}`); } },
-  { name: "brain", help: "Inspect the model's insides", run: () => app.set({ view: "brain" }) },
+  { name: "brain", help: "Inspect the model's insides (experimental)", run: () => openBrain() },
   { name: "library", help: "Browse and download models", run: () => app.set({ view: "library" }) },
   { name: "model", help: "Choose a model", run: () => app.set({ view: "library" }) },
   { name: "settings", help: "Open settings", run: () => app.set({ settingsOpen: true }) },

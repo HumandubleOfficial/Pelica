@@ -19,3 +19,6 @@ bench/**/*.exe
 bench/traces/*.bin
 bench/ds4/*.bin
 bench/ds4/*.csv
+
+# Pelica's Google OAuth client (Settings → Account), copied into the installer
+desktop/google-client.json
