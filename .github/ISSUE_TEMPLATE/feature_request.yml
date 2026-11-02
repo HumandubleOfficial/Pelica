@@ -1,0 +1,20 @@
+name: Feature or model request
+description: Suggest something Pelica should do, or a model it should run.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: Describe the problem it solves for you, not only the solution.
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model (for model requests)
+      description: A link to the model on Hugging Face.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else

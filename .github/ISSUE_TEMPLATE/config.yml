@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Benchmark results
+    url: https://github.com/HumandubleOfficial/Pelica/issues/new?labels=benchmark&title=Benchmark%3A+
+    about: Share the speeds you get on your hardware, especially AMD and Intel graphics cards.
+  - name: Privacy policy
+    url: https://humandubleofficial.github.io/Pelica/privacy.html
+    about: What Pelica does and doesn't do with your data.

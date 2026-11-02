@@ -1,0 +1,48 @@
+name: Bug report
+description: Something doesn't work, crashes, or is much slower than expected.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Pelica version
+      description: Settings → About
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: The model file name, if a model was loaded.
+      placeholder: "Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf"
+  - type: input
+    id: gpu
+    attributes:
+      label: Graphics card
+      placeholder: "RTX 5060 Ti 16 GB"
+    validations:
+      required: true
+  - type: input
+    id: ram
+    attributes:
+      label: RAM and drive
+      placeholder: "32 GB DDR5, PCIe 4 NVMe"
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2"
+  - type: textarea
+    id: log
+    attributes:
+      label: Engine log
+      description: The end of Settings → Developer → Engine log, if it shows an error.
+      render: text
