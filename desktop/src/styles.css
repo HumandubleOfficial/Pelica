@@ -318,10 +318,9 @@ kbd {
   padding: 0 8px 10px;
 }
 .side-label {
-  font-size: 0.78em;
-  color: var(--text-2);
+  font-size: 0.8em;
+  color: var(--muted);
   padding: 14px 10px 4px;
-  letter-spacing: 0.3px;
 }
 .side-empty {
   color: var(--muted);

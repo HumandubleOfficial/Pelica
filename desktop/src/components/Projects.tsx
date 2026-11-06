@@ -64,7 +64,7 @@ export function ProjectsPage() {
         {!projects.length && (
           <div className="empty-state">
             <span className="empty-icon">
-              <Icon name="layers" size={20} />
+              <Icon name="stack" size={20} />
             </span>
             <b>No projects yet</b>
             <span className="muted small">A project keeps related chats together, with its own instructions, files and documents to answer from.</span>

@@ -474,8 +474,8 @@
 .side-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 8px 10px 2px;
+  gap: 2px;
+  padding: 10px 6px 0;
 }
 .side-tag {
   --tag: var(--muted);
@@ -483,12 +483,12 @@
   align-items: center;
   gap: 5px;
   max-width: 130px;
-  padding: 2px 8px 2px 7px;
+  padding: 2px 7px 2px 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
   background: none;
   color: var(--text-2);
   font: inherit;
@@ -507,7 +507,6 @@
   background: var(--hover);
 }
 .side-tag.on {
-  border-color: var(--tag);
   background: color-mix(in srgb, var(--tag) 16%, transparent);
   color: var(--text);
 }
@@ -776,18 +775,10 @@
   background: var(--hover);
 }
 .fold-caret {
-  width: 0;
-  height: 0;
-  flex: none;
-  border-left: 5px solid var(--muted);
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
+  transform: rotate(-90deg);
 }
 .fold.open .fold-caret {
-  border-top: 5px solid var(--muted);
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-bottom: 0;
+  transform: none;
 }
 .fold-body {
   padding: 4px 0 8px;
@@ -990,4 +981,213 @@
   display: flex;
   justify-content: flex-start;
   padding-left: 44px;
+}
+
+/* ---------- an update on its way ---------- */
+.upd {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--raised);
+}
+.upd-head,
+.upd-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.upd-head b {
+  font-weight: 500;
+}
+.upd-pct {
+  color: var(--muted);
+  font-size: 0.86em;
+  font-variant-numeric: tabular-nums;
+}
+.upd-foot {
+  color: var(--muted);
+  font-size: 0.82em;
+  font-variant-numeric: tabular-nums;
+}
+.upd-stop {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.upd-stop:hover {
+  color: var(--text);
+}
+.upd-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--track);
+}
+.upd-bar span {
+  position: relative;
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.28s linear;
+}
+/* (a soft light running along the part that's done) */
+.upd-bar span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.35) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: upd-sheen 1.8s ease-in-out infinite;
+}
+@keyframes upd-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+.upd-bar.busy span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 30%;
+  transform: none;
+  transition: none;
+  animation: upd-slide 1.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.upd-bar.busy span::after {
+  content: none;
+}
+@keyframes upd-slide {
+  from {
+    left: -30%;
+  }
+  to {
+    left: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .upd-bar span::after {
+    content: none;
+  }
+  .upd-bar.busy span {
+    left: 0;
+    width: 100%;
+    opacity: 0.5;
+    animation: none;
+  }
+}
+.side-update {
+  flex: none;
+  margin: 4px 8px 6px;
+}
+.side-update .upd.compact {
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  font-size: 0.88em;
+}
+.side-update.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font-size: 0.86em;
+}
+.side-update-text {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: var(--text-2, var(--text));
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.side-update-text:hover {
+  color: var(--text);
+}
+
+/* ---------- the sidebar's foot: who you are, and Settings ---------- */
+.side-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 4px 8px 8px;
+}
+.side-foot .user-chip {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  gap: 8px;
+  padding: 5px 8px;
+}
+.side-foot .user-chip.open {
+  background: var(--panel);
+}
+.side-foot .avatar {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  font-size: 0.72em;
+}
+.side-foot .user-name {
+  flex: 0 1 auto;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.92em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.side-foot .user-plan {
+  color: var(--muted);
+}
+.side-foot .user-chip > svg {
+  flex: none;
+  color: var(--muted);
+}
+.side-foot .ghost-btn {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+/* a command's Run button: part of the block, not a bright circle */
+.play {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  background: var(--hover);
+  color: var(--text);
+  transition: background-color 0.14s ease;
+}
+.play:hover {
+  background: var(--sel);
+}
+.play.stop {
+  background: var(--sel);
+  color: var(--text);
 }

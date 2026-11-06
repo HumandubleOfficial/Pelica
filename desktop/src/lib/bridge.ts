@@ -100,7 +100,9 @@ export interface Bridge {
     check(): Promise<UpdateCheck>;
     install(f: UpdateFeed): Promise<boolean>;
     cancel(): Promise<void>;
-    onProgress(fn: (p: { got: number; total: number }) => void): () => void;
+    /** an update that didn't take at the last start: its version */
+    attempt(): Promise<string | null>;
+    onProgress(fn: (p: { got: number; total: number; phase: "download" | "check" | "start" }) => void): () => void;
   };
   quick: { submit(text: string, reply?: string): Promise<void>; hide(): Promise<void>; resize(h: number): Promise<void>; clip(): Promise<string>; onShown(fn: () => void): () => void };
   sys: { info(): Promise<Record<string, string>>; open(root: string, rel: string): Promise<void>; clipRead(): Promise<string>; clipWrite(t: string): Promise<void>; external(url: string): Promise<void>; saveAs(name: string, text: string, dir?: string): Promise<string | null>; reveal(path: string): Promise<void>; awake(on: boolean): Promise<boolean> };

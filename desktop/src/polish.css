@@ -56,8 +56,9 @@
 .nav-item.active {
   background: var(--sel);
 }
-.side-group {
-  margin-top: 10px;
+.side-group,
+.side-group-head.top {
+  margin-top: 14px;
 }
 .side-group-head {
   display: flex;
@@ -67,10 +68,10 @@
 .side-group-name {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
   min-width: 0;
   font-size: 0.8em;
-  color: var(--text-2);
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -78,7 +79,8 @@
 .side-group-name:hover {
   color: var(--text);
 }
-.side-group.folded .sp-caret {
+.side-group.folded .sp-caret,
+.side-group-head.folded .sp-caret {
   transform: rotate(-90deg);
 }
 .side-group-new {
@@ -302,18 +304,19 @@
   width: 22px;
 }
 
-/* ---------- the small arrows (▾ ▸): a rounded triangle, not a sharp CSS one ---------- */
+/* ---------- the small arrows: a thin chevron, like the icons around them ---------- */
 .sp-caret,
+.fold-caret,
 .tool-tri,
 .tool-tri.open {
-  width: 9px;
-  height: 9px;
+  width: 11px;
+  height: 11px;
   flex: none;
   border: 0;
   margin-top: 0;
   background: var(--muted);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.4 3.3h5.2L5 6.9z' fill='black' stroke='black' stroke-width='1.7' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.4 3.3h5.2L5 6.9z' fill='black' stroke='black' stroke-width='1.7' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.4 3.7L5 6.3l2.6-2.6' fill='none' stroke='black' stroke-width='1.35' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.4 3.7L5 6.3l2.6-2.6' fill='none' stroke='black' stroke-width='1.35' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .tool-tri {
   transform: rotate(-90deg);
@@ -323,6 +326,7 @@
 }
 .sp-title:hover .sp-caret,
 .side-group-name:hover .sp-caret,
+.fold-head:hover .fold-caret,
 .tool-sum:hover .tool-tri,
 .tool-head:hover .tool-tri {
   background: var(--text-2);

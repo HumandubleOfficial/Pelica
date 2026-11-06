@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.3.2",
+    "date": "2026-11-06",
+    "title": "Updates that install the first time, and a cleaner look",
+    "notes": [
+      "Fixed: clicking Install could close Pelica without updating, so you had to do it again. Pelica now waits for the installer to really start, and the installer waits for Pelica to close.",
+      "After Pelica closes, a small window shows the update installing, then Pelica starts again by itself. If an update can't finish, Pelica comes back and tells you.",
+      "A new download bar shows how much is done, the speed and the time left. It's also in the sidebar, so you can close Settings and keep working.",
+      "Install again after a failed try doesn't download the update a second time.",
+      "New sidebar note when an update is out, with an Install button.",
+      "Sections in the sidebar (Pinned and the date groups) now fold, like folders do.",
+      "The bottom of the sidebar is one tidy line: your name with a small menu, and Settings beside it.",
+      "New icons for Projects, Models, Memory and Usage, thinner window buttons, and thin arrows in place of solid triangles.",
+      "The Run button on commands is now quiet instead of a bright circle."
+    ]
+  },
+  {
     "version": "1.3.1",
     "date": "2026-11-06",
     "title": "Signing in fills the screen",

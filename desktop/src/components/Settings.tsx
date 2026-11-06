@@ -15,7 +15,7 @@ import { PromptList } from "./Prompts";
 import { MemoryList } from "./Memory";
 import { PhoneTab } from "./Phone";
 import { AccountTab } from "./Account";
-import { checkNow } from "./Updates";
+import { checkNow, installUpdate, UpdateProgress } from "./Updates";
 import { StorageRows } from "./Storage";
 import { engine } from "../lib/engine";
 import { SpeedSelect, VoiceSelect } from "./Voice";
@@ -29,10 +29,10 @@ const TABS: { name: string; icon: string; group: string; keys: string }[] = [
   { name: "General", icon: "user", group: "Preferences", keys: "name instructions send enter reply length saved prompts back up restore chats import chatgpt claude export" },
   { name: "Account", icon: "user-circle", group: "Preferences", keys: "account google sign in sync drive profile other pc" },
   { name: "Appearance", icon: "palette", group: "Preferences", keys: "theme dark light warm midnight neural background backdrop mica acrylic text size font serif code animations" },
-  { name: "Memory", icon: "brain", group: "Preferences", keys: "remember forget across chats facts about me" },
+  { name: "Memory", icon: "book", group: "Preferences", keys: "remember forget across chats facts about me" },
   { name: "Capabilities", icon: "bolt", group: "Preferences", keys: "web search steps thinking effort voice speed talk over read aloud auto-compact compact context trim tool output cqs code quality scanner fix checkers" },
   { name: "Permissions", icon: "shield", group: "Preferences", keys: "manual accept edits plan bypass folders deleting recycle shell cmd powershell" },
-  { name: "Usage", icon: "spark", group: "Preferences", keys: "tokens days models" },
+  { name: "Usage", icon: "chart", group: "Preferences", keys: "tokens days models" },
   { name: "Desktop", icon: "monitor", group: "This computer", keys: "quick ask shortcut hotkey tray start with windows notifications computer tools" },
   { name: "Models", icon: "library", group: "This computer", keys: "storage disk space drive move delete uninstall model folders load download speed up repack local api openai port engine restart keep long chats ready saved cache clear" },
   { name: "Devices", icon: "phone", group: "This computer", keys: "mobile phone qr code wifi tailscale remote pair bridge ram lend pairing network" },
@@ -383,7 +383,6 @@ function ApiRows() {
   );
 }
 
-const mb = (n: number) => `${(n / 1048576).toFixed(0)} MB`;
 
 const ago = (t: number) => {
   const m = Math.round((Date.now() - t) / 60000);
@@ -401,13 +400,12 @@ function UpdatesTab() {
   const known = useApp((x) => x.update);
   const [feed, setFeed] = useState(s.updateFeed);
   const [res, setRes] = useState<UpdateCheck | null>(known);
-  const [busy, setBusy] = useState<"check" | "get" | null>(null);
-  const [got, setGot] = useState<{ got: number; total: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const running = useApp((x) => !!x.updating);
   const [err, setErr] = useState("");
-  useEffect(() => bridge?.update.onProgress((v) => setGot(v)), []);
   if (!bridge) return <p className="set-desc">Updates need the Pelica desktop app.</p>;
   const check = async () => {
-    setBusy("check");
+    setBusy(true);
     setErr("");
     try {
       const r = await checkNow();
@@ -416,34 +414,21 @@ function UpdatesTab() {
     } catch (e: any) {
       setErr(String(e?.message || e));
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
   const install = async () => {
     if (!res?.latest) return;
-    setBusy("get");
     setErr("");
-    setGot(null);
-    try {
-      // the app closes, the installer runs and starts Pelica again
-      await bridge!.update.install(res.latest);
-    } catch (e: any) {
-      setErr(String(e?.message || e).replace(/^Error invoking remote method '[^']*': (Error: )?/, ""));
-      setBusy(null);
-    }
+    // the app closes, the installer runs and starts Pelica again
+    setErr(await installUpdate(res.latest));
   };
   const v = res?.latest?.version;
   const skipped = !!v && v === s.updateSkip;
   const title = res?.newer && v ? `Pelica ${v}${res.preview ? " (preview)" : ""} is available` : res && !res.error ? `Pelica ${res.current} is the newest version` : `You have Pelica ${VERSION}`;
   const status = err
     ? err
-    : busy === "get"
-      ? got?.total
-        ? `Downloading… ${mb(got.got)} of ${mb(got.total)}`
-        : got
-          ? `Downloading… ${mb(got.got)}`
-          : "Downloading…"
-      : res?.newer
+    : res?.newer
         ? `${skipped ? "You skipped this version, so Pelica doesn't mention it at start. " : ""}Install downloads it, checks it, and closes Pelica while it installs; Pelica starts again by itself. Your chats and settings stay.`
         : s.updateLast
           ? `Last checked ${ago(s.updateLast)}.`
@@ -452,27 +437,24 @@ function UpdatesTab() {
     <>
       <Row title={title} desc={status}>
         <div className="inline">
-          {res?.newer && !busy && (
+          {res?.newer && !busy && !running && (
             <button className="btn small ghost" onClick={() => setSettings({ updateSkip: skipped ? "" : v! })}>
               {skipped ? "Don't skip" : "Skip this version"}
             </button>
           )}
-          {res?.newer && (
-            <button className="btn small primary" disabled={!!busy} onClick={install}>
-              {busy === "get" ? "Installing…" : "Install"}
+          {res?.newer && !running && (
+            <button className="btn small primary" disabled={busy} onClick={install}>
+              Install
             </button>
           )}
-          {busy === "get" ? (
-            <button className="btn small ghost" onClick={() => bridge?.update.cancel()}>
-              Cancel
-            </button>
-          ) : (
-            <button className="btn small" disabled={!!busy} onClick={check}>
-              {busy === "check" ? "Checking…" : "Check now"}
+          {!running && (
+            <button className="btn small" disabled={busy} onClick={check}>
+              {busy ? "Checking…" : "Check now"}
             </button>
           )}
         </div>
       </Row>
+      <UpdateProgress />
       {res?.newer && res.latest?.notes?.length ? <ReleaseNotes releases={[{ version: res.latest.version, date: "", title: res.latest.title, notes: res.latest.notes }]} /> : null}
       <Section title="Options" />
       <Row title="Check for updates" desc="When Pelica asks for a newer version by itself, and says so when one is out. Nothing is downloaded until you choose Install.">

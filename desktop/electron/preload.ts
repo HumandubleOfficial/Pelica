@@ -29,7 +29,7 @@ contextBridge.exposeInMainWorld("pelica", {
   docs: { index: call("docs:index"), info: call("docs:info"), search: call("docs:search"), forget: call("docs:forget"), onProgress: on("docs:progress") },
   media: { ocr: call("media:ocr"), dictateStart: call("media:dictateStart"), dictateStop: call("media:dictateStop"), onDictate: on("media:dictate") },
   app: { info: call("app:info"), busy: call("app:busy"), notify: call("app:notify"), hotkey: call("app:hotkey"), login: call("app:login"), onAction: on("app:action") },
-  update: { check: call("update:check"), install: call("update:install"), cancel: call("update:cancel"), onProgress: on("update:progress") },
+  update: { check: call("update:check"), install: call("update:install"), cancel: call("update:cancel"), attempt: call("update:attempt"), onProgress: on("update:progress") },
   quick: { submit: call("quick:submit"), hide: call("quick:hide"), resize: call("quick:resize"), clip: call("quick:clip"), onShown: on("quick:shown") },
   sys: { info: call("sys:info"), open: call("sys:open"), clipRead: call("sys:clipRead"), clipWrite: call("sys:clipWrite"), external: call("sys:external"), saveAs: call("sys:saveAs"), reveal: call("sys:reveal"), awake: call("sys:awake") },
   // a dropped file's path on disk

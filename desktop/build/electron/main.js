@@ -65,6 +65,9 @@ const phone = __importStar(require("./phone"));
 const oauth = __importStar(require("./oauth"));
 const google = __importStar(require("./google"));
 const sync = __importStar(require("./sync"));
+// (for testing a packaged copy: its own data, kept through the restart after an update)
+if (process.env.PELICA_USER_DATA)
+    electron_1.app.setPath("userData", process.env.PELICA_USER_DATA);
 const userDir = electron_1.app.getPath("userData");
 const settingsFile = node_path_1.default.join(userDir, "settings.json");
 const chatsDir = node_path_1.default.join(userDir, "chats");
@@ -1262,18 +1265,47 @@ function registerIpc() {
         updating = new AbortController();
         const dir = node_path_1.default.join(userDir, "updates");
         try {
-            const exe = await updates.download(f, dir, process.execPath, (pr) => win?.webContents.send("update:progress", pr), updating.signal);
+            const tell = (pr) => {
+                win?.webContents.send("update:progress", pr);
+                win?.setProgressBar(pr.phase === "download" && pr.total ? pr.got / pr.total : 2);
+            };
+            const exe = await updates.download(f, dir, process.execPath, tell, updating.signal);
             updates.tidy(dir, exe);
-            // the installer closes what's left of this app, installs, and starts Pelica again
-            (0, node_child_process_1.spawn)(exe, ["/S", "/RELAUNCH", `/D=${node_path_1.default.dirname(process.execPath)}`], { detached: true, stdio: "ignore", windowsHide: true }).unref();
-            setTimeout(() => electron_1.app.quit(), 300);
+            tell({ got: 0, total: 0, phase: "start" });
+            // (the next start checks this: an update that didn't finish says so)
+            node_fs_1.default.writeFileSync(node_path_1.default.join(dir, "attempt.json"), JSON.stringify({ version: f.version }));
+            // the installer waits for this app to close, installs, and starts Pelica again
+            await updates.launch(exe, ["/S", "/RELAUNCH", `/D=${node_path_1.default.dirname(process.execPath)}`, ...(process.env.PELICA_SETUP_FLAGS || "").split(" ").filter(Boolean)]);
+            quitting = true;
+            setTimeout(() => electron_1.app.quit(), 600);
+            // (the installer stops whatever's left, but only after waiting for it)
+            setTimeout(() => electron_1.app.exit(0), 10000);
             return true;
+        }
+        catch (e) {
+            win?.setProgressBar(-1);
+            throw e;
         }
         finally {
             updating = null;
         }
     });
     handle("update:cancel", () => updating?.abort());
+    // an update tried last time: the version, if it didn't take; its download goes either way
+    handle("update:attempt", () => {
+        const dir = node_path_1.default.join(userDir, "updates");
+        let failed = null;
+        try {
+            const a = JSON.parse(node_fs_1.default.readFileSync(node_path_1.default.join(dir, "attempt.json"), "utf8"));
+            if (updates.older(electron_1.app.getVersion(), a.version))
+                failed = a.version;
+            node_fs_1.default.rmSync(node_path_1.default.join(dir, "attempt.json"), { force: true });
+            if (!failed)
+                updates.tidy(dir);
+        }
+        catch { }
+        return failed;
+    });
     handle("app:info", () => ({ version: electron_1.app.getVersion(), userDir, pelica: pelicaExe(), electron: process.versions.electron, hotkey: hotkey(), hotkeyError }));
     // the desktop
     handle("app:hotkey", (k) => {

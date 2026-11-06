@@ -77,6 +77,8 @@ static class Program
     static int Main(string[] args)
     {
         Opts o = Opts.Parse(args);
+        // the app's updater: a small window, so Pelica closing doesn't look like nothing happened
+        if (o.Silent && o.Relaunch && !Info.IsUninstaller) return UpdateForm.Run(o);
         if (o.Silent)
         {
             try
@@ -84,7 +86,6 @@ static class Program
                 if (Info.IsUninstaller) Setup.Uninstall(o, null);
                 else Setup.Install(o, null);
                 Setup.RunCleanup();
-                if (!Info.IsUninstaller && o.Relaunch) Setup.Launch(o.Dir);
                 return 0;
             }
             catch (Exception e)
@@ -143,14 +144,24 @@ static class Setup
         return list;
     }
 
-    static void CloseRunning(string dir)
+    /** With `updating`, Pelica started this installer and is closing itself: it
+     *  gets time to finish (it saves your chats on the way out), and what's left
+     *  is stopped one process at a time. Stopping its whole tree, as a normal
+     *  install does, would stop this installer too: it's Pelica's child. */
+    static void CloseRunning(string dir, bool updating)
     {
+        if (updating)
+            for (int i = 0; i < 80 && Running(dir).Count > 0; i++) Thread.Sleep(250);
         foreach (Process p in Running(dir))
         {
             try
             {
-                Process k = Process.Start(new ProcessStartInfo("taskkill", "/PID " + p.Id + " /T /F") { CreateNoWindow = true, UseShellExecute = false });
-                k.WaitForExit(5000);
+                if (updating) p.Kill();
+                else
+                {
+                    Process k = Process.Start(new ProcessStartInfo("taskkill", "/PID " + p.Id + " /T /F") { CreateNoWindow = true, UseShellExecute = false });
+                    k.WaitForExit(5000);
+                }
                 p.WaitForExit(5000);
             }
             catch { }
@@ -206,7 +217,7 @@ static class Setup
     {
         string dir = o.Dir;
         Directory.CreateDirectory(dir);
-        CloseRunning(dir);
+        CloseRunning(dir, o.Relaunch);
         DriveInfo drive = new DriveInfo(Path.GetPathRoot(dir));
         if (drive.AvailableFreeSpace < Info.Bytes + (64L << 20))
             throw new Exception(string.Format("There isn't enough space on {0}: Pelica needs about {1:0} MB.", drive.Name, Info.Bytes / 1048576.0));
@@ -291,7 +302,7 @@ static class Setup
         string[] files = Listed(dir);
         // only a real Pelica folder: never sweep a folder this didn't install
         if (files.Length == 0 || !File.Exists(exe)) throw new Exception("Pelica isn't installed in " + dir + ".");
-        CloseRunning(dir);
+        CloseRunning(dir, false);
 
         Shortcuts.RemoveIfOurs(Shortcuts.StartMenu(), exe);
         Shortcuts.RemoveIfOurs(Shortcuts.Desktop(), exe);
@@ -510,6 +521,146 @@ static class UserPath
         // Explorer (and so every terminal opened from now on) picks it up
         IntPtr r;
         SendMessageTimeout((IntPtr)0xFFFF, 0x001A, IntPtr.Zero, "Environment", 2, 3000, out r);
+    }
+}
+
+/** The update's own small window: Pelica has closed, this says what's happening,
+ *  and Pelica starts again at the end, even if the update failed. */
+class UpdateForm : Form
+{
+    static readonly Color Bg = Color.FromArgb(31, 30, 29), Track = Color.FromArgb(62, 62, 58), Text1 = Color.FromArgb(236, 235, 230),
+        Muted = Color.FromArgb(155, 152, 144), Accent = Color.FromArgb(217, 119, 87), Bad = Color.FromArgb(232, 124, 110);
+
+    [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hwnd, int cmd);
+
+    readonly float S;
+    readonly Font fTitle, fSub;
+    readonly Image logo;
+    readonly System.Windows.Forms.Timer tick = new System.Windows.Forms.Timer();
+    readonly Stopwatch clock = Stopwatch.StartNew();
+    volatile bool finished;
+    volatile string error;
+    double target, shown;
+    long errorAt = -1;
+    bool unhidden;
+
+    public static int Run(Opts o)
+    {
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+        UpdateForm f = new UpdateForm();
+        // (started here, not from the window: the work must run even if the window never shows)
+        Thread t = new Thread(delegate()
+        {
+            try { Setup.Install(o, (p, name) => f.target = p); }
+            catch (Exception e)
+            {
+                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pelica-setup.log"), DateTime.Now + " " + e + "\r\n"); } catch { }
+                f.error = e.Message;
+            }
+            f.finished = true;
+        });
+        t.IsBackground = true;
+        t.SetApartmentState(ApartmentState.STA);
+        t.Start();
+        Application.Run(f);
+        t.Join(60000);
+        Setup.RunCleanup();
+        Setup.Launch(o.Dir);
+        return f.error == null ? 0 : 1;
+    }
+
+    UpdateForm()
+    {
+        S = DeviceDpi / 96f;
+        FormBorderStyle = FormBorderStyle.None;
+        StartPosition = FormStartPosition.CenterScreen;
+        ClientSize = new Size(D(380), D(112));
+        BackColor = Bg;
+        DoubleBuffered = true;
+        ShowInTaskbar = true;
+        Text = "Updating Pelica";
+        try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+        using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("logo.png"))
+            if (s != null) using (Image img = Image.FromStream(s)) logo = new Bitmap(img);
+        fTitle = new Font("Segoe UI Semibold", 11f);
+        fSub = new Font("Segoe UI", 9f);
+        tick.Interval = 16;
+        tick.Tick += delegate
+        {
+            // (an app that asked for no window hides the first show; the second one counts)
+            if (!unhidden) { unhidden = true; ShowWindow(Handle, 5); }
+            shown += (target - shown) * 0.12;
+            Invalidate();
+            if (finished && error == null) Close();
+            if (finished && error != null)
+            {
+                if (errorAt < 0) errorAt = clock.ElapsedMilliseconds;
+                if (clock.ElapsedMilliseconds - errorAt > 6000) Close();
+            }
+        };
+        tick.Start();
+    }
+
+    int D(float v) { return (int)Math.Round(v * S); }
+
+    protected override CreateParams CreateParams
+    {
+        get
+        {
+            CreateParams cp = base.CreateParams;
+            cp.ClassStyle |= 0x20000; // CS_DROPSHADOW
+            return cp;
+        }
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        int round = 2; // Windows 11: rounded corners
+        try { DwmSetWindowAttribute(Handle, 33, ref round, 4); } catch { }
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        Graphics g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+        if (logo != null) g.DrawImage(logo, new Rectangle(D(24), D(24), D(36), D(36)));
+        int x = D(74), w = ClientSize.Width - x - D(24);
+        bool bad = error != null;
+        string title = bad ? "Pelica couldn't update" : "Updating Pelica to " + Info.Version;
+        string sub = bad ? error + " Pelica will start again." : target <= 0 ? "Waiting for Pelica to close…" : shown > 0.985 ? "Starting Pelica…" : "Installing, " + (int)(shown * 100) + "%";
+        using (SolidBrush b = new SolidBrush(Text1)) g.DrawString(title, fTitle, b, new RectangleF(x, D(20), w, D(22)));
+        using (SolidBrush b = new SolidBrush(bad ? Bad : Muted)) g.DrawString(sub, fSub, b, new RectangleF(x, D(43), w, bad ? D(40) : D(20)));
+        if (bad) return;
+        Rectangle bar = new Rectangle(x, D(74), w, D(4));
+        using (GraphicsPath p = Pill(bar)) using (SolidBrush b = new SolidBrush(Track)) g.FillPath(b, p);
+        Rectangle fill;
+        if (target <= 0)
+        {
+            // waiting: a short piece sliding along the track
+            double t = (clock.ElapsedMilliseconds % 1500) / 1500.0;
+            int piece = w / 4;
+            int at = (int)((w + piece) * (t * t * (3 - 2 * t))) - piece;
+            int l = Math.Max(0, at), r = Math.Min(w, at + piece);
+            if (r <= l) return;
+            fill = new Rectangle(bar.X + l, bar.Y, r - l, bar.Height);
+        }
+        else fill = new Rectangle(bar.X, bar.Y, Math.Max(bar.Height, (int)(w * shown)), bar.Height);
+        using (GraphicsPath p = Pill(fill)) using (SolidBrush b = new SolidBrush(Accent)) g.FillPath(b, p);
+    }
+
+    static GraphicsPath Pill(Rectangle r)
+    {
+        GraphicsPath p = new GraphicsPath();
+        int d = Math.Min(r.Height, r.Width);
+        p.AddArc(r.X, r.Y, d, d, 90, 180);
+        p.AddArc(r.Right - d, r.Y, d, d, 270, 180);
+        p.CloseFigure();
+        return p;
     }
 }
 

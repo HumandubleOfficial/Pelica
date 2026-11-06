@@ -412,6 +412,8 @@ export interface AppState {
   whatsNew: "new" | "all" | null;
   /** a newer version the update feed offers (Settings → Updates) */
   update: import("./lib/bridge").UpdateCheck | null;
+  /** an update being fetched and installed (speed: bytes a second) */
+  updating: { version: string; phase: "download" | "check" | "start"; got: number; total: number; speed: number } | null;
   /** the Scheduled tasks window */
   tasksOpen: boolean;
   approval: Approval | null;
@@ -489,6 +491,7 @@ export const app = createStore<AppState>({
   settingsTab: "General",
   whatsNew: null,
   update: null,
+  updating: null,
   tasksOpen: false,
   approval: null,
   account: null,

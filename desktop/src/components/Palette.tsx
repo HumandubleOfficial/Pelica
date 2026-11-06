@@ -67,7 +67,7 @@ function actions(): Item[] {
     { id: "export", group: "Actions", label: "Export this chat as Markdown…", icon: "download", run: go(() => exportChat()) },
     { id: "copy-chat", group: "Actions", label: "Copy this whole chat", icon: "copy", hint: "as Markdown", run: go(() => copyChat()) },
     { id: "models", group: "Go to", label: "Models", icon: "library", run: go(() => app.set({ view: "library" })) },
-    { id: "projects", group: "Go to", label: "Projects", icon: "layers", hint: "chats that share instructions and files", run: go(() => app.set({ view: "projects" })) },
+    { id: "projects", group: "Go to", label: "Projects", icon: "stack", hint: "chats that share instructions and files", run: go(() => app.set({ view: "projects" })) },
     { id: "memory", group: "Go to", label: "Memory: what Pelica remembers about you", icon: "brain", run: go(() => app.set({ settingsOpen: true, settingsTab: "Memory" })) },
     { id: "experimental", group: "Go to", label: "Experimental features", icon: "flask", hint: "Brain", run: go(() => app.set({ settingsOpen: true, settingsTab: "Experimental" })) },
     { id: "phone", group: "Go to", label: "Pelica on your phone", icon: "phone", hint: "scan a QR code", run: go(() => app.set({ settingsOpen: true, settingsTab: "Phone" })) },

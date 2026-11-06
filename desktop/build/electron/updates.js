@@ -8,6 +8,7 @@ exports.older = older;
 exports.check = check;
 exports.signature = signature;
 exports.download = download;
+exports.launch = launch;
 exports.tidy = tidy;
 // Updates: Pelica asks an update feed what the newest version is: by default
 // the latest.json of Pelica's newest GitHub release (DEFAULT_FEED), or the web
@@ -17,8 +18,9 @@ exports.tidy = tidy;
 // `url` may be relative to the feed. An update is downloaded into the app's
 // data folder, must match its sha256 (and, when this copy of Pelica is
 // signed, carry a valid signature from the same publisher), and then runs
-// silently (/S /RELAUNCH) after the app quits; the installer starts Pelica
-// again when it's done. Nothing is downloaded until the user chooses Install.
+// (/S /RELAUNCH: no questions, a small progress window) after the app quits;
+// the installer starts Pelica again when it's done. Nothing is downloaded
+// until the user chooses Install.
 const node_child_process_1 = require("node:child_process");
 const node_crypto_1 = __importDefault(require("node:crypto"));
 const node_fs_1 = __importDefault(require("node:fs"));
@@ -102,6 +104,12 @@ function signature(file) {
         });
     });
 }
+async function sha256Of(file) {
+    const hash = node_crypto_1.default.createHash("sha256");
+    for await (const chunk of node_fs_1.default.createReadStream(file))
+        hash.update(chunk);
+    return hash.digest("hex");
+}
 /**
  * Downloads the update into `dir`, checks it, and returns the installer's path.
  * `self` is this app's exe: when it is signed, the update must be signed by the same publisher.
@@ -114,13 +122,23 @@ async function download(f, dir, self, onProgress, signal) {
         throw new Error("the update isn't an .exe");
     const out = node_path_1.default.join(dir, name);
     const part = out + ".part";
+    const same = (sum) => sum.toLowerCase() === f.sha256.toLowerCase();
+    // (already here from an earlier try: no need to fetch it again)
+    if (node_fs_1.default.existsSync(out)) {
+        onProgress({ got: 0, total: 0, phase: "check" });
+        if (same(await sha256Of(out))) {
+            await checkSigner(out, self);
+            return out;
+        }
+        node_fs_1.default.rmSync(out, { force: true });
+    }
     const hash = node_crypto_1.default.createHash("sha256");
     if (u.protocol === "file:") {
         const src = (0, node_url_1.fileURLToPath)(u);
         const total = node_fs_1.default.statSync(src).size;
         await node_fs_1.default.promises.copyFile(src, part);
         hash.update(await node_fs_1.default.promises.readFile(part));
-        onProgress({ got: total, total });
+        onProgress({ got: total, total, phase: "download" });
     }
     else {
         if (u.protocol !== "https:" && u.protocol !== "http:")
@@ -131,35 +149,72 @@ async function download(f, dir, self, onProgress, signal) {
         const total = Number(r.headers.get("content-length")) || 0;
         const w = node_fs_1.default.createWriteStream(part);
         let got = 0;
+        let told = 0;
         try {
             for await (const chunk of r.body) {
                 hash.update(chunk);
                 got += chunk.length;
                 if (!w.write(chunk))
                     await new Promise((r2) => w.once("drain", () => r2()));
-                onProgress({ got, total });
+                // (ten times a second is plenty for a progress bar)
+                if (Date.now() - told >= 100)
+                    (told = Date.now()), onProgress({ got, total, phase: "download" });
             }
+            onProgress({ got, total, phase: "download" });
         }
         finally {
             await new Promise((r2) => w.end(() => r2()));
         }
     }
-    const sum = hash.digest("hex");
-    if (sum.toLowerCase() !== f.sha256.toLowerCase()) {
+    onProgress({ got: 0, total: 0, phase: "check" });
+    if (!same(hash.digest("hex"))) {
         node_fs_1.default.rmSync(part, { force: true });
         throw new Error("the download doesn't match the feed's sha256, so it wasn't run");
     }
-    const mine = await signature(self);
-    if (mine.status === "Valid") {
-        const theirs = await signature(part);
-        if (theirs.status !== "Valid" || theirs.subject !== mine.subject) {
-            node_fs_1.default.rmSync(part, { force: true });
-            throw new Error(`the update isn't signed by ${mine.subject} (${theirs.status}${theirs.subject ? ", " + theirs.subject : ""}), so it wasn't run`);
-        }
+    try {
+        await checkSigner(part, self);
+    }
+    catch (e) {
+        node_fs_1.default.rmSync(part, { force: true });
+        throw e;
     }
     node_fs_1.default.rmSync(out, { force: true });
     node_fs_1.default.renameSync(part, out);
     return out;
+}
+/** When this copy of Pelica is signed, `file` must be signed by the same publisher. */
+async function checkSigner(file, self) {
+    const mine = await signature(self);
+    if (mine.status !== "Valid")
+        return;
+    const theirs = await signature(file);
+    if (theirs.status !== "Valid" || theirs.subject !== mine.subject) {
+        throw new Error(`the update isn't signed by ${mine.subject} (${theirs.status}${theirs.subject ? ", " + theirs.subject : ""}), so it wasn't run`);
+    }
+}
+/**
+ * Starts the installer, and resolves once Windows has really started it. A file
+ * just written can be held for a moment by antivirus, so it tries for a few
+ * seconds. If it can't, this throws and Pelica stays open.
+ */
+async function launch(exe, args) {
+    let last;
+    for (let i = 0; i < 6; i++) {
+        if (i)
+            await new Promise((r) => setTimeout(r, 800));
+        try {
+            await new Promise((ok, no) => {
+                const p = (0, node_child_process_1.spawn)(exe, args, { detached: true, stdio: "ignore" });
+                p.once("error", no);
+                p.once("spawn", () => (p.unref(), ok()));
+            });
+            return;
+        }
+        catch (e) {
+            last = e;
+        }
+    }
+    throw new Error(`Windows wouldn't start the update (${last?.code || last?.message || last}). Try again in a moment, or install it from ${exports.RELEASES_PAGE}`);
 }
 /** Old downloaded installers (not `keep`) go. */
 function tidy(dir, keep) {

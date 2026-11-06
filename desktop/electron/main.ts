@@ -28,6 +28,8 @@ import * as oauth from "./oauth";
 import * as google from "./google";
 import * as sync from "./sync";
 
+// (for testing a packaged copy: its own data, kept through the restart after an update)
+if (process.env.PELICA_USER_DATA) app.setPath("userData", process.env.PELICA_USER_DATA);
 const userDir = app.getPath("userData");
 const settingsFile = path.join(userDir, "settings.json");
 const chatsDir = path.join(userDir, "chats");
@@ -1198,17 +1200,42 @@ function registerIpc() {
     updating = new AbortController();
     const dir = path.join(userDir, "updates");
     try {
-      const exe = await updates.download(f, dir, process.execPath, (pr) => win?.webContents.send("update:progress", pr), updating.signal);
+      const tell = (pr: updates.Progress) => {
+        win?.webContents.send("update:progress", pr);
+        win?.setProgressBar(pr.phase === "download" && pr.total ? pr.got / pr.total : 2);
+      };
+      const exe = await updates.download(f, dir, process.execPath, tell, updating.signal);
       updates.tidy(dir, exe);
-      // the installer closes what's left of this app, installs, and starts Pelica again
-      spawn(exe, ["/S", "/RELAUNCH", `/D=${path.dirname(process.execPath)}`], { detached: true, stdio: "ignore", windowsHide: true }).unref();
-      setTimeout(() => app.quit(), 300);
+      tell({ got: 0, total: 0, phase: "start" });
+      // (the next start checks this: an update that didn't finish says so)
+      fs.writeFileSync(path.join(dir, "attempt.json"), JSON.stringify({ version: f.version }));
+      // the installer waits for this app to close, installs, and starts Pelica again
+      await updates.launch(exe, ["/S", "/RELAUNCH", `/D=${path.dirname(process.execPath)}`, ...(process.env.PELICA_SETUP_FLAGS || "").split(" ").filter(Boolean)]);
+      quitting = true;
+      setTimeout(() => app.quit(), 600);
+      // (the installer stops whatever's left, but only after waiting for it)
+      setTimeout(() => app.exit(0), 10000);
       return true;
+    } catch (e) {
+      win?.setProgressBar(-1);
+      throw e;
     } finally {
       updating = null;
     }
   });
   handle("update:cancel", () => updating?.abort());
+  // an update tried last time: the version, if it didn't take; its download goes either way
+  handle("update:attempt", () => {
+    const dir = path.join(userDir, "updates");
+    let failed: string | null = null;
+    try {
+      const a = JSON.parse(fs.readFileSync(path.join(dir, "attempt.json"), "utf8"));
+      if (updates.older(app.getVersion(), a.version)) failed = a.version;
+      fs.rmSync(path.join(dir, "attempt.json"), { force: true });
+      if (!failed) updates.tidy(dir);
+    } catch {}
+    return failed;
+  });
   handle("app:info", () => ({ version: app.getVersion(), userDir, pelica: pelicaExe(), electron: process.versions.electron, hotkey: hotkey(), hotkeyError }));
 
   // the desktop

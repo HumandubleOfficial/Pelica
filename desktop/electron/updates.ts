@@ -6,9 +6,10 @@
 // `url` may be relative to the feed. An update is downloaded into the app's
 // data folder, must match its sha256 (and, when this copy of Pelica is
 // signed, carry a valid signature from the same publisher), and then runs
-// silently (/S /RELAUNCH) after the app quits; the installer starts Pelica
-// again when it's done. Nothing is downloaded until the user chooses Install.
-import { execFile } from "node:child_process";
+// (/S /RELAUNCH: no questions, a small progress window) after the app quits;
+// the installer starts Pelica again when it's done. Nothing is downloaded
+// until the user chooses Install.
+import { execFile, spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -107,6 +108,14 @@ export function signature(file: string): Promise<{ status: string; subject: stri
 export interface Progress {
   got: number;
   total: number;
+  /** getting the file, checking it, or handing over to the installer */
+  phase: "download" | "check" | "start";
+}
+
+async function sha256Of(file: string): Promise<string> {
+  const hash = crypto.createHash("sha256");
+  for await (const chunk of fs.createReadStream(file)) hash.update(chunk as Buffer);
+  return hash.digest("hex");
 }
 
 /**
@@ -120,13 +129,23 @@ export async function download(f: Feed, dir: string, self: string, onProgress: (
   if (!/\.exe$/i.test(name)) throw new Error("the update isn't an .exe");
   const out = path.join(dir, name);
   const part = out + ".part";
+  const same = (sum: string) => sum.toLowerCase() === f.sha256.toLowerCase();
+  // (already here from an earlier try: no need to fetch it again)
+  if (fs.existsSync(out)) {
+    onProgress({ got: 0, total: 0, phase: "check" });
+    if (same(await sha256Of(out))) {
+      await checkSigner(out, self);
+      return out;
+    }
+    fs.rmSync(out, { force: true });
+  }
   const hash = crypto.createHash("sha256");
   if (u.protocol === "file:") {
     const src = fileURLToPath(u);
     const total = fs.statSync(src).size;
     await fs.promises.copyFile(src, part);
     hash.update(await fs.promises.readFile(part));
-    onProgress({ got: total, total });
+    onProgress({ got: total, total, phase: "download" });
   } else {
     if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error(`can't download ${u.protocol} addresses`);
     const r = await fetch(u, { signal });
@@ -134,33 +153,67 @@ export async function download(f: Feed, dir: string, self: string, onProgress: (
     const total = Number(r.headers.get("content-length")) || 0;
     const w = fs.createWriteStream(part);
     let got = 0;
+    let told = 0;
     try {
       for await (const chunk of r.body as any as AsyncIterable<Uint8Array>) {
         hash.update(chunk);
         got += chunk.length;
         if (!w.write(chunk)) await new Promise<void>((r2) => w.once("drain", () => r2()));
-        onProgress({ got, total });
+        // (ten times a second is plenty for a progress bar)
+        if (Date.now() - told >= 100) (told = Date.now()), onProgress({ got, total, phase: "download" });
       }
+      onProgress({ got, total, phase: "download" });
     } finally {
       await new Promise<void>((r2) => w.end(() => r2()));
     }
   }
-  const sum = hash.digest("hex");
-  if (sum.toLowerCase() !== f.sha256.toLowerCase()) {
+  onProgress({ got: 0, total: 0, phase: "check" });
+  if (!same(hash.digest("hex"))) {
     fs.rmSync(part, { force: true });
     throw new Error("the download doesn't match the feed's sha256, so it wasn't run");
   }
-  const mine = await signature(self);
-  if (mine.status === "Valid") {
-    const theirs = await signature(part);
-    if (theirs.status !== "Valid" || theirs.subject !== mine.subject) {
-      fs.rmSync(part, { force: true });
-      throw new Error(`the update isn't signed by ${mine.subject} (${theirs.status}${theirs.subject ? ", " + theirs.subject : ""}), so it wasn't run`);
-    }
+  try {
+    await checkSigner(part, self);
+  } catch (e) {
+    fs.rmSync(part, { force: true });
+    throw e;
   }
   fs.rmSync(out, { force: true });
   fs.renameSync(part, out);
   return out;
+}
+
+/** When this copy of Pelica is signed, `file` must be signed by the same publisher. */
+async function checkSigner(file: string, self: string) {
+  const mine = await signature(self);
+  if (mine.status !== "Valid") return;
+  const theirs = await signature(file);
+  if (theirs.status !== "Valid" || theirs.subject !== mine.subject) {
+    throw new Error(`the update isn't signed by ${mine.subject} (${theirs.status}${theirs.subject ? ", " + theirs.subject : ""}), so it wasn't run`);
+  }
+}
+
+/**
+ * Starts the installer, and resolves once Windows has really started it. A file
+ * just written can be held for a moment by antivirus, so it tries for a few
+ * seconds. If it can't, this throws and Pelica stays open.
+ */
+export async function launch(exe: string, args: string[]): Promise<void> {
+  let last: any;
+  for (let i = 0; i < 6; i++) {
+    if (i) await new Promise((r) => setTimeout(r, 800));
+    try {
+      await new Promise<void>((ok, no) => {
+        const p = spawn(exe, args, { detached: true, stdio: "ignore" });
+        p.once("error", no);
+        p.once("spawn", () => (p.unref(), ok()));
+      });
+      return;
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw new Error(`Windows wouldn't start the update (${last?.code || last?.message || last}). Try again in a moment, or install it from ${RELEASES_PAGE}`);
 }
 
 /** Old downloaded installers (not `keep`) go. */

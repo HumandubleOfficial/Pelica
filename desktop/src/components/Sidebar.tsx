@@ -9,6 +9,7 @@ import { compactNow } from "../agent/agent";
 import { DOCKS } from "./Dock";
 import { Icon, Logo } from "./Icons";
 import { Menu, type MenuItem } from "./Menu";
+import { SideUpdate } from "./Updates";
 
 const base = (p: string) => p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || p;
 
@@ -109,7 +110,7 @@ function chatMenu(id: string, o: { pinned: boolean; folder: string | null; proje
       ...(o.newTag ? [{ label: "New tag…", icon: "plus", on: o.newTag }] : []),
     ] });
   items.push({ label: "Move to project", sub: [
-    ...projects.map((p) => ({ label: p.name, icon: "layers", checked: p.id === o.project, on: () => patchChat(id, (c) => ({ ...c, project: p.id })) })),
+    ...projects.map((p) => ({ label: p.name, icon: "stack", checked: p.id === o.project, on: () => patchChat(id, (c) => ({ ...c, project: p.id })) })),
     ...(projects.length ? (["sep"] as MenuItem[]) : []),
     { label: "New project…", icon: "plus", on: () => { const p = { id: Date.now().toString(36), name: "New project", instructions: "", files: [], folder: o.folder, created: Date.now() }; setSettings({ projects: [...projects, p] }); patchChat(id, (c) => ({ ...c, project: p.id })).then(() => openProject(p.id)); } },
     { label: "No project", icon: "x", disabled: !o.project, on: () => patchChat(id, (c) => ({ ...c, project: undefined })) },
@@ -422,6 +423,20 @@ function TagFilter() {
   );
 }
 
+/** A section's name in the chat list: click it to fold the section. */
+function SideHead({ id, label }: { id: string; label: string }) {
+  const folded = useApp((s) => s.settings.sideFolded);
+  const shut = folded.includes(id);
+  return (
+    <div className={`side-group-head top ${shut ? "folded" : ""}`}>
+      <button className="side-group-name" aria-expanded={!shut} onClick={() => setSettings({ sideFolded: shut ? folded.filter((x) => x !== id) : [...folded, id] })}>
+        {label}
+        <span className="sp-caret" />
+      </button>
+    </div>
+  );
+}
+
 export function Sidebar() {
   const allChats = useApp((s) => s.chats);
   const sideTag = useApp((s) => s.sideTag);
@@ -435,6 +450,7 @@ export function Sidebar() {
   const name = useApp((s) => s.settings.userName);
   const search = useApp((s) => s.search);
   const [searching, setSearching] = useState(false);
+  const [userMenu, setUserMenu] = useState<{ x: number; y: number } | null>(null);
   const q = search.trim().toLowerCase();
   const shown = q ? chats.filter((c) => c.title.toLowerCase().includes(q)) : chats;
   // chats with the words in their messages (those already listed by title left out)
@@ -450,6 +466,7 @@ export function Sidebar() {
   const pinned = shown.filter((c) => c.pinned).sort((a, b) => pinRank(a.id) - pinRank(b.id));
   const recent = shown.filter((c) => !c.pinned);
   const folded = useApp((s) => s.settings.sideFolded);
+  const shut = (id: string) => !q && folded.includes(id);
   // each folder is a group named after it, newest first; chats with no folder come after
   const groups = new Map<string, typeof recent>();
   const loose: typeof recent = [];
@@ -480,6 +497,7 @@ export function Sidebar() {
         </button>
       </div>
       <nav className="side-nav">
+        {nav("New chat", "plus", () => startNewChat())}
         {searching ? (
           <div className="side-search">
             <Icon name="search" size={15} />
@@ -488,15 +506,14 @@ export function Sidebar() {
         ) : (
           nav("Search", "search", () => setSearching(true))
         )}
-        {nav("New chat", "plus", () => startNewChat())}
-        {nav("Projects", "layers", () => app.set({ view: "projects" }), view === "projects" || view === "project")}
+        {nav("Projects", "stack", () => app.set({ view: "projects" }), view === "projects" || view === "project")}
         {nav("Models", "library", () => app.set({ view: "library" }), view === "library")}
         {brainMenu && nav("Brain", "brain", () => app.set({ view: "brain" }), view === "brain")}
       </nav>
       <TagFilter />
       <div className={`side-lists ${selecting ? "selecting" : ""}`} onKeyDown={rowKeys}>
-        {pinned.length > 0 && <div className="side-label">Pinned</div>}
-        {pinned.map((c) => (
+        {pinned.length > 0 && !q && <SideHead id="@pinned" label="Pinned" />}
+        {!shut("@pinned") && pinned.map((c) => (
           <ChatRow key={c.id} id={c.id} title={c.title} pinned active={c.id === cur && view === "chat"} folder={c.folder} project={c.project} tags={c.tags} />
         ))}
         {[...groups].map(([k, list]) => {
@@ -520,8 +537,8 @@ export function Sidebar() {
         {q && loose.length > 0 && <div className="side-label">Results</div>}
         {loose.map((c, i) => (
           <Fragment key={c.id}>
-            {!q && (i === 0 || whenLabel(loose[i - 1].updated) !== whenLabel(c.updated)) && <div className="side-label">{whenLabel(c.updated)}</div>}
-            <ChatRow id={c.id} title={c.title} pinned={false} active={c.id === cur && view === "chat"} folder={c.folder} project={c.project} tags={c.tags} />
+            {!q && (i === 0 || whenLabel(loose[i - 1].updated) !== whenLabel(c.updated)) && <SideHead id={`@${whenLabel(c.updated)}`} label={whenLabel(c.updated)} />}
+            {!shut(`@${whenLabel(c.updated)}`) && <ChatRow id={c.id} title={c.title} pinned={false} active={c.id === cur && view === "chat"} folder={c.folder} project={c.project} tags={c.tags} />}
           </Fragment>
         ))}
         {msgHits.length > 0 && <div className="side-label">In messages</div>}
@@ -532,14 +549,39 @@ export function Sidebar() {
         {!chats.length && <div className="side-empty">{sideTag ? "No chats have that tag." : "Your chats will show up here."}</div>}
       </div>
       <PickBar />
-      <button className="user-chip" onClick={() => app.set({ settingsOpen: true, settingsTab: acct ? "Account" : "General" })}>
-        {acct?.picture ? <img className="avatar" src={acct.picture} alt="" /> : <span className="avatar">{(name || acct?.name || "You").slice(0, 1).toUpperCase()}</span>}
-        <span className="user-name">
-          {name || acct?.name || "You"}
-          <small>{acct ? (syncOn ? "Synced with Google" : "Signed in · not syncing") : "Local · private"}</small>
-        </span>
-        <Icon name="settings" size={15} />
-      </button>
+      <SideUpdate />
+      <div className="side-foot">
+        <button
+          className={`user-chip ${userMenu ? "open" : ""}`}
+          aria-haspopup="menu"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setUserMenu(userMenu ? null : { x: r.left, y: r.top - 150 });
+          }}
+        >
+          {acct?.picture ? <img className="avatar" src={acct.picture} alt="" /> : <span className="avatar">{(name || acct?.name || "You").slice(0, 1).toUpperCase()}</span>}
+          <span className="user-name">
+            {name || acct?.name || "You"}
+            <span className="user-plan"> · {acct ? (syncOn ? "Synced" : "Not syncing") : "Local"}</span>
+          </span>
+          <Icon name="chevronDown" size={13} />
+        </button>
+        <button className="ghost-btn" title="Settings" onClick={() => app.set({ settingsOpen: true })}>
+          <Icon name="settings" size={16} />
+        </button>
+      </div>
+      {userMenu && (
+        <Menu
+          at={userMenu}
+          close={() => setUserMenu(null)}
+          items={[
+            { label: "Account", icon: "user-circle", on: () => app.set({ settingsOpen: true, settingsTab: "Account" }) },
+            { label: "What's new", icon: "sparkle", on: () => app.set({ whatsNew: "all" }) },
+            { label: "Keyboard shortcuts", icon: "keyboard", on: () => app.set({ keys: true }) },
+            { label: "About Pelica", icon: "info", on: () => app.set({ settingsOpen: true, settingsTab: "About" }) },
+          ]}
+        />
+      )}
     </aside>
   );
 }
@@ -708,13 +750,15 @@ export function WinBtns({ max: known }: { max?: boolean }) {
   return (
     <div className="win-btns nodrag">
       <button onClick={() => bridge!.win.minimize()} title="Minimize">
-        <Icon name="minimize" size={14} />
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5.5h10" stroke="currentColor" /></svg>
       </button>
       <button onClick={() => bridge!.win.maximize()} title={max ? "Restore" : "Maximize"}>
-        <Icon name={max ? "restore" : "maximize"} size={12} />
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" aria-hidden="true">
+          {max ? <path d="M2.5 2.5V1.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H7.5M1.5 2.5h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z" /> : <rect x=".5" y=".5" width="9" height="9" rx="1" />}
+        </svg>
       </button>
       <button className="close" onClick={() => bridge!.win.close()} title="Close">
-        <Icon name="x" size={14} />
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M.5.5l9 9M9.5.5l-9 9" stroke="currentColor" strokeLinecap="round" /></svg>
       </button>
     </div>
   );
