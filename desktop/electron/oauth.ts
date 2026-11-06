@@ -126,6 +126,9 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 
 let pending: { cancel: () => void } | null = null;
 
+/** Gives up on the sign-in under way. */
+export const cancelSignIn = () => pending?.cancel();
+
 /** Signs in to the connector at `url`: opens the browser and waits (5 minutes at most). */
 export async function signIn(url: string, wwwAuthenticate: string | undefined, open: (u: string) => void): Promise<void> {
   pending?.cancel();

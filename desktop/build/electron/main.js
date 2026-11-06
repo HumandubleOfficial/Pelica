@@ -976,9 +976,31 @@ function registerIpc() {
     const client = () => (settings.googleClientId ? { id: settings.googleClientId, secret: settings.googleClientSecret || "" } : builtIn);
     const accountStatus = () => ({ profile: google.profile(), sync: sync.status(), clientId: client().id, hasSecret: !!client().secret, builtIn: !!builtIn.id });
     handle("account:status", accountStatus);
+    // a sign-in opens in the default browser; when that browser can't finish the
+    // page, the same sign-in can go on in Edge or wherever its link is pasted
+    let signInLink = "";
+    const openSignIn = (u) => {
+        signInLink = u;
+        electron_1.shell.openExternal(u);
+    };
+    handle("signin:edge", async () => {
+        if (!signInLink)
+            return;
+        const roots = [process.env["ProgramFiles(x86)"], process.env.ProgramFiles, process.env.LOCALAPPDATA].filter((x) => !!x);
+        const edge = roots.map((r) => node_path_1.default.join(r, "Microsoft", "Edge", "Application", "msedge.exe")).find((p) => node_fs_1.default.existsSync(p));
+        if (edge)
+            (0, node_child_process_1.spawn)(edge, [signInLink], { detached: true, stdio: "ignore" }).unref();
+        else
+            await electron_1.shell.openExternal(`microsoft-edge:${signInLink}`);
+    });
+    handle("signin:copy", () => electron_1.clipboard.writeText(signInLink));
+    handle("signin:cancel", () => {
+        google.cancelSignIn();
+        oauth.cancelSignIn();
+    });
     handle("account:signIn", async () => {
         const c = client();
-        const p = await google.signIn(c.id, c.secret, (u) => electron_1.shell.openExternal(u));
+        const p = await google.signIn(c.id, c.secret, openSignIn);
         // (another Google account than before: its Drive starts a fresh sync)
         if (settings.accountEmail !== p.email) {
             sync.reset();
@@ -1098,7 +1120,7 @@ function registerIpc() {
         return c;
     };
     handle("mcp:signIn", async (name) => {
-        await mcp.signIn(mcpCfg(name), (u) => electron_1.shell.openExternal(u));
+        await mcp.signIn(mcpCfg(name), openSignIn);
         win?.show();
         win?.focus();
         return mcp.list();

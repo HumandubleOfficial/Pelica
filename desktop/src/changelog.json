@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.4.1",
+    "date": "2026-11-06",
+    "title": "Cleaner Models and Projects pages",
+    "notes": [
+      "If the sign-in page doesn't work in your browser, you can finish in Edge or copy the link to another browser, without starting over.",
+      "You can now cancel a sign-in instead of waiting 5 minutes for it to give up.",
+      "Projects are remade: they're sorted by what you worked on last, and you can search them.",
+      "A project's page has a box to start a chat straight away, and you can take a chat out of a project.",
+      "On this PC is remade as one tidy list that shows how each model fits your PC, with a Load or Unload button and the rest in a … menu.",
+      "Discover is remade: search results and a model's files now sit side by side instead of running on for pages.",
+      "Models split into several files now show as one choice with one Get button.",
+      "Tag dots no longer overlap the project label in the sidebar.",
+      "The page name no longer shows twice at the top of Models and Projects."
+    ]
+  },
+  {
     "version": "1.4.0",
     "date": "2026-11-06",
     "title": "A much faster app, and menus you choose",

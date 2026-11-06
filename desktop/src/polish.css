@@ -395,10 +395,6 @@
 }
 
 /* ---------- the model library's uninstall button: red only on hover ---------- */
-.lib-uninstall:hover:not(:disabled) {
-  color: var(--del);
-  background: color-mix(in srgb, var(--del) 12%, transparent);
-}
 
 /* ---------- menus (Menu.tsx), sampled from Claude's: solid #303030, a #383838 rim
    and inset lines, grey letters on the right, Delete in red, a blue check ---------- */
@@ -1590,31 +1586,6 @@ button,
 }
 
 /* ---------- Models (on this PC, and Discover) ---------- */
-.lib-list {
-  gap: 10px;
-}
-.lib-card {
-  background: none;
-  border: 1px solid var(--edge);
-  border-radius: var(--r-lg);
-  padding: 14px 16px;
-}
-.lib-card.sel {
-  border-color: #4a4a4a;
-}
-.lib-card .mono {
-  font-size: 0.8em;
-  color: var(--muted);
-  margin-top: 1px;
-}
-.lib-tags {
-  margin-top: 8px;
-}
-.lib-tags .pill,
-.file-row .pill {
-  background: var(--hover);
-  color: var(--text-2);
-}
 /* what a pill means is a small dot, not coloured text */
 .pill.fit-fits,
 .pill.fit-split,
@@ -1641,28 +1612,6 @@ button,
 }
 .pill.fit-big::before {
   background: var(--bad);
-}
-.lib-actions .btn:not(.ghost) {
-  background: var(--text);
-  border-color: var(--text);
-  color: var(--bg);
-  font-weight: 500;
-}
-.lib-actions .btn:not(.ghost):hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text) 86%, var(--bg));
-  border-color: transparent;
-}
-.lib-actions .btn:not(.ghost):disabled {
-  background: var(--hover);
-  border-color: transparent;
-  color: var(--muted);
-}
-.lib-actions .btn.ghost {
-  border-color: var(--edge);
-}
-.lib-actions .btn.ghost:hover:not(:disabled) {
-  background: var(--hover);
-  border-color: var(--edge);
 }
 /* Discover: the search box looks like the message box */
 .lib-search {
@@ -1691,38 +1640,6 @@ button,
 }
 .discover .switch-row {
   margin: 4px 0 2px;
-}
-.lib-split .lib-list {
-  gap: 0;
-  border: 1px solid var(--edge);
-  border-radius: var(--r-lg);
-  padding: 4px;
-  align-self: start;
-}
-.repo-row {
-  width: 100%;
-  border-radius: var(--r);
-  padding: 9px 12px;
-}
-.repo-row:hover {
-  background: var(--hover);
-}
-.repo-row.sel {
-  background: var(--sel);
-}
-.repo-id {
-  font-weight: 500;
-}
-.lib-files {
-  border: 1px solid var(--edge);
-  padding: 14px 16px;
-}
-.file-row {
-  border-bottom-color: var(--edge);
-  padding: 9px 0;
-}
-.file-row:last-child {
-  border-bottom: 0;
 }
 .downloads .dl-row {
   background: none;

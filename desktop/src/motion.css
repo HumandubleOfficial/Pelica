@@ -69,8 +69,6 @@
   }
 }
 
-
-
 /* the sidebar slides in when shown */
 .booted .sidebar {
   animation: side-in 0.28s var(--ease-out);
@@ -88,7 +86,6 @@
 }
 
 /* ---------- cards: the edge and fill change under the pointer ---------- */
-.lib-card,
 .proj-card,
 .conn-card,
 .theme-card,

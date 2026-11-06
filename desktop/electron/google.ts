@@ -92,6 +92,9 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 
 let pending: (() => void) | null = null;
 
+/** Gives up on the sign-in under way. */
+export const cancelSignIn = () => pending?.();
+
 /** Signs in with Google: opens the browser and waits (5 minutes at most). */
 export async function signIn(clientId: string, clientSecret: string, open: (u: string) => void): Promise<Profile> {
   if (!clientId.trim()) throw new Error("Add your Google client ID first (Settings → Account → Google sign-in).");

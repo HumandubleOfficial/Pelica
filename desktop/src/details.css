@@ -497,6 +497,10 @@
 .side-lists.selecting .chat-row-tags {
   transform: none;
 }
+/* (a project or folder label holds the row's end, so they stay beside it) */
+.chat-row-main:has(.chat-row-folder) .chat-row-tags {
+  transform: none;
+}
 .chat-row-tags i {
   width: 6px;
   height: 6px;
@@ -1193,4 +1197,19 @@
 .crash-btns {
   display: flex;
   gap: 8px;
+}
+
+/* while a sign-in waits on the browser */
+.signin-help {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.signin-help-btns {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
 }

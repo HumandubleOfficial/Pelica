@@ -6,6 +6,7 @@ import { bridge } from "../lib/bridge";
 import { app, setSettings, toast, useApp } from "../state";
 import { GoogleG } from "./Account";
 import { Logo } from "./Icons";
+import { SignInHelp } from "./SignInHelp";
 
 /** At start, once the account's status is known. */
 export function checkSignUp() {
@@ -52,6 +53,7 @@ export function SignUp() {
         <button className="btn google-btn signup-google" disabled={busy} onClick={go}>
           <GoogleG /> {busy ? "Waiting for your browser…" : "Continue with Google"}
         </button>
+        {busy && <SignInHelp />}
         <p className="muted small signup-note">
           New to Pelica? This makes your account. Signed in before? Your chats come back.
         </p>

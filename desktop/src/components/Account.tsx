@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { bridge } from "../lib/bridge";
 import { app, setSettings, toast, useApp } from "../state";
 import { Icon } from "./Icons";
+import { SignInHelp } from "./SignInHelp";
 
 const ipcErr = (e: any) =>
   String(e?.message || e).replace(
@@ -138,6 +139,7 @@ export function AccountTab({
             <GoogleG />{" "}
             {busy ? "Waiting for your browser…" : "Sign in with Google"}
           </button>
+          {busy && <SignInHelp />}
         </div>
       )}
       {p && (

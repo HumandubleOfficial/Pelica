@@ -15,6 +15,7 @@ import "./polish.css";
 import "./settings.css";
 import "./details.css";
 import "./motion.css";
+import "./pages.css";
 import { startSegs } from "./lib/segs";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { checkWhatsNew } from "./components/WhatsNew";

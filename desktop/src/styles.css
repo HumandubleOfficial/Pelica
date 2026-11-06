@@ -2043,46 +2043,6 @@ kbd {
   align-items: center;
   gap: 10px;
 }
-.lib-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.lib-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--panel) 60%, transparent);
-}
-.lib-card.sel {
-  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
-}
-.lib-card-main {
-  flex: 1;
-  min-width: 0;
-}
-.lib-name {
-  font-weight: 600;
-}
-.lib-card .mono {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.lib-tags {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-.lib-actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
 .empty-note {
   color: var(--muted);
   padding: 30px;
@@ -2151,55 +2111,6 @@ kbd {
 }
 .dl-row.done .dl-bar span {
   background: var(--ok);
-}
-.lib-split {
-  display: grid;
-  grid-template-columns: minmax(260px, 1fr) 1.4fr;
-  gap: 16px;
-  margin-top: 12px;
-}
-.repo-row {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  padding: 8px 12px;
-  border-radius: var(--r-md);
-  line-height: 1.35;
-}
-.repo-row:hover {
-  background: var(--panel);
-}
-.repo-row.sel {
-  background: var(--panel-2);
-}
-.repo-id {
-  word-break: break-all;
-}
-.lib-files {
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  padding: 14px;
-  align-self: start;
-  position: sticky;
-  top: 0;
-}
-.file-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.88em;
-}
-.file-row .mono {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.file-row .pill,
-.file-row .btn {
-  flex-shrink: 0;
 }
 
 .brain-stats {
@@ -2375,13 +2286,6 @@ kbd {
 @container (max-width: 860px) {
   .brain-main {
     grid-template-columns: 1fr;
-  }
-  .lib-split {
-    grid-template-columns: 1fr;
-  }
-  .lib-files {
-    position: static;
-    order: -1;
   }
 }
 

@@ -9,6 +9,7 @@ import { toolPerm } from "../agent/tools";
 import { bridge, type McpConfig, type McpServer, type ToolPerm } from "../lib/bridge";
 import { app, setSettings, toast, useApp } from "../state";
 import { Icon } from "./Icons";
+import { SignInHelp } from "./SignInHelp";
 
 type Cfg = McpConfig;
 
@@ -334,6 +335,7 @@ function ServerCard({ c, live }: { c: Cfg; live?: McpServer }) {
           <Icon name="chevron" size={14} className={open ? "rot90" : ""} />
         </button>
       </div>
+      {signing && <SignInHelp />}
       {open && !edit && (
         <div className="conn-body">
           <code className="conn-cmd">{c.url ? c.url : `${c.command} ${(c.args || []).join(" ")}`}</code>

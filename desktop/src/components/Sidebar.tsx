@@ -699,7 +699,6 @@ export function TitleBar() {
   const [max, setMax] = useState(false);
   const sidebar = useApp((s) => s.sidebar);
   const compact = useApp((s) => s.compact);
-  const title = useApp((s) => (s.view === "library" ? "Models" : s.view === "brain" ? "Brain" : s.view === "projects" ? "Projects" : s.view === "project" ? s.settings.projects.find((p) => p.id === s.projectId)?.name || "Project" : s.chat?.title || ""));
   const panelable = useApp((s) => s.view === "chat" && !!s.chat && (s.chat.messages.length > 0 || !!s.chat.archive?.length));
   const panel = useApp((s) => s.settings.sidePanel);
   const isChat = useApp((s) => s.view === "chat");
@@ -721,7 +720,8 @@ export function TitleBar() {
           <Icon name="plus" size={16} />
         </button>
       )}
-      {isChat ? <ChatTitle /> : <div className="title-text">{title}</div>}
+      {/* (other pages say what they are in their own heading) */}
+      {isChat ? <ChatTitle /> : <div className="title-text" />}
       {isChat && (
         <div className="tb-tools nodrag">
           {panelable && (

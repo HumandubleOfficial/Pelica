@@ -28,6 +28,8 @@ export interface Bridge {
     onChanged(fn: () => void): () => void;
     onSynced(fn: (c: { chats: string[]; settings: boolean }) => void): () => void;
   };
+  /** the sign-in waiting on the browser: on in Edge, its link copied, or called off */
+  signin: { edge(): Promise<void>; copy(): Promise<void>; cancel(): Promise<void> };
   folder: { pick(): Promise<string | null>; open(root: string): Promise<string>; restore(root: string): Promise<string[]> };
   chats: { list(): Promise<ChatMeta[]>; load(id: string): Promise<any>; save(c: any): Promise<boolean>; remove(id: string): Promise<void>; search(q: string): Promise<SearchHit[]>; usage(): Promise<Usage>; backup(): Promise<{ path: string; count: number } | null>; restore(): Promise<{ added: number; copies: number; same: number } | null>; import(): Promise<{ from: "chatgpt" | "claude"; added: number; same: number; empty: number } | null> };
   fs: {

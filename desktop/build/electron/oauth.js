@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.signedIn = void 0;
+exports.cancelSignIn = exports.signedIn = void 0;
 exports.init = init;
 exports.signOut = signOut;
 exports.parseChallenge = parseChallenge;
@@ -125,6 +125,9 @@ async function post(url, body, json = false) {
 const PAGE = (title, body) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${title}</title><body style="font:16px system-ui;background:#262624;color:#ecebe6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h2 style="font-weight:500">${title}</h2><p style="color:#a09d94">${body}</p></div>`;
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 let pending = null;
+/** Gives up on the sign-in under way. */
+const cancelSignIn = () => pending?.cancel();
+exports.cancelSignIn = cancelSignIn;
 /** Signs in to the connector at `url`: opens the browser and waits (5 minutes at most). */
 async function signIn(url, wwwAuthenticate, open) {
     pending?.cancel();
