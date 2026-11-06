@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.4.0",
+    "date": "2026-11-06",
+    "title": "A much faster app, and menus you choose",
+    "notes": [
+      "Long chats open about 20 times faster: a 300-reply chat took about 4 seconds and now takes about 0.2.",
+      "Replies write about 5 times more smoothly in long chats, and typing in the message box no longer slows down there.",
+      "Scrolling long chats is about twice as smooth, and going back to a chat from another page takes about 0.15 seconds instead of 4.",
+      "New in Settings: Menus. Choose what shows up in the + menu, a chat's menu, View options, the sidebar, under replies and your own menu.",
+      "Updates and Experimental each have their own tab in Settings now.",
+      "The Permissions tab is new: pick a mode from one list and see exactly what it allows, which folders Pelica has worked in and what keeps your files safe.",
+      "Choice buttons, like the text size picker, slide their highlight to the one you pick again.",
+      "Pages, messages, menus and dialogs now appear straight away, without fading up.",
+      "The app's own text can't be highlighted any more. You can still select text in chats and in boxes you type in.",
+      "Signing in to Google or a connector opens your normal browser again.",
+      "Fixed: searching a long chat with Find for a very common letter could blank the whole window. Find now marks the first 5,000 matches.",
+      "Fixed: if part of the window ever fails to draw, it now says so and offers a reload instead of going blank.",
+      "Fixed: clicking two chats quickly could end up on the first one, and going straight back to a chat could show it without your latest change.",
+      "Fixed: a chat deleted right after a change could come back.",
+      "Fixed: Edit on a message from before a chat was compacted removed your last message, and Branch made an empty chat. Both now explain why they can't.",
+      "Fixed: opening a chat from one you'd scrolled up in could leave you partway up it.",
+      "Fixed: results from an older search could replace the ones for what you just typed."
+    ]
+  },
+  {
     "version": "1.3.2",
     "date": "2026-11-06",
     "title": "Updates that install the first time, and a cleaner look",

@@ -9,6 +9,7 @@ import { compactNow } from "../agent/agent";
 import { DOCKS } from "./Dock";
 import { Icon, Logo } from "./Icons";
 import { Menu, type MenuItem } from "./Menu";
+import { useShown } from "../lib/menus";
 import { SideUpdate } from "./Updates";
 
 const base = (p: string) => p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || p;
@@ -89,46 +90,46 @@ function chatMenu(id: string, o: { pinned: boolean; folder: string | null; proje
   const font = app.get().settings.replyFont;
   const items: MenuItem[] = [];
   if (o.folder && bridge) {
-    items.push({ label: "Open in", sub: [
+    items.push({ id: "chat.open", label: "Open in", sub: [
       { label: "File Explorer", icon: "folder", on: () => bridge!.sys.open(o.folder!, "").catch((e: any) => app.set({ toast: e.message })) },
       ...(o.title ? [{ label: "Terminal", icon: "terminal", on: () => app.set({ dock: "terminal" }) }] : []),
     ] }, "sep");
   }
   items.push(
-    { label: o.pinned ? "Unpin" : "Pin", key: "P", on: () => patchChat(id, (c) => ({ ...c, pinned: !o.pinned })) },
-    { label: "Rename", key: "R", on: o.rename },
-    { label: "Fork", key: "F", on: () => forkChat(id) },
-    ...(o.title ? [] : [{ label: "Select chats", key: "S", on: () => ((lastPicked = id), app.set({ picked: [id] })) }]),
+    { id: "chat.pin", label: o.pinned ? "Unpin" : "Pin", key: "P", on: () => patchChat(id, (c) => ({ ...c, pinned: !o.pinned })) },
+    { id: "chat.rename", label: "Rename", key: "R", on: o.rename },
+    { id: "chat.fork", label: "Fork", key: "F", on: () => forkChat(id) },
+    ...(o.title ? [] : [{ id: "chat.select", label: "Select chats", key: "S", on: () => ((lastPicked = id), app.set({ picked: [id] })) }]),
     "sep",
   );
   const tags = allTags();
   const mine = o.tags || [];
   if (tags.length || o.newTag)
-    items.push({ label: "Tags", sub: [
+    items.push({ id: "chat.tags", label: "Tags", sub: [
       ...tags.map((t) => ({ label: t, checked: mine.includes(t), on: () => setTag(id, t, !mine.includes(t)) })),
       ...(tags.length && o.newTag ? (["sep"] as MenuItem[]) : []),
       ...(o.newTag ? [{ label: "New tag…", icon: "plus", on: o.newTag }] : []),
     ] });
-  items.push({ label: "Move to project", sub: [
+  items.push({ id: "chat.project", label: "Move to project", sub: [
     ...projects.map((p) => ({ label: p.name, icon: "stack", checked: p.id === o.project, on: () => patchChat(id, (c) => ({ ...c, project: p.id })) })),
     ...(projects.length ? (["sep"] as MenuItem[]) : []),
     { label: "New project…", icon: "plus", on: () => { const p = { id: Date.now().toString(36), name: "New project", instructions: "", files: [], folder: o.folder, created: Date.now() }; setSettings({ projects: [...projects, p] }); patchChat(id, (c) => ({ ...c, project: p.id })).then(() => openProject(p.id)); } },
     { label: "No project", icon: "x", disabled: !o.project, on: () => patchChat(id, (c) => ({ ...c, project: undefined })) },
   ] });
   if (!o.title) {
-    items.push({ label: "Move to folder", sub: [
+    items.push({ id: "chat.folder", label: "Move to folder", sub: [
       ...recent.map((p) => ({ label: base(p), icon: "folder", checked: p === o.folder, on: () => (app.get().chat?.id === id ? setChatFolder(p) : patchChat(id, (c) => ({ ...c, folder: p }))) })),
       ...(recent.length ? (["sep"] as MenuItem[]) : []),
       { label: "No folder", icon: "x", disabled: !o.folder, on: () => patchChat(id, (c) => ({ ...c, folder: null })) },
     ] });
   } else {
-    items.push({ label: "Reply font", sub: [
+    items.push({ id: "chat.font", label: "Reply font", sub: [
       { label: "Serif", checked: font === "serif", on: () => setSettings({ replyFont: "serif" }) },
       { label: "Sans serif", checked: font === "sans", on: () => setSettings({ replyFont: "sans" }) },
     ] });
   }
   items.push(
-    { label: "Export", sub: [
+    { id: "chat.export", label: "Export", sub: [
       { label: "Copy as Markdown", icon: "copy", on: () => copyChat(id) },
       { label: "Save as Markdown…", icon: "download", on: () => exportChat(id) },
     ] },
@@ -445,6 +446,7 @@ export function Sidebar() {
   const cur = useApp((s) => s.chat?.id);
   const view = useApp((s) => s.view);
   const brainMenu = useApp((s) => s.settings.brainMenu);
+  const shows = useShown();
   const acct = useApp((s) => s.account?.profile);
   const syncOn = useApp((s) => s.settings.syncOn);
   const name = useApp((s) => s.settings.userName);
@@ -457,8 +459,12 @@ export function Sidebar() {
   const [hits, setHits] = useState<SearchHit[]>([]);
   useEffect(() => {
     if (q.length < 2) return setHits([]);
-    const t = setTimeout(() => searchMessages(q).then(setHits), 200);
-    return () => clearTimeout(t);
+    let stale = false;
+    const t = setTimeout(() => searchMessages(q).then((h) => stale || setHits(h)), 200);
+    return () => {
+      stale = true;
+      clearTimeout(t);
+    };
   }, [q]);
   const msgHits = hits.filter((h) => !shown.some((c) => c.id === h.id));
   const pinOrder = useApp((s) => s.settings.pinOrder);
@@ -504,13 +510,13 @@ export function Sidebar() {
             <input autoFocus value={search} placeholder="Search chats" onChange={(e) => app.set({ search: e.target.value })} onBlur={() => !search && setSearching(false)} onKeyDown={(e) => e.key === "Escape" && (app.set({ search: "" }), setSearching(false))} />
           </div>
         ) : (
-          nav("Search", "search", () => setSearching(true))
+          shows("side.search") && nav("Search", "search", () => setSearching(true))
         )}
-        {nav("Projects", "stack", () => app.set({ view: "projects" }), view === "projects" || view === "project")}
-        {nav("Models", "library", () => app.set({ view: "library" }), view === "library")}
+        {shows("side.projects") && nav("Projects", "stack", () => app.set({ view: "projects" }), view === "projects" || view === "project")}
+        {shows("side.models") && nav("Models", "library", () => app.set({ view: "library" }), view === "library")}
         {brainMenu && nav("Brain", "brain", () => app.set({ view: "brain" }), view === "brain")}
       </nav>
-      <TagFilter />
+      {shows("side.tags") && <TagFilter />}
       <div className={`side-lists ${selecting ? "selecting" : ""}`} onKeyDown={rowKeys}>
         {pinned.length > 0 && !q && <SideHead id="@pinned" label="Pinned" />}
         {!shut("@pinned") && pinned.map((c) => (
@@ -575,10 +581,10 @@ export function Sidebar() {
           at={userMenu}
           close={() => setUserMenu(null)}
           items={[
-            { label: "Account", icon: "user-circle", on: () => app.set({ settingsOpen: true, settingsTab: "Account" }) },
-            { label: "What's new", icon: "sparkle", on: () => app.set({ whatsNew: "all" }) },
-            { label: "Keyboard shortcuts", icon: "keyboard", on: () => app.set({ keys: true }) },
-            { label: "About Pelica", icon: "info", on: () => app.set({ settingsOpen: true, settingsTab: "About" }) },
+            { id: "user.account", label: "Account", icon: "user-circle", on: () => app.set({ settingsOpen: true, settingsTab: "Account" }) },
+            { id: "user.new", label: "What's new", icon: "sparkle", on: () => app.set({ whatsNew: "all" }) },
+            { id: "user.keys", label: "Keyboard shortcuts", icon: "keyboard", on: () => app.set({ keys: true }) },
+            { id: "user.about", label: "About Pelica", icon: "info", on: () => app.set({ settingsOpen: true, settingsTab: "About" }) },
           ]}
         />
       )}
@@ -632,12 +638,12 @@ function ViewOptions() {
   };
   const planShown = panel && !hidden.includes("plan");
   const items: MenuItem[] = [
-    { label: "Compact session", icon: "layers", disabled: !has || running, on: () => compactNow() },
-    { label: "Plan", icon: "list", checked: planShown, on: () => (app.set({ dock: null }), setSettings({ sidePanel: true, panelHidden: planShown ? [...hidden, "plan"] : hidden.filter((x) => x !== "plan") })) },
-    { label: "Copy as Markdown", icon: "copy", disabled: !has, on: () => copyChat() },
-    { label: "Export chat…", icon: "download", disabled: !has, on: () => exportChat() },
+    { id: "view.compact", label: "Compact session", icon: "layers", disabled: !has || running, on: () => compactNow() },
+    { id: "view.plan", label: "Plan", icon: "list", checked: planShown, on: () => (app.set({ dock: null }), setSettings({ sidePanel: true, panelHidden: planShown ? [...hidden, "plan"] : hidden.filter((x) => x !== "plan") })) },
+    { id: "view.copy", label: "Copy as Markdown", icon: "copy", disabled: !has, on: () => copyChat() },
+    { id: "view.export", label: "Export chat…", icon: "download", disabled: !has, on: () => exportChat() },
     "sep",
-    { label: "Keep computer awake", desc: "Only for this session", stay: true, right: <span className={`toggle ${awake ? "on" : ""}`} role="switch" aria-checked={awake} />, on: keepAwake },
+    { id: "view.awake", label: "Keep computer awake", desc: "Only for this session", stay: true, right: <span className={`toggle ${awake ? "on" : ""}`} role="switch" aria-checked={awake} />, on: keepAwake },
   ];
   return (
     <div className="pop-wrap">

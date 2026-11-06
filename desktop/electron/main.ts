@@ -18,7 +18,6 @@ import * as lib from "./library";
 import * as media from "./media";
 import * as docs from "./docs";
 import * as restore from "./restore";
-import { openSignIn, type AuthWindow } from "./authwin";
 import { chatUsage, searchChats } from "./chatdata";
 import { checkRepo, reposIn } from "./repocheck";
 import * as updates from "./updates";
@@ -752,21 +751,48 @@ function registerIpc() {
   handle("folder:restore", (root: string) => restoreProject(checkRoot(root)));
   handle("folder:open", (root: string) => shell.openPath(checkRoot(root)));
 
+  // what the sidebar shows of each chat, kept with the file's time and size (on
+  // disk too, for the next start): a chat is only read again when it changed
+  type Listed = { at: number; size: number; meta: any };
+  const listFile = path.join(userDir, "chat-list.json");
+  let listed: Record<string, Listed> | null = null;
   handle("chats:list", () => {
     fs.mkdirSync(chatsDir, { recursive: true });
-    return fs
+    if (!listed) {
+      try {
+        listed = JSON.parse(fs.readFileSync(listFile, "utf8"));
+      } catch {}
+      listed ||= {};
+    }
+    const next: Record<string, Listed> = {};
+    let changed = false;
+    const rows = fs
       .readdirSync(chatsDir)
       .filter((f) => f.endsWith(".json"))
       .map((f) => {
         try {
+          const st = fs.statSync(path.join(chatsDir, f));
+          const had = listed![f];
+          if (had && had.at === st.mtimeMs && had.size === st.size) return (next[f] = had).meta;
           const c = JSON.parse(fs.readFileSync(path.join(chatsDir, f), "utf8"));
-          return { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder || null, project: c.project || undefined, tags: c.tags?.length ? c.tags : undefined };
+          const meta = { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder || null, project: c.project || undefined, tags: c.tags?.length ? c.tags : undefined };
+          next[f] = { at: st.mtimeMs, size: st.size, meta };
+          changed = true;
+          return meta;
         } catch {
           return null;
         }
       })
       .filter(Boolean)
       .sort((a: any, b: any) => b.updated - a.updated);
+    if (changed || Object.keys(next).length !== Object.keys(listed).length) {
+      try {
+        fs.writeFileSync(listFile + ".tmp", JSON.stringify(next));
+        fs.renameSync(listFile + ".tmp", listFile);
+      } catch {}
+    }
+    listed = next;
+    return rows;
   });
   // every saved chat, parsed (search and usage read them all)
   const allChats = (): any[] => {
@@ -780,8 +806,19 @@ function registerIpc() {
     }
     return out;
   };
-  handle("chats:search", (q: string) => searchChats(allChats(), q));
-  handle("chats:usage", () => chatUsage(allChats()));
+  // (a file at a time, so the window isn't held up while they're read)
+  const allChatsSoon = async (): Promise<any[]> => {
+    const out: any[] = [];
+    for (const f of await fs.promises.readdir(chatsDir).catch(() => [] as string[])) {
+      if (!f.endsWith(".json")) continue;
+      try {
+        out.push(JSON.parse(await fs.promises.readFile(path.join(chatsDir, f), "utf8")));
+      } catch {}
+    }
+    return out;
+  };
+  handle("chats:search", async (q: string) => searchChats(await allChatsSoon(), q));
+  handle("chats:usage", async () => chatUsage(await allChatsSoon()));
   // every chat in one JSON file, to keep or move to another PC
   handle("chats:backup", async () => {
     const d = new Date();
@@ -896,21 +933,9 @@ function registerIpc() {
   const client = () => (settings.googleClientId ? { id: settings.googleClientId, secret: settings.googleClientSecret || "" } : builtIn);
   const accountStatus = () => ({ profile: google.profile(), sync: sync.status(), clientId: client().id, hasSecret: !!client().secret, builtIn: !!builtIn.id });
   handle("account:status", accountStatus);
-  // sign-in pages open in a maximized browser window (authwin.ts)
-  const signInWindow = async <T>(go: (open: (u: string) => void) => Promise<T>, cancel: () => void): Promise<T> => {
-    let w: AuthWindow | null = null;
-    try {
-      const r = await go((u) => (w = openSignIn(u, path.join(userDir, "sign-in"), win?.getBounds(), cancel)));
-      (w as AuthWindow | null)?.close(1200);
-      return r;
-    } catch (e) {
-      (w as AuthWindow | null)?.close();
-      throw e;
-    }
-  };
   handle("account:signIn", async () => {
     const c = client();
-    const p = await signInWindow((open) => google.signIn(c.id, c.secret, open), google.cancelSignIn);
+    const p = await google.signIn(c.id, c.secret, (u) => shell.openExternal(u));
     // (another Google account than before: its Drive starts a fresh sync)
     if (settings.accountEmail !== p.email) {
       sync.reset();
@@ -1028,7 +1053,7 @@ function registerIpc() {
     return c;
   };
   handle("mcp:signIn", async (name: string) => {
-    await signInWindow((open) => mcp.signIn(mcpCfg(name), open), oauth.cancelSignIn);
+    await mcp.signIn(mcpCfg(name), (u) => shell.openExternal(u));
     win?.show();
     win?.focus();
     return mcp.list();

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cancelSignIn = exports.profile = exports.UPLOAD = exports.DRIVE = void 0;
+exports.profile = exports.UPLOAD = exports.DRIVE = void 0;
 exports.init = init;
 exports.signIn = signIn;
 exports.signOut = signOut;
@@ -83,9 +83,6 @@ async function pictureOf(url) {
 const PAGE = (title, body) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${title}</title><body style="font:16px system-ui;background:#262624;color:#ecebe6;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h2 style="font-weight:500">${title}</h2><p style="color:#a09d94">${body}</p></div>`;
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 let pending = null;
-/** Gives up on the sign-in under way (its window was closed). */
-const cancelSignIn = () => pending?.();
-exports.cancelSignIn = cancelSignIn;
 /** Signs in with Google: opens the browser and waits (5 minutes at most). */
 async function signIn(clientId, clientSecret, open) {
     if (!clientId.trim())
@@ -139,7 +136,7 @@ async function signIn(clientId, clientSecret, open) {
                     bad(new Error(err === "access_denied" ? "Sign-in was declined." : `Google said: ${err}`));
                     return;
                 }
-                res.end(PAGE("Signed in to Pelica", "This window closes by itself. You can go back to Pelica."));
+                res.end(PAGE("Signed in to Pelica", "You can close this tab and go back to Pelica."));
                 ok(r.searchParams.get("code"));
             });
             open(u.href);

@@ -243,7 +243,7 @@ function Outputs() {
   const files = useMemo(() => {
     const m = new Map<string, { path: string; after: string; created: boolean }>();
     for (const x of [...(archive || []), ...(msgs || [])] as Msg[]) {
-      if (x.role !== "tool" || (x.ui.kind !== "write" && x.ui.kind !== "edit") || !x.ui.path || x.ui.after === undefined) continue;
+      if (x.role !== "tool" || !x.ui || (x.ui.kind !== "write" && x.ui.kind !== "edit") || !x.ui.path || x.ui.after === undefined) continue;
       const had = m.get(x.ui.path);
       m.delete(x.ui.path);
       m.set(x.ui.path, { path: x.ui.path, after: x.ui.after, created: had ? had.created : x.ui.kind === "write" && x.ui.before === null });

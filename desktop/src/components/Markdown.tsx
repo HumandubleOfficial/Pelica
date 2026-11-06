@@ -59,6 +59,10 @@ export const langName = (l: string) => LANG_NAMES[l] || (l ? l[0].toUpperCase() 
 
 /** Lines past which a finished block starts folded. */
 const FOLD = 28;
+/** Past this a block with no language stays plain: guessing tries every language. */
+const AUTO_MAX = 3000;
+/** How often a block being written is coloured again (the text after that shows plain). */
+const COLOUR_MS = 150;
 
 function CodeBlock({ lang, code, streaming }: { lang: string; code: string; streaming?: boolean }) {
   const [copied, setCopied] = useState(false);
@@ -68,13 +72,20 @@ function CodeBlock({ lang, code, streaming }: { lang: string; code: string; stre
   const body = code.replace(/\n$/, "");
   const lines = body.split("\n").length;
   const folded = !streaming && !unfold && lines > FOLD + 6;
+  const done = useRef({ at: 0, len: 0, html: "" });
   const html = useMemo(() => {
+    const known = !!lang && !!hljs.getLanguage(lang);
+    if (streaming && !known) return esc(body);
+    const now = performance.now();
+    if (streaming && now - done.current.at < COLOUR_MS && body.length >= done.current.len) return done.current.html + esc(body.slice(done.current.len));
     try {
-      return lang && hljs.getLanguage(lang) ? hljs.highlight(body, { language: lang }).value : lang ? esc(body) : hljs.highlightAuto(body).value;
+      const out = known ? hljs.highlight(body, { language: lang }).value : lang || body.length > AUTO_MAX ? esc(body) : hljs.highlightAuto(body).value;
+      done.current = { at: now, len: body.length, html: out };
+      return out;
     } catch {
       return esc(body);
     }
-  }, [lang, body]);
+  }, [lang, body, streaming]);
   return (
     <div className={`code ${wrap ? "wrap" : ""} ${folded ? "folded" : ""}`}>
       <div className="code-head">

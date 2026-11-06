@@ -1,6 +1,6 @@
 // The conversation: messages, tool cards, events (compaction, CQS), and the
 // reply being written, live (with its speed as it goes).
-import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, memo, startTransition, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { run, send } from "../agent/agent";
 import { app, newVersion, persist, showVersion, toast, uid, updateChat, useApp, type Draft, type Msg, type Stats } from "../state";
 import { Icon, Orbs, TodoMark } from "./Icons";
@@ -14,6 +14,7 @@ import { excerptsOf } from "../lib/docs";
 import { Sources, useCites } from "./Citations";
 import { tuneVoice } from "./Voice";
 import { UndoChanges } from "./Undo";
+import { useShown } from "../lib/menus";
 
 /** Keeps a scroll box at its bottom as it grows, until the user scrolls up;
  *  scrolling back down to the bottom picks it up again. Content growing never
@@ -268,6 +269,8 @@ const UserMsg = memo(function UserMsg({ m }: { m: Extract<Msg, { role: "user" }>
           title="Edit and resend"
           onClick={() => {
             if (app.get().running) return toast("Wait for the reply to finish, or stop it first.");
+            // (a message from before the chat was compacted isn't in the conversation any more)
+            if (!app.get().chat?.messages.some((x) => x.id === m.id)) return toast("That message is from before this chat was compacted, so it can't be edited.");
             updateChat((c) => ({
               ...c,
               messages: c.messages.slice(
@@ -331,6 +334,7 @@ async function branchFrom(id: string) {
   if (!c) return;
   if (app.get().running) return toast("Wait for the reply to finish, or stop it first.");
   const i = c.messages.findIndex((m) => m.id === id);
+  if (i < 0) return toast("That reply is from before this chat was compacted, so a branch can't start there.");
   const now = Date.now();
   const b = { ...c, id: uid(), title: `${c.title} (branch)`, created: now, updated: now, pinned: false, messages: c.messages.slice(0, i + 1) };
   await persist(b);
@@ -348,17 +352,30 @@ function QuestionRail({ messages, scroller, stick }: { messages: Msg[]; scroller
   useEffect(() => {
     const el = scroller.current;
     if (!el || qs.length < MIN_QUESTIONS) return;
+    let frame = 0;
     const find = () => {
+      frame = 0;
       const top = el.getBoundingClientRect().top + el.clientHeight / 3;
-      let n = -1;
-      el.querySelectorAll<HTMLElement>("[data-q]").forEach((r, i) => {
-        if (r.getBoundingClientRect().top <= top) n = i;
-      });
-      setAt(n);
+      // the last of your messages above that line (they're in order)
+      const rows = el.querySelectorAll<HTMLElement>("[data-q]");
+      let lo = 0;
+      let hi = rows.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (rows[mid].getBoundingClientRect().top <= top) lo = mid + 1;
+        else hi = mid;
+      }
+      setAt(lo - 1);
+    };
+    const later = () => {
+      if (!frame) frame = requestAnimationFrame(find);
     };
     find();
-    el.addEventListener("scroll", find, { passive: true });
-    return () => el.removeEventListener("scroll", find);
+    el.addEventListener("scroll", later, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      el.removeEventListener("scroll", later);
+    };
   }, [key]);
   if (qs.length < MIN_QUESTIONS) return null;
   const go = (id: string) => {
@@ -454,6 +471,38 @@ function Ago({ ts }: { ts: number }) {
   );
 }
 
+/** To the end of the chat. From far up it jumps: rows being built on the way
+ *  would leave a smooth scroll aiming at a height that has changed. */
+function toLatest(el: HTMLElement) {
+  const near = el.scrollHeight - el.scrollTop - el.clientHeight < el.clientHeight * 3;
+  el.scrollTo({ top: el.scrollHeight, behavior: near && app.get().settings.animations ? "smooth" : "auto" });
+}
+
+/** Rows nearest the end of a chat that are always built. */
+const EAGER_ROWS = 10;
+
+/** About how tall a reply is, for the space it holds until it's built. */
+const guessHeight = (msgs: Msg[]) => Math.min(1500, 90 + msgs.reduce((h, m) => h + (m.role === "tool" ? 44 : m.role === "assistant" ? m.content.length * 0.33 : 0), 0));
+
+/** A reply in a long chat is built when it comes near the screen, and stays:
+ *  opening a chat costs what's on screen, not everything ever said in it. */
+function LazyRow({ height, eager, root, children }: { height: number; eager: boolean; root: React.RefObject<HTMLDivElement | null>; children: React.ReactNode }) {
+  const [near, setNear] = useState(eager);
+  const box = useRef<HTMLDivElement>(null);
+  const on = near || eager;
+  useEffect(() => {
+    if (on) return setNear(true);
+    const see = new IntersectionObserver((seen) => seen.some((e) => e.isIntersecting) && setNear(true), { root: root.current, rootMargin: "1600px 0px" });
+    see.observe(box.current!);
+    return () => see.disconnect();
+  }, [on]);
+  return (
+    <div ref={box} className={on ? "chat-item" : undefined} style={on ? undefined : { height }}>
+      {on ? children : null}
+    </div>
+  );
+}
+
 /** Tool calls in a row go in one box (a reply that only calls tools doesn't break the row). */
 function groupTools(msgs: Msg[]): (Msg | ToolMsg[])[] {
   const out: (Msg | ToolMsg[])[] = [];
@@ -478,6 +527,7 @@ const Turn = memo(
       .join("\n\n");
     const final = [...msgs].reverse().find((m) => m.role === "assistant") as Extract<Msg, { role: "assistant" }> | undefined;
     const liveNow = useApp((s) => s.running && s.liveId === s.chat?.id) && last;
+    const shows = useShown();
     const c = useCites(src);
     if (msgs.length === 1 && final?.ack) return null;
     const groups = groupTools(msgs);
@@ -506,12 +556,14 @@ const Turn = memo(
             <div className={`turn-foot ${last ? "last" : ""}`}>
               {ver && <Versions v={ver} />}
               <div className="msg-actions">
-                <CopyBtn text={text} />
-                <button className="ghost-btn" title="Branch from here" onClick={() => branchFrom(final.id)}>
-                  <Icon name="branch" size={14} />
-                </button>
-                <ReadAloud text={text} />
-                {last && (
+                {shows("reply.copy") && <CopyBtn text={text} />}
+                {shows("reply.branch") && (
+                  <button className="ghost-btn" title="Branch from here" onClick={() => branchFrom(final.id)}>
+                    <Icon name="branch" size={14} />
+                  </button>
+                )}
+                {shows("reply.read") && <ReadAloud text={text} />}
+                {last && shows("reply.retry") && (
                   <button className="ghost-btn" title="Retry: answer the last message again" onClick={retryLast}>
                     <Icon name="reload" size={14} />
                   </button>
@@ -559,12 +611,8 @@ function PhaseLine({ d }: { d: Draft }) {
 }
 
 /** The reply being written: the only part that changes every frame. */
-function LiveDraft({ chatId, cont, scroller, stick }: { chatId: string; cont: boolean; scroller: React.RefObject<HTMLDivElement | null>; stick: React.RefObject<boolean> }) {
+function LiveDraft({ chatId, cont }: { chatId: string; cont: boolean }) {
   const d = useApp((s) => s.draft);
-  useLayoutEffect(() => {
-    const el = scroller.current;
-    if (el && stick.current) el.scrollTop = el.scrollHeight;
-  });
   return d && d.chatId === chatId ? <DraftView d={d} cont={cont} /> : null;
 }
 
@@ -679,17 +727,40 @@ export function ChatView() {
   const [away, setAway] = useState(false);
   const live = useApp((s) => s.running && s.liveId === s.chat?.id);
 
-  useLayoutEffect(() => {
+  // Find in chat needs every row built
+  const [everyRow, setEveryRow] = useState(false);
+  const findOpen = useCallback((open: boolean) => startTransition(() => setEveryRow(open)), []);
+  const toBottom = () => {
     const el = scroller.current;
     if (el && stick.current) {
       el.scrollTop = el.scrollHeight;
       last.current = el.scrollTop;
     }
-  });
+  };
   // a new chat starts at its bottom
+  const shown = useRef<string | undefined>(undefined);
+  const opened = useRef(0);
+  useLayoutEffect(() => {
+    if (shown.current !== chat?.id) {
+      shown.current = chat?.id;
+      stick.current = true;
+      opened.current = performance.now();
+    }
+    toBottom();
+  });
+  // and stays there while a reply is written or the chat is still settling,
+  // but not when you unfold something. (Measured after the browser's own
+  // layout: asking for the height every frame costs a whole layout each time.)
+  const hasChat = !!chat;
   useEffect(() => {
-    stick.current = true;
-  }, [chat?.id]);
+    if (!col.current) return;
+    const grew = new ResizeObserver(() => {
+      const s = app.get();
+      if ((s.running && s.liveId === s.chat?.id) || performance.now() - opened.current < 1500) toBottom();
+    });
+    grew.observe(col.current);
+    return () => grew.disconnect();
+  }, [hasChat]);
   // Alt+↑ / Alt+↓: to your previous / next message
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -701,7 +772,7 @@ export function ChatView() {
       const pos = [...col.current.querySelectorAll<HTMLElement>(".user-row")].map((r) => r.getBoundingClientRect().top - top);
       const to = e.key === "ArrowUp" ? [...pos].reverse().find((p) => p < -4) : pos.find((p) => p > 4);
       if (to === undefined) {
-        if (e.key === "ArrowDown") (stick.current = true), el.scrollTo({ top: el.scrollHeight, behavior: app.get().settings.animations ? "smooth" : "auto" });
+        if (e.key === "ArrowDown") (stick.current = true), toLatest(el);
         return;
       }
       stick.current = false;
@@ -712,7 +783,7 @@ export function ChatView() {
   }, []);
 
   if (!chat) return null;
-  const rows: { key: string; node: React.ReactNode | Msg[]; ts: number; src?: string; ver?: Ver }[] = [];
+  const rows: { key: string; node: React.ReactNode | Msg[]; ts: number; src?: string; ver?: Ver; lazy?: number }[] = [];
   const list = [...(showArchive ? (chat.archive || []).map((m) => ({ ...m, id: "a" + m.id })) : []), ...chat.messages];
   let turn: Msg[] = [];
   // the last turn is the one after the last message of yours, even with a
@@ -725,7 +796,7 @@ export function ChatView() {
   let ver: Ver | null = null;
   let verRow = -1;
   const flush = () => {
-    if (turn.length) (lastTurn = verRow = rows.length), rows.push({ key: turn[0].id, node: turn, ts: turn[0].ts, src: asked });
+    if (turn.length) (lastTurn = verRow = rows.length), rows.push({ key: turn[0].id, node: turn, ts: turn[0].ts, src: asked, lazy: guessHeight(turn) });
     turn = [];
   };
   const placeVer = () => {
@@ -771,7 +842,7 @@ export function ChatView() {
         if (e.deltaY < 0 && !(e.target as HTMLElement).closest?.(".thinking-body")) stick.current = false;
       }}
     >
-      <FindBar root={col} />
+      <FindBar root={col} ready={everyRow} onOpen={findOpen} />
       <QuoteButton col={col} />
       <QuestionRail messages={chat.messages} scroller={scroller} stick={stick} />
       <div className="chat-col" ref={col}>
@@ -787,10 +858,16 @@ export function ChatView() {
                 <span>{dayLabel(r.ts)}</span>
               </div>
             )}
-            <div>{r.node as React.ReactNode}</div>
+            {r.lazy ? (
+              <LazyRow height={r.lazy} eager={everyRow || i >= rows.length - EAGER_ROWS} root={scroller}>
+                {r.node as React.ReactNode}
+              </LazyRow>
+            ) : (
+              <div>{r.node as React.ReactNode}</div>
+            )}
           </Fragment>
         ))}
-        <LiveDraft chatId={chat.id} cont={turn0} scroller={scroller} stick={stick} />
+        <LiveDraft chatId={chat.id} cont={turn0} />
         <div style={{ height: 24 }} />
       </div>
       {away && (
@@ -802,7 +879,7 @@ export function ChatView() {
               const el = scroller.current;
               if (!el) return;
               stick.current = true;
-              el.scrollTo({ top: el.scrollHeight, behavior: app.get().settings.animations ? "smooth" : "auto" });
+              toLatest(el);
             }}
           >
             <Icon name="down" size={15} />

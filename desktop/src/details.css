@@ -11,7 +11,6 @@
   align-items: center;
   text-align: center;
   background: var(--raised);
-  animation: set-in 0.32s var(--ease-out);
 }
 .setup h2 {
   margin: 14px 0 6px;
@@ -37,7 +36,6 @@
   padding: 9px 12px;
   text-align: left;
   font-size: 0.92em;
-  animation: setup-row 0.34s var(--ease-out) both;
 }
 .setup-check + .setup-check {
   border-top: 1px solid var(--line);
@@ -74,12 +72,6 @@
   color: var(--accent);
   animation: setup-tick 0.24s ease both;
 }
-@keyframes setup-row {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
 @keyframes setup-tick {
   from {
     opacity: 0;
@@ -96,7 +88,6 @@
   text-align: left;
   border: 1px solid var(--line-2);
   border-radius: var(--r-lg);
-  animation: setup-row 0.36s var(--ease-out) both;
 }
 .setup-pick-head {
   display: flex;
@@ -127,7 +118,6 @@
   display: flex;
   gap: 4px;
   margin-top: 8px;
-  animation: setup-row 0.36s var(--ease-out) 0.08s both;
 }
 .setup-err {
   width: 100%;
@@ -210,17 +200,10 @@
   border-radius: var(--r-lg);
   background: var(--raised);
   box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.45);
-  animation: cite-pop 0.16s var(--ease-out);
   transform-origin: bottom center;
 }
 .cite-pop.below {
   transform-origin: top center;
-}
-@keyframes cite-pop {
-  from {
-    opacity: 0;
-    transform: translateY(3px) scale(0.97);
-  }
 }
 .cite-pop-head {
   display: flex;
@@ -275,7 +258,6 @@
   padding: 10px 12px;
   border: 1px solid var(--line-2);
   border-radius: var(--r-lg);
-  animation: page-in 0.2s var(--ease-out);
 }
 .source-passage-head {
   display: flex;
@@ -309,13 +291,6 @@
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  animation: voice-in 0.3s var(--ease-out);
-}
-@keyframes voice-in {
-  from {
-    opacity: 0;
-    transform: scale(1.015);
-  }
 }
 .voice-full-top {
   display: flex;
@@ -405,7 +380,6 @@
 .voice-state {
   font-family: "Iowan Old Style", Georgia, "Palatino Linotype", serif;
   font-size: 1.5em;
-  animation: setup-row 0.24s var(--ease-out);
 }
 .voice-said {
   width: min(620px, 100%);
@@ -415,7 +389,6 @@
 .voice-said p {
   margin: 0;
   line-height: 1.55;
-  animation: setup-row 0.28s var(--ease-out);
 }
 .voice-line {
   font-size: 1.12em;
@@ -555,7 +528,6 @@
   border: 1px solid var(--line-2);
   border-radius: var(--r-lg);
   background: var(--raised);
-  animation: setup-row 0.22s var(--ease-out);
 }
 .pick-head {
   display: flex;
@@ -1190,4 +1162,35 @@
 .play.stop {
   background: var(--sel);
   color: var(--text);
+}
+
+/* a part of the window that failed to draw (ErrorBoundary) */
+.crash {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+}
+#root > .crash {
+  min-height: 100vh;
+}
+.crash h2 {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+.crash p {
+  margin: 0 0 8px;
+  max-width: 420px;
+}
+.crash-btns {
+  display: flex;
+  gap: 8px;
 }

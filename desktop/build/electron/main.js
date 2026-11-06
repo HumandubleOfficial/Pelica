@@ -56,7 +56,6 @@ const lib = __importStar(require("./library"));
 const media = __importStar(require("./media"));
 const docs = __importStar(require("./docs"));
 const restore = __importStar(require("./restore"));
-const authwin_1 = require("./authwin");
 const chatdata_1 = require("./chatdata");
 const repocheck_1 = require("./repocheck");
 const updates = __importStar(require("./updates"));
@@ -778,15 +777,33 @@ function registerIpc() {
     // chats kept in the folder's proj.pel that this PC no longer has (deleted, or another PC's)
     handle("folder:restore", (root) => restoreProject(checkRoot(root)));
     handle("folder:open", (root) => electron_1.shell.openPath(checkRoot(root)));
+    const listFile = node_path_1.default.join(userDir, "chat-list.json");
+    let listed = null;
     handle("chats:list", () => {
         node_fs_1.default.mkdirSync(chatsDir, { recursive: true });
-        return node_fs_1.default
+        if (!listed) {
+            try {
+                listed = JSON.parse(node_fs_1.default.readFileSync(listFile, "utf8"));
+            }
+            catch { }
+            listed ||= {};
+        }
+        const next = {};
+        let changed = false;
+        const rows = node_fs_1.default
             .readdirSync(chatsDir)
             .filter((f) => f.endsWith(".json"))
             .map((f) => {
             try {
+                const st = node_fs_1.default.statSync(node_path_1.default.join(chatsDir, f));
+                const had = listed[f];
+                if (had && had.at === st.mtimeMs && had.size === st.size)
+                    return (next[f] = had).meta;
                 const c = JSON.parse(node_fs_1.default.readFileSync(node_path_1.default.join(chatsDir, f), "utf8"));
-                return { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder || null, project: c.project || undefined, tags: c.tags?.length ? c.tags : undefined };
+                const meta = { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder || null, project: c.project || undefined, tags: c.tags?.length ? c.tags : undefined };
+                next[f] = { at: st.mtimeMs, size: st.size, meta };
+                changed = true;
+                return meta;
             }
             catch {
                 return null;
@@ -794,6 +811,15 @@ function registerIpc() {
         })
             .filter(Boolean)
             .sort((a, b) => b.updated - a.updated);
+        if (changed || Object.keys(next).length !== Object.keys(listed).length) {
+            try {
+                node_fs_1.default.writeFileSync(listFile + ".tmp", JSON.stringify(next));
+                node_fs_1.default.renameSync(listFile + ".tmp", listFile);
+            }
+            catch { }
+        }
+        listed = next;
+        return rows;
     });
     // every saved chat, parsed (search and usage read them all)
     const allChats = () => {
@@ -809,8 +835,21 @@ function registerIpc() {
         }
         return out;
     };
-    handle("chats:search", (q) => (0, chatdata_1.searchChats)(allChats(), q));
-    handle("chats:usage", () => (0, chatdata_1.chatUsage)(allChats()));
+    // (a file at a time, so the window isn't held up while they're read)
+    const allChatsSoon = async () => {
+        const out = [];
+        for (const f of await node_fs_1.default.promises.readdir(chatsDir).catch(() => [])) {
+            if (!f.endsWith(".json"))
+                continue;
+            try {
+                out.push(JSON.parse(await node_fs_1.default.promises.readFile(node_path_1.default.join(chatsDir, f), "utf8")));
+            }
+            catch { }
+        }
+        return out;
+    };
+    handle("chats:search", async (q) => (0, chatdata_1.searchChats)(await allChatsSoon(), q));
+    handle("chats:usage", async () => (0, chatdata_1.chatUsage)(await allChatsSoon()));
     // every chat in one JSON file, to keep or move to another PC
     handle("chats:backup", async () => {
         const d = new Date();
@@ -937,22 +976,9 @@ function registerIpc() {
     const client = () => (settings.googleClientId ? { id: settings.googleClientId, secret: settings.googleClientSecret || "" } : builtIn);
     const accountStatus = () => ({ profile: google.profile(), sync: sync.status(), clientId: client().id, hasSecret: !!client().secret, builtIn: !!builtIn.id });
     handle("account:status", accountStatus);
-    // sign-in pages open in a maximized browser window (authwin.ts)
-    const signInWindow = async (go, cancel) => {
-        let w = null;
-        try {
-            const r = await go((u) => (w = (0, authwin_1.openSignIn)(u, node_path_1.default.join(userDir, "sign-in"), win?.getBounds(), cancel)));
-            w?.close(1200);
-            return r;
-        }
-        catch (e) {
-            w?.close();
-            throw e;
-        }
-    };
     handle("account:signIn", async () => {
         const c = client();
-        const p = await signInWindow((open) => google.signIn(c.id, c.secret, open), google.cancelSignIn);
+        const p = await google.signIn(c.id, c.secret, (u) => electron_1.shell.openExternal(u));
         // (another Google account than before: its Drive starts a fresh sync)
         if (settings.accountEmail !== p.email) {
             sync.reset();
@@ -1072,7 +1098,7 @@ function registerIpc() {
         return c;
     };
     handle("mcp:signIn", async (name) => {
-        await signInWindow((open) => mcp.signIn(mcpCfg(name), open), oauth.cancelSignIn);
+        await mcp.signIn(mcpCfg(name), (u) => electron_1.shell.openExternal(u));
         win?.show();
         win?.focus();
         return mcp.list();

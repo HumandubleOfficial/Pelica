@@ -225,6 +225,8 @@ export interface Settings {
   codeFont: string;
   /** folder groups folded in the sidebar (their paths) */
   sideFolded: string[];
+  /** Settings → Menus: what's been taken off the menus (ids in lib/menus.ts) */
+  menuHide: string[];
   /** the sidebar's width in px (dragged at its edge) */
   sideWidth: number;
   /** other computers lending their RAM through `pelica bridge` */
@@ -328,6 +330,7 @@ export const DEFAULTS: Settings = {
   replyFont: "serif",
   codeFont: "",
   sideFolded: [],
+  menuHide: [],
   sideWidth: 272,
   devices: [],
   apiServer: false,
@@ -543,9 +546,12 @@ export function setSettings(p: Partial<Settings>) {
     } catch {}
 }
 
+let toasts = 0;
 export function toast(msg: string, action?: { label: string; run: () => void }) {
+  const mine = ++toasts;
   app.set({ toast: msg, toastAction: action || null });
-  setTimeout(() => app.get().toast === msg && app.set({ toast: null, toastAction: null }), action ? 7000 : 3500);
+  // (an earlier toast's timer mustn't cut this one short, even with the same words)
+  setTimeout(() => mine === toasts && app.set({ toast: null, toastAction: null }), action ? 7000 : 3500);
 }
 
 // ---------- chat persistence ----------
@@ -664,10 +670,25 @@ export async function loadUsage(): Promise<Usage> {
   return bridge ? bridge.chats.usage() : chatUsage([...memChats.values()]);
 }
 
+/** The last chat asked for: a slow load finishing late mustn't replace it. */
+let opening = 0;
+
 export async function openChat(id: string) {
+  const mine = ++opening;
   if (live?.id === id) return app.set({ chat: live, view: "chat", context: null });
+  // (a change still waiting to be saved is newer than the file)
+  if (savePending?.id === id) return app.set({ chat: savePending, view: "chat", context: null });
   const c: Chat | undefined = bridge ? await bridge.chats.load(id).catch(() => undefined) : memChats.get(id);
+  if (mine !== opening) return;
   if (c) app.set({ chat: c, view: "chat", context: null });
+  else toast("That chat couldn't be opened.");
+}
+
+/** A deleted chat's waiting save mustn't bring it back. */
+function dropPending(ids: string[]) {
+  if (!savePending || !ids.includes(savePending.id)) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  savePending = null;
 }
 
 /** Shows or hides the sidebar: the drawer in compact mode, the column otherwise. */
@@ -676,6 +697,7 @@ export function toggleSidebar(show?: boolean) {
 }
 
 export function startNewChat(folder: string | null = null, project?: string) {
+  opening++;
   app.set({ chat: newChat(folder, project), view: "chat", context: null });
 }
 
@@ -707,7 +729,7 @@ export async function deleteProject(id: string) {
 /** Opens Brain, if it's turned on in Settings → Experimental. */
 export function openBrain() {
   if (app.get().settings.brainMenu) return app.set({ view: "brain", settingsOpen: false });
-  toast("Brain is experimental: turn it on in Settings → Advanced.", { label: "Open", run: () => app.set({ settingsOpen: true, settingsTab: "Experimental" }) });
+  toast("Brain is experimental: turn it on in Settings → Experimental.", { label: "Open", run: () => app.set({ settingsOpen: true, settingsTab: "Experimental" }) });
 }
 
 export function openProject(id: string) {
@@ -719,6 +741,7 @@ export async function deleteChat(id: string) {
   // kept for Undo (the file itself goes to the Recycle Bin)
   const open = app.get().chat?.id === id;
   const was: Chat | null = open ? app.get().chat : bridge ? await bridge.chats.load(id).catch(() => null) : memChats.get(id) || null;
+  dropPending([id]);
   if (bridge) await bridge.chats.remove(id).catch(() => {});
   memChats.delete(id);
   app.set((s) => ({ chats: s.chats.filter((c) => c.id !== id), chat: s.chat?.id === id ? newChat(null) : s.chat }));
@@ -738,6 +761,7 @@ export async function deleteChat(id: string) {
 export async function deleteChats(ids: string[]) {
   const mine = ids.filter((id) => live?.id !== id);
   if (mine.length < ids.length) toast("Pelica is still replying in one of those chats: it was left alone.");
+  dropPending(mine);
   const was: Chat[] = [];
   for (const id of mine) {
     const c = app.get().chat?.id === id ? app.get().chat : bridge ? await bridge.chats.load(id).catch(() => null) : memChats.get(id) || null;

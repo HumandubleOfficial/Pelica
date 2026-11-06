@@ -4,12 +4,16 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./Icons";
+import { shownItems } from "../lib/menus";
+import { useApp } from "../state";
 
 export type MenuItem =
   | "sep"
   | { head: string }
   | {
       label: string;
+      /** what Settings → Menus calls it (lib/menus.ts), for rows that can be hidden */
+      id?: string;
       icon?: string;
       /** a letter (or text like "Ctrl+;") shown on the right; a single letter also works as a shortcut */
       key?: string;
@@ -73,9 +77,15 @@ function List({ items, close, className = "" }: { items: MenuItem[]; close: () =
 
 /** A menu: under its trigger (`className` places it), or at a point (`at`,
  *  for right-click). Letters run their rows; Escape and clicks outside close it. */
-export function Menu({ items, close, at, className, ignore, minWidth, focus }: { items: MenuItem[]; close: () => void; at?: { x: number; y: number }; className?: string; ignore?: RefObject<HTMLElement | null>; minWidth?: number; focus?: boolean }) {
+export function Menu({ items: all, close, at, className, ignore, minWidth, focus }: { items: MenuItem[]; close: () => void; at?: { x: number; y: number }; className?: string; ignore?: RefObject<HTMLElement | null>; minWidth?: number; focus?: boolean }) {
+  const hide = useApp((s) => s.settings.menuHide);
+  const items = shownItems(all, hide);
   const box = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(at);
+  // (every row hidden: nothing to show)
+  useEffect(() => {
+    if (!items.length) close();
+  }, [items.length]);
   useEffect(() => {
     if (!focus) return;
     const rows = box.current?.querySelectorAll<HTMLElement>(".mi");
@@ -132,6 +142,7 @@ export function Menu({ items, close, at, className, ignore, minWidth, focus }: {
       document.removeEventListener("keydown", key, true);
     };
   }, [items, close]);
+  if (!items.length) return null;
   const list = (
     <div ref={box} className={at ? "menu-at" : "menu-anchor"} style={at ? ({ left: pos?.x ?? at.x, top: pos?.y ?? at.y, "--menu-min": minWidth ? `${minWidth}px` : undefined } as React.CSSProperties) : undefined}>
       <List items={items} close={close} className={className} />

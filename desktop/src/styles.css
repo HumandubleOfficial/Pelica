@@ -698,7 +698,6 @@ kbd {
   box-shadow: var(--shadow);
   padding: 6px;
   min-width: 220px;
-  animation: pop 0.12s ease-out;
 }
 .popover.up {
   bottom: calc(100% + 8px);
@@ -734,12 +733,6 @@ kbd {
   font-size: 0.8em;
   color: var(--muted);
   letter-spacing: 0.2px;
-}
-@keyframes pop {
-  from {
-    opacity: 0;
-    transform: translateY(4px) scale(0.98);
-  }
 }
 .model-pop {
   width: 380px;
@@ -856,6 +849,7 @@ kbd {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line-2));
 }
 .composer textarea {
+  field-sizing: content;
   width: 100%;
   border: 0;
   outline: 0;
@@ -1863,7 +1857,6 @@ kbd {
   border: 1px solid var(--line-2);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow);
-  animation: pop 0.15s ease-out;
 }
 .settings {
   width: min(980px, 94vw);
@@ -2023,7 +2016,6 @@ kbd {
   border-radius: var(--r-md);
   z-index: 200;
   font-size: 0.9em;
-  animation: pop 0.15s ease-out;
   cursor: pointer;
 }
 
@@ -2556,7 +2548,6 @@ kbd {
   line-height: 1.45;
   color: #ece8f6;
   pointer-events: none;
-  animation: fadeup 0.25s ease;
 }
 .nmap-tip {
   position: absolute;
@@ -2590,16 +2581,6 @@ kbd {
   place-items: center;
   color: #e9a3a3;
   font-size: 0.9em;
-}
-@keyframes fadeup {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 6px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
 }
 
 /* ---------- token trace (Brain) ---------- */

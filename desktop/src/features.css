@@ -302,7 +302,6 @@ kbd {
   max-height: 90vh;
   border-radius: var(--r-lg);
   box-shadow: var(--shadow);
-  animation: pop 0.15s ease-out;
 }
 
 /* ---------- approval ---------- */
@@ -702,32 +701,6 @@ kbd {
   color: var(--bad);
 }
 
-/* ---------- permissions (settings) ---------- */
-.perm-cards {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin: 4px 0 12px;
-}
-.perm-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 12px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--line);
-  text-align: left;
-  transition: border-color 0.12s, background 0.12s;
-}
-.perm-card:hover {
-  background: var(--panel);
-}
-.perm-card.sel {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-}
-
 /* ---------- prompt maker and compare (shared modal head) ---------- */
 .prompt-maker {
   width: min(720px, 94vw);
@@ -1030,9 +1003,6 @@ kbd {
 }
 
 @media (max-width: 760px) {
-  .perm-cards {
-    grid-template-columns: 1fr 1fr;
-  }
   .conn-grid {
     grid-template-columns: 1fr;
   }
@@ -1523,7 +1493,6 @@ kbd {
   border-radius: var(--r-xl);
   background: var(--input-bg, var(--panel));
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-  animation: page-in 0.24s var(--ease-out, ease-out);
 }
 .voice-orb {
   position: relative;

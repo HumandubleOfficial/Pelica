@@ -15,6 +15,8 @@ import "./polish.css";
 import "./settings.css";
 import "./details.css";
 import "./motion.css";
+import { startSegs } from "./lib/segs";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { checkWhatsNew } from "./components/WhatsNew";
 import { checkForUpdates } from "./components/Updates";
 import { startScheduler } from "./agent/tasks";
@@ -105,5 +107,10 @@ const quick = location.hash === "#quick";
   startDesktop();
   startScheduler();
   startPhone();
-  createRoot(document.getElementById("root")!).render(<App />);
+  createRoot(document.getElementById("root")!).render(
+    <ErrorBoundary what="Pelica">
+      <App />
+    </ErrorBoundary>,
+  );
+  startSegs();
 })();

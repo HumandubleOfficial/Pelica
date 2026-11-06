@@ -27,6 +27,7 @@ import { Compare } from "./components/Compare";
 import { SidePanel } from "./components/SidePanel";
 import { Dock } from "./components/Dock";
 import { Tooltips } from "./components/Tooltip";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const SIZES: [number, string][] = [
   [13, "Smaller"],
@@ -290,7 +291,9 @@ export function App() {
               <Home />
             ) : (
               <>
-                <ChatView />
+                <ErrorBoundary reset={chatId} what="This chat">
+                  <ChatView />
+                </ErrorBoundary>
                 <div className="composer-dock">
                   <Composer />
                 </div>
@@ -299,7 +302,11 @@ export function App() {
           </div>
           <ArtifactPanel />
           {view === "chat" && <Dock />}
-          {panel && view === "chat" && !empty && <SidePanel />}
+          {panel && view === "chat" && !empty && (
+            <ErrorBoundary reset={chatId} what="This panel">
+              <SidePanel />
+            </ErrorBoundary>
+          )}
         </div>
       </main>
       <Palette />

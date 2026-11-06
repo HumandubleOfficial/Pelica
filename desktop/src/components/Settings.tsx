@@ -1,9 +1,10 @@
 // Settings, laid out like the Claude app's: a title bar, a nav with a
 // search box and groups, and pages of headed sections whose rows are split
 // by thin lines (settings.css).
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { bridge, type UpdateCheck } from "../lib/bridge";
-import { app, PERM_MODES, refreshChats, setSettings, toast, useApp, type Settings as S } from "../state";
+import { app, PERM_MODES, refreshChats, setSettings, toast, useApp, type PermMode, type Settings as S } from "../state";
+import { MENUS } from "../lib/menus";
 import { ConnectorsTab } from "./Connectors";
 import { DevicesTab } from "./Devices";
 import { Diff } from "./ToolCard";
@@ -29,20 +30,23 @@ const TABS: { name: string; icon: string; group: string; keys: string }[] = [
   { name: "General", icon: "user", group: "Preferences", keys: "name instructions send enter reply length saved prompts back up restore chats import chatgpt claude export" },
   { name: "Account", icon: "user-circle", group: "Preferences", keys: "account google sign in sync drive profile other pc" },
   { name: "Appearance", icon: "palette", group: "Preferences", keys: "theme dark light warm midnight neural background backdrop mica acrylic text size font serif code animations" },
+  { name: "Menus", icon: "list", group: "Preferences", keys: "customize customise hide show menu plus sidebar buttons reply items" },
   { name: "Memory", icon: "book", group: "Preferences", keys: "remember forget across chats facts about me" },
   { name: "Capabilities", icon: "bolt", group: "Preferences", keys: "web search steps thinking effort voice speed talk over read aloud auto-compact compact context trim tool output cqs code quality scanner fix checkers" },
-  { name: "Permissions", icon: "shield", group: "Preferences", keys: "manual accept edits plan bypass folders deleting recycle shell cmd powershell" },
+  { name: "Permissions", icon: "shield", group: "Preferences", keys: "manual accept edits plan bypass folders deleting recycle undo restore safety unsafe shell cmd powershell" },
   { name: "Usage", icon: "chart", group: "Preferences", keys: "tokens days models" },
   { name: "Desktop", icon: "monitor", group: "This computer", keys: "quick ask shortcut hotkey tray start with windows notifications computer tools" },
   { name: "Models", icon: "library", group: "This computer", keys: "storage disk space drive move delete uninstall model folders load download speed up repack local api openai port engine restart keep long chats ready saved cache clear" },
   { name: "Devices", icon: "phone", group: "This computer", keys: "mobile phone qr code wifi tailscale remote pair bridge ram lend pairing network" },
   { name: "Connectors", icon: "plug", group: "More", keys: "mcp servers tools github memory browser" },
-  { name: "Advanced", icon: "terminal", group: "More", keys: "experimental brain experts 3d labs beta developer versions electron engine log data folder" },
-  { name: "About", icon: "info", group: "More", keys: "version release notes github update check install feed preview pre-release skip releases daily" },
+  { name: "Updates", icon: "download", group: "More", keys: "version update check install feed preview pre-release skip releases daily" },
+  { name: "Experimental", icon: "flask", group: "More", keys: "brain experts 3d labs beta" },
+  { name: "Advanced", icon: "terminal", group: "More", keys: "developer versions electron engine log data folder" },
+  { name: "About", icon: "info", group: "More", keys: "version release notes github license" },
 ];
 
 /** Sections that moved into another, for links into Settings. */
-const MOVED: Record<string, string> = { Context: "Capabilities", CQS: "Capabilities", Phone: "Devices", Experimental: "Advanced", Developer: "Advanced", Updates: "About" };
+const MOVED: Record<string, string> = { Context: "Capabilities", CQS: "Capabilities", Phone: "Devices", Developer: "Advanced" };
 
 /** What each theme looks like, for the picker (the colours in styles.css / polish.css). */
 const THEMES: { id: S["theme"]; name: string; bg: string; side: string; panel: string; text: string; accent: string }[] = [
@@ -395,6 +399,106 @@ const ago = (t: number) => {
 };
 
 /** Settings → Updates: the newest version, how and when to check, and where (electron/updates.ts). */
+/** What each mode lets Pelica do by itself (the rules are in agent/tools.ts). */
+const PERM_CAN: { title: string; desc: string; can: Record<PermMode, "yes" | "ask" | "no"> }[] = [
+  { title: "Read files", desc: "List, open and search the files in the chat's folder.", can: { ask: "yes", edits: "yes", plan: "yes", auto: "yes" } },
+  { title: "Change files", desc: "Create, edit and delete files in the chat's folder.", can: { ask: "ask", edits: "yes", plan: "no", auto: "yes" } },
+  { title: "Run commands", desc: "Run commands on this PC, starting in the chat's folder.", can: { ask: "ask", edits: "ask", plan: "no", auto: "yes" } },
+];
+const PERM_WORD = { yes: "Allowed", ask: "Asks first", no: "Off" };
+const PERM_ICON: Record<PermMode, string> = { ask: "lock", edits: "shield", plan: "list", auto: "bolt" };
+
+function PermissionsTab() {
+  const s = useApp((x) => x.settings);
+  const set = (p: Partial<S>) => setSettings(p);
+  return (
+    <>
+      <p className="set-intro">
+        How much Pelica does without asking. Switch any time from the chip under the message box, or with <kbd>Shift</kbd>+<kbd>Tab</kbd> in it.
+      </p>
+      <div className="perm-modes" role="radiogroup" aria-label="Permission mode">
+        {PERM_MODES.map((m) => (
+          <button key={m.id} role="radio" aria-checked={s.permMode === m.id} className={`perm-mode ${s.permMode === m.id ? "sel" : ""}`} onClick={() => set({ permMode: m.id })}>
+            <span className={`perm-ico perm-${m.id}`}>
+              <Icon name={PERM_ICON[m.id]} size={16} />
+            </span>
+            <span className="perm-mode-text">
+              <b>{m.label}</b>
+              <span className="muted small">{m.desc}</span>
+            </span>
+            <span className="perm-radio" />
+          </button>
+        ))}
+      </div>
+      {s.permMode === "auto" && <div className="warn-text">Bypass permissions runs commands without asking. Use it for folders you can afford to lose: deletes still go to the Recycle Bin, but a command can do anything you can.</div>}
+      <Section title="In this mode" />
+      {PERM_CAN.map((c) => (
+        <Row key={c.title} title={c.title} desc={c.desc}>
+          <span className={`perm-level ${c.can[s.permMode]}`}>{PERM_WORD[c.can[s.permMode]]}</span>
+        </Row>
+      ))}
+      <Section title="Folders" />
+      <p className="set-intro">Each chat has its own folder, picked from the folder chip under the message box. Pelica's file tools stay inside it and refuse any path outside.</p>
+      {s.recentFolders.length ? (
+        <div className="perm-folders">
+          {s.recentFolders.map((f) => (
+            <div key={f} className="perm-folder">
+              <Icon name="folder" size={15} />
+              <span title={f}>{f}</span>
+              <button className="btn small ghost" onClick={() => bridge?.sys.open(f, "").catch((e: any) => toast(e.message))}>
+                Show
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="muted small">No folders yet.</p>
+      )}
+      <Section title="Safety" />
+      <Row title="Deleting" desc="Files Pelica deletes go to the Recycle Bin, in every mode.">
+        <span className="pill">Recycle Bin</span>
+      </Row>
+      <Row title="Undo" desc="Files Pelica changes can be put back from under the reply for 30 days. Changes made by commands, and files over 50 MB, can't.">
+        <span className="pill">30 days</span>
+      </Row>
+      <Row title="Unsafe repositories" desc="A command that fetches a GitHub repository which looks unsafe always asks first, even in Bypass permissions.">
+        <span className="pill">Always asks</span>
+      </Row>
+      <Row title="Command shell" desc="What Pelica's commands run in.">
+        <Seg value={s.shell} options={[["cmd", "cmd.exe"], ["powershell", "PowerShell"]]} onChange={(v) => set({ shell: v })} />
+      </Row>
+    </>
+  );
+}
+
+/** What shows up on Pelica's menus (lib/menus.ts). */
+function MenusTab() {
+  const hide = useApp((x) => x.settings.menuHide);
+  const flip = (id: string, on: boolean) => setSettings({ menuHide: on ? hide.filter((x) => x !== id) : [...hide, id] });
+  return (
+    <>
+      <p className="set-intro">Choose what shows up on Pelica's menus. Hiding something only takes it off the menu: it doesn't turn anything off.</p>
+      {MENUS.map((m) => (
+        <Fragment key={m.id}>
+          <Section title={m.title} />
+          <p className="set-intro">{m.desc}</p>
+          {m.items.map(([id, label]) => (
+            <Row key={id} title={label}>
+              <Toggle on={!hide.includes(`${m.id}.${id}`)} set={(v) => flip(`${m.id}.${id}`, v)} />
+            </Row>
+          ))}
+        </Fragment>
+      ))}
+      <Section title="Start over" />
+      <Row title="Show everything" desc="Puts every hidden item back.">
+        <button className="btn small" disabled={!hide.length} onClick={() => setSettings({ menuHide: [] })}>
+          Reset
+        </button>
+      </Row>
+    </>
+  );
+}
+
 function UpdatesTab() {
   const s = useApp((x) => x.settings);
   const known = useApp((x) => x.update);
@@ -601,14 +705,7 @@ export function SettingsModal() {
   const st = useApp((x) => x.status);
   const [q, setQ] = useState("");
   // a section eases in when you switch to it, but not as Settings opens
-  const [moved, setMoved] = useState(false);
-  const lastTab = useRef(tab);
-  useEffect(() => {
-    if (!open) setMoved(false);
-    else if (lastTab.current !== tab) setMoved(true);
-    lastTab.current = tab;
-  }, [open, tab]);
-  // closing: it stays a moment to zoom out (motion.css), unless animations are off
+  // closing: it stays a moment to fade out (motion.css), unless animations are off
   const [leaving, setLeaving] = useState(false);
   const wasOpen = useRef(open);
   useEffect(() => {
@@ -676,7 +773,7 @@ export function SettingsModal() {
           <Row title="Reply font" desc="Replies in a serif face, as in Claude, or the same sans as the rest of the app.">
             <Seg value={s.replyFont} options={[["serif", "Serif"], ["sans", "Sans"]]} onChange={(v) => set({ replyFont: v })} />
           </Row>
-          <Row title="Animations" desc="Buttons that fade, pages that ease in, effort orbs, the shimmer while working, the expert grid.">
+          <Row title="Animations" desc="Buttons that fade, choices that slide, effort orbs, the shimmer while working, the expert grid.">
             <Toggle on={s.animations} set={(v) => set({ animations: v })} />
           </Row>
           <Section title="Code appearance" />
@@ -751,32 +848,13 @@ export function SettingsModal() {
       body = <DesktopTab />;
       break;
     case "Permissions":
-      body = (
-        <>
-          <p className="set-intro">Switch any time from the chip under the message box, or with <kbd>Shift</kbd>+<kbd>Tab</kbd> in it.</p>
-          <div className="perm-cards">
-            {PERM_MODES.map((m) => (
-              <button key={m.id} className={`perm-card ${s.permMode === m.id ? "sel" : ""}`} onClick={() => set({ permMode: m.id })}>
-                <span className={`perm-ico perm-${m.id}`}>
-                  <Icon name={m.id === "plan" ? "list" : m.id === "auto" ? "bolt" : m.id === "ask" ? "lock" : "shield"} size={16} />
-                </span>
-                <b>{m.label}</b>
-                <span className="muted small">{m.desc}</span>
-              </button>
-            ))}
-          </div>
-          {s.permMode === "auto" && <div className="warn-text">Bypass permissions runs commands without asking. Use it for folders you can afford to lose: deletes still go to the Recycle Bin, but a command can do anything you can.</div>}
-          <Row title="Folders" desc="Each chat has its own folder, picked from the folder chip under the message box. Files and commands stay inside that chat's folder; paths outside it are refused.">
-            <span className="muted small">{s.recentFolders.length ? `${s.recentFolders.length} recent` : "none yet"}</span>
-          </Row>
-          <Row title="Deleting" desc="Files Pelica deletes go to the Recycle Bin, in every mode.">
-            <span className="pill">Recycle Bin</span>
-          </Row>
-          <Row title="Command shell">
-            <Seg value={s.shell} options={[["cmd", "cmd.exe"], ["powershell", "PowerShell"]]} onChange={(v) => set({ shell: v })} />
-          </Row>
-        </>
-      );
+      body = <PermissionsTab />;
+      break;
+    case "Menus":
+      body = <MenusTab />;
+      break;
+    case "Updates":
+      body = <UpdatesTab />;
       break;
     case "Connectors":
       body = <ConnectorsTab />;
@@ -800,14 +878,19 @@ export function SettingsModal() {
     case "Usage":
       body = <UsageTab />;
       break;
-    case "Advanced":
+    case "Experimental":
       body = (
         <>
-          <Section title="Experimental" />
           <p className="set-intro">Features still being worked on. They may change, or go away.</p>
           <Row title="Brain" desc="A page that shows the loaded model's experts in 3D, lighting up as it writes, and which experts each word goes to. It appears in the sidebar, the palette and the tray menu.">
             <Toggle on={s.brainMenu} set={(v) => set({ brainMenu: v })} />
           </Row>
+        </>
+      );
+      break;
+    case "Advanced":
+      body = (
+        <>
           <Section title="For developers" />
           <DevTab />
         </>
@@ -827,11 +910,9 @@ export function SettingsModal() {
             </button>
           </div>
           <p className="set-intro">
-            Pelica runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow, the update check on GitHub (Settings → About), and what you ask the online connectors you add.
+            Pelica runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow, the update check on GitHub (Settings → Updates), and what you ask the online connectors you add.
           </p>
           <p className="set-intro">Pelica is open source under the MIT License.</p>
-          <Section title="Updates" />
-          <UpdatesTab />
           <Section title="Release notes" />
           <ReleaseNotes releases={RELEASES.filter((r) => r.version !== "next").slice(0, 3)} />
           <Fold title="Older releases">
@@ -879,7 +960,7 @@ export function SettingsModal() {
             </div>
           </nav>
           <div className="set-body">
-            <div className={`set-page${moved ? " moved" : ""}`} key={tab}>
+            <div className="set-page" key={tab}>
               <div className="set-section set-page-title">{tab}</div>
               {body}
             </div>

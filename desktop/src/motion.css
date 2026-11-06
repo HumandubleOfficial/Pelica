@@ -1,7 +1,8 @@
 /* Motion: a button's grey box fades in and out where the button is (nothing
-   shrinks, springs or slides between buttons), pages ease in, Settings zooms
-   in and out. Menus and What's new open at once. Settings → Appearance →
-   Animations off (.no-anim) stills all of it. */
+   shrinks or springs); a choice row's highlight slides to the chosen button
+   (lib/segs.ts). Pages, messages, menus and dialogs just appear: nothing fades
+   up. Settings fades in place. Settings → Appearance → Animations off
+   (.no-anim) stills all of it. */
 :root {
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
   /* one scale of corners */
@@ -47,20 +48,16 @@
   transition: transform 0.18s ease;
 }
 
-/* ---------- Settings zooms in and out ---------- */
+/* ---------- Settings fades in place ---------- */
 .modal-back:has(> .modal.settings) {
   animation: set-back-in 0.2s ease;
 }
-.modal.settings {
-  animation: set-in 0.26s var(--ease-out);
-}
+
 .modal-back.closing:has(> .modal.settings) {
   animation: set-back-out 0.17s ease forwards;
   pointer-events: none;
 }
-.modal-back.closing > .modal.settings {
-  animation: set-out 0.17s cubic-bezier(0.4, 0, 1, 1) forwards;
-}
+
 @keyframes set-back-in {
   from {
     opacity: 0;
@@ -71,37 +68,10 @@
     opacity: 0;
   }
 }
-@keyframes set-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.96);
-  }
-}
-@keyframes set-out {
-  to {
-    opacity: 0;
-    transform: translateY(6px) scale(0.97);
-  }
-}
 
-/* ---------- pages ease in ---------- */
-/* (never as the app starts or Settings opens: .booted comes a moment after
-   start, and .moved once you switch Settings to another section) */
-.settings .set-page.moved {
-  animation: page-in 0.26s var(--ease-out);
-}
-/* a new page in the main window: Models, Projects, a project, a chat from Home */
-.booted .center-pane > :is(.page, .home, .chat-scroll, .composer-dock) {
-  animation: page-in 0.3s var(--ease-out);
-}
-@keyframes page-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
 
-/* the sidebar and the session rail slide in when shown */
+
+/* the sidebar slides in when shown */
 .booted .sidebar {
   animation: side-in 0.28s var(--ease-out);
 }
@@ -109,15 +79,6 @@
   from {
     opacity: 0;
     transform: translateX(-14px);
-  }
-}
-.booted .side-panel {
-  animation: rail-in 0.28s var(--ease-out);
-}
-@keyframes rail-in {
-  from {
-    opacity: 0;
-    transform: translateX(14px);
   }
 }
 

@@ -126,9 +126,6 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 
 let pending: { cancel: () => void } | null = null;
 
-/** Gives up on the sign-in under way (its window was closed). */
-export const cancelSignIn = () => pending?.cancel();
-
 /** Signs in to the connector at `url`: opens the browser and waits (5 minutes at most). */
 export async function signIn(url: string, wwwAuthenticate: string | undefined, open: (u: string) => void): Promise<void> {
   pending?.cancel();
@@ -181,7 +178,7 @@ export async function signIn(url: string, wwwAuthenticate: string | undefined, o
           bad(new Error(u.searchParams.get("error_description") || (err === "access_denied" ? "Sign-in was declined." : err || "No answer came back.")));
           return;
         }
-        res.end(PAGE("Signed in", "This window closes by itself. You can go back to Pelica."));
+        res.end(PAGE("Signed in", "You can close this tab and go back to Pelica."));
         ok(got);
       });
       open(auth.href);

@@ -13,6 +13,7 @@ import { EngineNotice } from "./EngineNotice";
 import { EffortPicker } from "./Effort";
 import { Icon } from "./Icons";
 import { Menu, type MenuItem } from "./Menu";
+import { useShown } from "../lib/menus";
 import { AttachChips, joinAttachments, photoText, readFiles, splitAttachments, type Attached } from "./Attachments";
 import { editPrompt, insertPrompt, slug } from "./Prompts";
 
@@ -221,6 +222,9 @@ function PlusMenu({ folder, onAttach, boxText }: { folder: string | null; onAtta
   const { open, setOpen, ref } = usePop();
   const [sub, setSub] = useState<"folder" | "prompts" | null>(null);
   const close = () => (setOpen(false), setSub(null));
+  const shows = useShown();
+  const top = ["files", "folder", "web"].some((x) => shows(`plus.${x}`));
+  const rest = ["prompts", "maker", "commands", "compare"].some((x) => shows(`plus.${x}`));
   // one line per row; the longer explanation is the tooltip
   const row = (icon: string, label: string, hint: string, fn: () => void, extra?: React.ReactNode) => (
     <button className="menu-row" onClick={fn} title={hint || undefined}>
@@ -267,14 +271,15 @@ function PlusMenu({ folder, onAttach, boxText }: { folder: string | null; onAtta
             </>
           ) : (
             <>
-              {row("clip", "Add files or photos", "or drop or paste them", () => (close(), onAttach()))}
-              {row("folder", folder ? base(folder) : "Choose a folder", folder ? "This chat's folder" : "Let Pelica work on files", () => setSub("folder"), <Icon name="chevron" size={13} />)}
-              {row("globe", "Web search", web ? "On: searches when a question needs it" : "Off", () => setSettings({ web: !web }), <span className={`toggle ${web ? "on" : ""}`} />)}
-              <div className="menu-sep" />
-              {row("prompt", "Saved prompts", prompts.length ? `${prompts.length} saved; or type / and the name` : "Text you send often, under a name", () => setSub("prompts"), <Icon name="chevron" size={13} />)}
-              {row("wand", "Prompt maker", "Answer a few questions, get a tuned prompt", () => (close(), app.set({ promptMaker: true })))}
-              {row("command", "Commands", "/compact, /cqs, /export…", () => (close(), window.dispatchEvent(new CustomEvent("pelica:compose", { detail: "/" }))))}
-              {row("compare", "Compare models", "With Astra, Fable, Opus, Kimi K3, GLM 5.3", () => (close(), app.set({ compare: "" })))}
+              {shows("plus.files") && row("clip", "Add files or photos", "or drop or paste them", () => (close(), onAttach()))}
+              {shows("plus.folder") && row("folder", folder ? base(folder) : "Choose a folder", folder ? "This chat's folder" : "Let Pelica work on files", () => setSub("folder"), <Icon name="chevron" size={13} />)}
+              {shows("plus.web") && row("globe", "Web search", web ? "On: searches when a question needs it" : "Off", () => setSettings({ web: !web }), <span className={`toggle ${web ? "on" : ""}`} />)}
+              {top && rest && <div className="menu-sep" />}
+              {shows("plus.prompts") && row("prompt", "Saved prompts", prompts.length ? `${prompts.length} saved; or type / and the name` : "Text you send often, under a name", () => setSub("prompts"), <Icon name="chevron" size={13} />)}
+              {shows("plus.maker") && row("wand", "Prompt maker", "Answer a few questions, get a tuned prompt", () => (close(), app.set({ promptMaker: true })))}
+              {shows("plus.commands") && row("command", "Commands", "/compact, /cqs, /export…", () => (close(), window.dispatchEvent(new CustomEvent("pelica:compose", { detail: "/" }))))}
+              {shows("plus.compare") && row("compare", "Compare models", "With Astra, Fable, Opus, Kimi K3, GLM 5.3", () => (close(), app.set({ compare: "" })))}
+              {!top && !rest && <div className="muted small pad">Everything here is hidden. Settings → Menus brings it back.</div>}
             </>
           )}
         </div>
@@ -459,12 +464,6 @@ export function Composer({ big = false }: { big?: boolean }) {
       window.removeEventListener("pelica:focus", focus);
     };
   }, []);
-  useEffect(() => {
-    const el = ta.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = Math.min(320, el.scrollHeight) + "px";
-  }, [text]);
 
   const prompts = useApp((s) => s.settings.prompts);
   const slash = useMemo((): SlashItem[] => {

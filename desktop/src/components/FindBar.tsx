@@ -7,7 +7,9 @@ import { useApp } from "../state";
 import { Icon } from "./Icons";
 
 const hl = (globalThis as any).CSS?.highlights as Map<string, unknown> | undefined;
-const Highlight = (globalThis as any).Highlight as { new (...r: Range[]): unknown } | undefined;
+const Highlight = (globalThis as any).Highlight as { new (...r: Range[]): { add(r: Range): void } } | undefined;
+/** Matches marked at most. (A letter in a long chat can match hundreds of thousands of times.) */
+const MAX_FOUND = 5000;
 
 function matches(root: HTMLElement, q: string): Range[] {
   const out: Range[] = [];
@@ -23,12 +25,14 @@ function matches(root: HTMLElement, q: string): Range[] {
       r.setStart(n, i);
       r.setEnd(n, i + needle.length);
       out.push(r);
+      if (out.length >= MAX_FOUND) return out;
     }
   }
   return out;
 }
 
-export function FindBar({ root }: { root: React.RefObject<HTMLElement | null> }) {
+/** `onOpen` asks for every row of a long chat to be built; `ready` says they are. */
+export function FindBar({ root, ready, onOpen }: { root: React.RefObject<HTMLElement | null>; ready: boolean; onOpen: (open: boolean) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [cur, setCur] = useState(0);
@@ -60,13 +64,15 @@ export function FindBar({ root }: { root: React.RefObject<HTMLElement | null> })
     };
   }, [view]);
 
+  useEffect(() => onOpen(open), [open]);
+
   // (again when the chat changes: a reply added text, or another chat opened)
   useLayoutEffect(() => {
     if (!open || !root.current) return setFound([]);
     const r = matches(root.current, q.trim());
     setFound(r);
     setCur((c) => (r.length ? Math.min(c, r.length - 1) : 0));
-  }, [q, open, chat]);
+  }, [q, open, chat, ready]);
 
   useEffect(() => {
     if (!hl || !Highlight) return;
@@ -75,7 +81,9 @@ export function FindBar({ root }: { root: React.RefObject<HTMLElement | null> })
       hl.delete("find-cur");
       return;
     }
-    hl.set("find", new Highlight(...found));
+    const all = new Highlight();
+    found.forEach((r) => all.add(r));
+    hl.set("find", all);
     hl.set("find-cur", new Highlight(found[cur]));
     return () => {
       hl.delete("find");
@@ -114,7 +122,7 @@ export function FindBar({ root }: { root: React.RefObject<HTMLElement | null> })
             e.stopPropagation();
           }}
         />
-        <span className="find-count">{q.trim() ? (found.length ? `${cur + 1} of ${found.length}` : "No matches") : ""}</span>
+        <span className="find-count">{q.trim() ? (found.length ? `${cur + 1} of ${found.length}${found.length >= MAX_FOUND ? "+" : ""}` : "No matches") : ""}</span>
         <button className="ghost-btn" title="Previous (Shift+Enter)" disabled={!found.length} onClick={() => step(-1)}>
           <Icon name="down" size={14} className="flip-y" />
         </button>

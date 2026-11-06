@@ -92,9 +92,6 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 
 let pending: (() => void) | null = null;
 
-/** Gives up on the sign-in under way (its window was closed). */
-export const cancelSignIn = () => pending?.();
-
 /** Signs in with Google: opens the browser and waits (5 minutes at most). */
 export async function signIn(clientId: string, clientSecret: string, open: (u: string) => void): Promise<Profile> {
   if (!clientId.trim()) throw new Error("Add your Google client ID first (Settings → Account → Google sign-in).");
@@ -146,7 +143,7 @@ export async function signIn(clientId: string, clientSecret: string, open: (u: s
           bad(new Error(err === "access_denied" ? "Sign-in was declined." : `Google said: ${err}`));
           return;
         }
-        res.end(PAGE("Signed in to Pelica", "This window closes by itself. You can go back to Pelica."));
+        res.end(PAGE("Signed in to Pelica", "You can close this tab and go back to Pelica."));
         ok(r.searchParams.get("code")!);
       });
       open(u.href);

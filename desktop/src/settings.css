@@ -270,6 +270,7 @@
 }
 /* choices: a flat track, the chosen one a plain lighter box */
 .settings .seg {
+  --seg-r: var(--r);
   --seg-chip: var(--set-chip);
   --seg-chip-line: transparent;
   --seg-chip-shadow: none;
@@ -548,7 +549,6 @@
   align-items: center;
   text-align: center;
   background: var(--raised);
-  animation: set-in 0.32s var(--ease-out);
 }
 .signup-back {
   animation: set-back-in 0.24s ease;
@@ -621,4 +621,101 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* ---------- permissions: one list of modes, then what the chosen one allows ---------- */
+.perm-modes {
+  display: flex;
+  flex-direction: column;
+  margin: 4px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.perm-mode {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 14px;
+  text-align: left;
+  border-radius: 0;
+}
+.perm-mode + .perm-mode {
+  border-top: 1px solid var(--line);
+}
+.perm-mode:hover {
+  background: var(--hover);
+}
+.perm-mode.sel {
+  background: var(--sel);
+}
+.perm-mode-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.perm-mode-text b {
+  font-weight: 550;
+  font-size: 0.94em;
+}
+.perm-radio {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--muted);
+}
+.perm-mode.sel .perm-radio {
+  box-shadow: inset 0 0 0 5px var(--accent);
+}
+.perm-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.86em;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.perm-level::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.perm-level.yes::before {
+  background: var(--ok);
+}
+.perm-level.ask::before {
+  background: var(--warn);
+}
+.perm-folders {
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 6px;
+  max-height: 208px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+.perm-folder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 14px;
+  color: var(--text-2);
+  font-size: 0.9em;
+}
+.perm-folder + .perm-folder {
+  border-top: 1px solid var(--line);
+}
+.perm-folder span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
