@@ -1,10 +1,10 @@
 // Settings, laid out like the Claude app's: a title bar, a nav with a
 // search box and groups, and pages of headed sections whose rows are split
 // by thin lines (settings.css).
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { bridge, type UpdateCheck } from "../lib/bridge";
 import { app, PERM_MODES, refreshChats, setSettings, toast, useApp, type PermMode, type Settings as S } from "../state";
-import { MENUS } from "../lib/menus";
+import { MenusTab } from "./MenusTab";
 import { ConnectorsTab } from "./Connectors";
 import { DevicesTab } from "./Devices";
 import { Diff } from "./ToolCard";
@@ -471,34 +471,6 @@ function PermissionsTab() {
   );
 }
 
-/** What shows up on Pelica's menus (lib/menus.ts). */
-function MenusTab() {
-  const hide = useApp((x) => x.settings.menuHide);
-  const flip = (id: string, on: boolean) => setSettings({ menuHide: on ? hide.filter((x) => x !== id) : [...hide, id] });
-  return (
-    <>
-      <p className="set-intro">Choose what shows up on Pelica's menus. Hiding something only takes it off the menu: it doesn't turn anything off.</p>
-      {MENUS.map((m) => (
-        <Fragment key={m.id}>
-          <Section title={m.title} />
-          <p className="set-intro">{m.desc}</p>
-          {m.items.map(([id, label]) => (
-            <Row key={id} title={label}>
-              <Toggle on={!hide.includes(`${m.id}.${id}`)} set={(v) => flip(`${m.id}.${id}`, v)} />
-            </Row>
-          ))}
-        </Fragment>
-      ))}
-      <Section title="Start over" />
-      <Row title="Show everything" desc="Puts every hidden item back.">
-        <button className="btn small" disabled={!hide.length} onClick={() => setSettings({ menuHide: [] })}>
-          Reset
-        </button>
-      </Row>
-    </>
-  );
-}
-
 function UpdatesTab() {
   const s = useApp((x) => x.settings);
   const known = useApp((x) => x.update);
@@ -724,6 +696,21 @@ export function SettingsModal() {
     return () => window.removeEventListener("keydown", f);
   }, []);
   // (the render right after closing, before the effect above has run, counts as leaving too)
+  // the list's highlight: one block that moves to the page picked
+  const navList = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const list = navList.current;
+    const sel = list?.querySelector<HTMLElement>("button.sel");
+    if (!list) return;
+    if (!sel) return void list.classList.remove("nav-live");
+    list.style.setProperty("--nav-x", `${sel.offsetLeft}px`);
+    list.style.setProperty("--nav-y", `${sel.offsetTop}px`);
+    list.style.setProperty("--nav-w", `${sel.offsetWidth}px`);
+    list.style.setProperty("--nav-h", `${sel.offsetHeight}px`);
+    if (list.classList.contains("nav-live")) return;
+    list.classList.add("nav-live");
+    requestAnimationFrame(() => list.classList.add("nav-ready"));
+  });
   if (!open && !leaving && !(wasOpen.current && s.animations)) return null;
   const set = (p: Partial<S>) => setSettings(p);
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -772,6 +759,9 @@ export function SettingsModal() {
           </Row>
           <Row title="Reply font" desc="Replies in a serif face, as in Claude, or the same sans as the rest of the app.">
             <Seg value={s.replyFont} options={[["serif", "Serif"], ["sans", "Sans"]]} onChange={(v) => set({ replyFont: v })} />
+          </Row>
+          <Row title="Show the sidebar on hover" desc="When the sidebar is hidden, move the pointer to the window's left edge to open a chat. It goes away when you leave it.">
+            <Toggle on={s.sidePeek} set={(v) => set({ sidePeek: v })} />
           </Row>
           <Row title="Animations" desc="Buttons that fade, choices that slide, effort orbs, the shimmer while working, the expert grid.">
             <Toggle on={s.animations} set={(v) => set({ animations: v })} />
@@ -946,7 +936,7 @@ export function SettingsModal() {
                 spellCheck={false}
               />
             </label>
-            <div className="set-nav-list">
+            <div className="set-nav-list" ref={navList}>
               {shown.map((t, i) => (
                 <div key={t.name} className="set-nav-item">
                   {t.group !== shown[i - 1]?.group && <div className="set-group">{t.group}</div>}

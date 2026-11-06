@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.5.0",
+    "date": "2026-11-06",
+    "title": "A sidebar that's there when you reach for it",
+    "notes": [
+      "With the sidebar hidden, move the pointer to the left edge of the window (or over the sidebar button) and it slides out. Pick a chat, and it goes away when you move off it. You can turn this off in Settings → Appearance.",
+      "Settings → Menus is remade: pick a menu and see a live picture of it, then click anything in the picture to hide it.",
+      "The highlight in the Settings list now slides to the page you pick."
+    ]
+  },
+  {
     "version": "1.4.1",
     "date": "2026-11-06",
     "title": "Cleaner Models and Projects pages",

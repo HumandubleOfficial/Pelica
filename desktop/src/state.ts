@@ -229,6 +229,8 @@ export interface Settings {
   menuHide: string[];
   /** the sidebar's width in px (dragged at its edge) */
   sideWidth: number;
+  /** the hidden sidebar slides out when the pointer reaches the window's left edge */
+  sidePeek: boolean;
   /** other computers lending their RAM through `pelica bridge` */
   devices: { addr: string; code: string }[];
   /** the OpenAI-compatible local API on a fixed port, for other programs */
@@ -332,6 +334,7 @@ export const DEFAULTS: Settings = {
   sideFolded: [],
   menuHide: [],
   sideWidth: 272,
+  sidePeek: true,
   devices: [],
   apiServer: false,
   apiPort: 11435,
@@ -439,6 +442,8 @@ export interface AppState {
   compact: boolean;
   /** in compact mode: the sidebar drawer is open */
   drawer: boolean;
+  /** the hidden sidebar shown for a moment (lib/peek.ts): built while "ready", on screen while "open" */
+  peek: "off" | "ready" | "open";
   toast: string | null;
   /** a button on the toast (Undo) */
   toastAction: { label: string; run: () => void } | null;
@@ -508,6 +513,7 @@ export const app = createStore<AppState>({
   sidebar: true,
   compact: typeof window !== "undefined" && window.matchMedia?.(COMPACT).matches,
   drawer: false,
+  peek: "off",
   toast: null,
   toastAction: null,
   search: "",

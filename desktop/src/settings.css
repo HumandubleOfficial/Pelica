@@ -719,3 +719,408 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* ---------- the highlight in the list slides to the page picked ---------- */
+.set-nav-list {
+  position: relative;
+}
+.settings .set-nav button {
+  position: relative;
+}
+.set-nav-list.nav-live::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--nav-w);
+  height: var(--nav-h);
+  border-radius: var(--r);
+  background: var(--set-sel);
+  transform: translate(var(--nav-x), var(--nav-y));
+  pointer-events: none;
+}
+.set-nav-list.nav-ready::before {
+  transition:
+    transform 0.22s var(--ease-out),
+    height 0.22s var(--ease-out);
+}
+.no-anim .set-nav-list.nav-ready::before {
+  transition: none;
+}
+.settings .set-nav-list.nav-live button.sel {
+  background: none;
+}
+.settings .set-nav button.sel svg {
+  color: var(--accent);
+  opacity: 1;
+}
+
+/* ---------- Settings → Menus (components/MenusTab.tsx) ---------- */
+.mm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mm-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.settings .mm-head .set-intro {
+  margin: 0;
+}
+.mm-head .btn {
+  flex: none;
+}
+.settings .seg.mm-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
+  padding: 4px;
+}
+.settings .seg.mm-tabs > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  height: auto;
+  min-width: 0;
+  padding: 9px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+.mm-tabs svg {
+  margin-bottom: 5px;
+  opacity: 0.8;
+}
+.mm-tabs button.sel svg {
+  color: var(--accent);
+  opacity: 1;
+}
+.mm-tab-name {
+  font-size: 0.92em;
+  font-weight: 550;
+}
+.mm-tab-count {
+  color: var(--muted);
+  font-size: 0.78em;
+  font-weight: 400;
+}
+.mm-tab-count.some {
+  color: var(--accent);
+}
+.mm-split {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 16px;
+  align-items: stretch;
+}
+.mm-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.mm-title b {
+  font-weight: 600;
+}
+.mm-where {
+  margin: 3px 0 10px;
+  color: var(--muted);
+  font-size: 0.85em;
+  line-height: 1.45;
+}
+.mm-list {
+  border: 1px solid var(--set-divider);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.mm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 0.92em;
+  text-align: left;
+  transition: background-color 0.12s ease;
+}
+.mm-row + .mm-row {
+  border-top: 1px solid var(--set-line);
+}
+.mm-row:hover,
+.mm-row.hot {
+  background: var(--set-hover);
+}
+.mm-row > svg {
+  flex: none;
+  opacity: 0.8;
+  transition: opacity 0.14s ease;
+}
+.mm-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: color 0.14s ease;
+}
+.mm-row.off .mm-row-name {
+  color: var(--muted);
+}
+.mm-row.off > svg {
+  opacity: 0.4;
+}
+.mm-row .toggle {
+  flex: none;
+}
+
+/* the picture */
+.mm-stage {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  min-height: 452px;
+  padding: 18px;
+  border: 1px solid var(--set-divider);
+  border-radius: var(--r-lg);
+  background-color: color-mix(in srgb, var(--text) 2%, var(--set-page));
+  background-image: radial-gradient(color-mix(in srgb, var(--text) 11%, transparent) 1px, transparent 1px);
+  background-size: 16px 16px;
+  background-position: 7px 7px;
+}
+.mm-up,
+.mm-down {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+.mm-up {
+  justify-content: flex-end;
+}
+.mm-down.right {
+  align-items: flex-end;
+}
+.mm-menu.popover.menu {
+  position: static;
+  width: min(340px, 100%);
+  margin: 0;
+  animation: none;
+}
+.mm-menu .mi:hover .mi-label,
+.mm-nav:not(.mm-kept):hover,
+.mm-tags:hover {
+  text-decoration: line-through;
+  text-decoration-color: var(--muted);
+}
+.menu .mi.mm-kept {
+  cursor: default;
+}
+.menu .mi.mm-kept:hover:not(:disabled) {
+  background: none;
+}
+.mm-none {
+  padding: 10px;
+  color: var(--muted);
+  font-size: 0.86em;
+}
+/* an item closing up as it's hidden, and opening again */
+.mm-fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 0.18s var(--ease-out),
+    opacity 0.14s ease;
+}
+.mm-fold > div {
+  min-height: 0;
+  overflow: hidden;
+}
+.mm-fold.off {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.no-anim .mm-fold,
+.no-anim .mm-btn {
+  transition: none;
+}
+.mm-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xl);
+  background: var(--panel);
+  font-size: 0.9em;
+}
+.mm-round {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r);
+  color: var(--text-2);
+}
+.mm-round.on {
+  background: var(--set-sel);
+  color: var(--text);
+}
+.mm-round.send {
+  margin-left: auto;
+}
+.mm-user {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  font-size: 0.9em;
+  font-weight: 550;
+}
+.mm-user .muted {
+  font-weight: 400;
+}
+.mm-avatar {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--set-sel);
+  font-size: 0.8em;
+}
+.mm-chat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(340px, 100%);
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+  background: var(--set-sel);
+  font-size: 0.92em;
+}
+.mm-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: min(250px, 100%);
+  padding: 10px;
+  border: 1px solid var(--set-divider);
+  border-radius: var(--r-lg);
+  background: var(--side);
+}
+.mm-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 8px 10px;
+  font-weight: 600;
+}
+.mm-brand img {
+  width: 20px;
+  height: 20px;
+}
+.mm-nav,
+.mm-tags {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border-radius: var(--r-md);
+  color: var(--text);
+  text-align: left;
+  transition: background-color 0.12s ease;
+}
+.mm-nav {
+  gap: 10px;
+  padding: 7px 10px;
+  font-size: 0.92em;
+}
+.mm-tags {
+  gap: 5px;
+  padding: 8px 10px;
+  color: var(--text-2);
+  font-size: 0.78em;
+}
+.mm-tags i {
+  width: 7px;
+  height: 7px;
+  margin-left: 4px;
+  border-radius: 50%;
+}
+.mm-tags i:first-child {
+  margin-left: 0;
+}
+.mm-nav:not(.mm-kept):hover,
+.mm-nav.hot,
+.mm-tags:hover,
+.mm-tags.hot {
+  background: var(--hover);
+}
+.mm-kept {
+  cursor: default;
+}
+.mm-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 0 10px;
+}
+.mm-lines i {
+  height: 7px;
+  border-radius: 4px;
+  background: var(--set-hover);
+}
+.mm-reply {
+  align-self: center;
+  width: 100%;
+}
+.mm-reply .mm-lines {
+  padding: 0;
+}
+.mm-btns {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 14px;
+}
+.mm-btns .muted {
+  margin-left: 8px;
+}
+.mm-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r);
+  color: var(--text-2);
+  overflow: hidden;
+  transition:
+    width 0.18s var(--ease-out),
+    opacity 0.14s ease,
+    background-color 0.12s ease;
+}
+.mm-btn:hover,
+.mm-btn.hot {
+  background: var(--hover);
+  color: var(--text);
+}
+.mm-btn.off {
+  width: 0;
+  opacity: 0;
+}
+@container (max-width: 640px) {
+  .settings .seg.mm-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .mm-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,6 +1,7 @@
 // The window: sidebar, title bar, the current page (chat, models, brain),
 // and the overlays (settings, command approval, toasts).
 import { useEffect, useState } from "react";
+import { peekIn, peekOff, usePeekFollow } from "./lib/peek";
 import { app, COMPACT, openProject, setSettings, startNewChat, toast, toggleSidebar, useApp } from "./state";
 import { ChatView } from "./components/ChatView";
 import { Composer } from "./components/Composer";
@@ -269,6 +270,15 @@ export function App() {
     return () => window.removeEventListener("keydown", k);
   }, [drawer]);
   const side = compact ? drawer : sidebar;
+  // the hidden sidebar, for a moment (lib/peek.ts)
+  const peek = useApp((s) => s.peek);
+  const peekable = useApp((s) => s.settings.sidePeek) && !side && !compact;
+  const settingsOpen = useApp((s) => s.settingsOpen);
+  usePeekFollow(peek === "open" && peekable);
+  useEffect(() => {
+    if (!peekable) app.set({ peek: "off" });
+    else if (settingsOpen && app.get().peek === "open") app.set({ peek: "ready" });
+  }, [peekable, settingsOpen]);
   const panel = useApp((s) => s.settings.sidePanel && !s.artifact && !s.dock);
   return (
     <div className={`shell ${side && !compact ? "" : "no-side"} ${compact ? "compact" : ""}`}>
@@ -309,6 +319,9 @@ export function App() {
           )}
         </div>
       </main>
+      {/* (after the title bar: the window takes its drag areas in page order, and this sits over it) */}
+      {peekable && <div className="side-edge" onPointerEnter={(e) => e.buttons === 0 && peekIn()} onPointerLeave={peekOff} />}
+      {peekable && peek !== "off" && <Sidebar peek={peek === "open"} />}
       <Palette />
       <DropZone />
       <SettingsModal />

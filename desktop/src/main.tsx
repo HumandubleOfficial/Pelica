@@ -38,6 +38,7 @@ app.sub(() => {
   if (el.dataset.material !== s.material) el.dataset.material = bridge ? s.material : "none";
   el.style.setProperty("--font-size", `${s.fontSize}px`);
   el.style.setProperty("--left-w", `${s.sideWidth}px`);
+  el.style.setProperty("--side-w", `${s.sideWidth}px`);
   el.style.setProperty("--mono", `${s.codeFont ? `"${s.codeFont.replace(/"/g, "")}", ` : ""}"Cascadia Code", "Cascadia Mono", Consolas, monospace`);
   el.classList.toggle("serif-replies", s.replyFont !== "sans");
   el.classList.toggle("no-anim", !s.animations);

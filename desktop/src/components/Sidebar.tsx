@@ -6,6 +6,7 @@ import type { SearchHit } from "../../electron/chatdata";
 import { bridge } from "../lib/bridge";
 import { copyChat, exportChat } from "../lib/exportChat";
 import { compactNow } from "../agent/agent";
+import { peekIn, peekOff } from "../lib/peek";
 import { DOCKS } from "./Dock";
 import { Icon, Logo } from "./Icons";
 import { Menu, type MenuItem } from "./Menu";
@@ -438,7 +439,18 @@ function SideHead({ id, label }: { id: string; label: string }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ peek }: { peek?: boolean }) {
+  // (made the lasting one from a peek: it's already on screen, so it doesn't slide in)
+  const peeked = useRef(app.get().peek !== "off");
+  // (the window measures its drag areas when they change, so the top row is
+  // only made clickable once the slide has finished: mid-slide it's elsewhere)
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    setSettled(false);
+    if (!peek) return;
+    const t = setTimeout(() => setSettled(true), 230);
+    return () => clearTimeout(t);
+  }, [peek]);
   const allChats = useApp((s) => s.chats);
   const sideTag = useApp((s) => s.sideTag);
   const selecting = useApp((s) => !!s.picked);
@@ -491,14 +503,14 @@ export function Sidebar() {
     </button>
   );
   return (
-    <aside className="sidebar">
-      <SideResize />
+    <aside className={`sidebar ${peek === undefined ? "" : "peek"} ${peek ? "open" : ""} ${settled ? "settled" : ""} ${peeked.current ? "was-peek" : ""}`}>
+      {peek === undefined && <SideResize />}
       <div className="side-top">
         <div className="brand">
           <Logo size={22} />
           <span>Pelica</span>
         </div>
-        <button className="ghost-btn" title="Hide sidebar" onClick={() => toggleSidebar(false)}>
+        <button className="ghost-btn" title={peek === undefined ? "Hide sidebar" : "Keep the sidebar open"} onClick={() => toggleSidebar(peek !== undefined)}>
           <Icon name="sidebar" size={16} />
         </button>
       </div>
@@ -711,7 +723,7 @@ export function TitleBar() {
   return (
     <div className="titlebar">
       {(!sidebar || compact) && (
-        <button className="ghost-btn nodrag" title="Show sidebar" onClick={() => toggleSidebar(true)}>
+        <button className="ghost-btn nodrag" title="Show sidebar" onPointerEnter={() => peekIn(140)} onPointerLeave={peekOff} onClick={() => toggleSidebar(true)}>
           <Icon name="sidebar" size={16} />
         </button>
       )}

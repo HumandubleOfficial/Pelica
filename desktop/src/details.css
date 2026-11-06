@@ -1213,3 +1213,53 @@
   justify-content: center;
   gap: 6px;
 }
+
+/* ---------- the hidden sidebar, for a moment (lib/peek.ts) ---------- */
+/* (over the title bar too, which is a drag area and would swallow the pointer) */
+.side-edge {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 59;
+  width: 10px;
+  -webkit-app-region: no-drag;
+}
+.sidebar.peek {
+  position: fixed;
+  top: 8px;
+  bottom: 8px;
+  left: 8px;
+  z-index: 60;
+  width: calc(var(--side-w) + 2px);
+  height: auto;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xl);
+  background: var(--side);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.32);
+  transform: translateX(calc(-100% - 16px));
+  visibility: hidden;
+  animation: none;
+  transition:
+    transform 0.2s var(--ease-out),
+    visibility 0s linear 0.2s;
+}
+.sidebar.peek.open {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.2s var(--ease-out);
+}
+:root:is([data-material="mica"], [data-material="acrylic"]) .sidebar.peek {
+  background: var(--side);
+}
+/* (a drag area gets no pointer or clicks) */
+.sidebar.peek.settled .side-top,
+.sidebar.peek.settled .brand {
+  -webkit-app-region: no-drag;
+}
+.sidebar.was-peek {
+  animation: none;
+}
+.no-anim .sidebar.peek {
+  transition: none;
+}
