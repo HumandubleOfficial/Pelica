@@ -95,7 +95,7 @@ function handle(req, res) {
     if (!url.pathname.startsWith("/api/"))
         return json(res, 404, { error: "not found" });
     if (!keyOk(req, url))
-        return json(res, 401, { error: "Pair again: scan the QR code in Pelica → Settings → Phone." });
+        return json(res, 401, { error: "Pair again: scan the QR code in Pelica → Settings → Devices." });
     seen.set(req.socket.remoteAddress || "?", Date.now());
     if (req.method === "GET" && url.pathname === "/api/state") {
         const rev = Number(url.searchParams.get("rev") || -1);

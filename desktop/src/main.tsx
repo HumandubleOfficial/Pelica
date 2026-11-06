@@ -2,7 +2,8 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { bridge } from "./lib/bridge";
 import { engine } from "./lib/engine";
-import { app, loadSettings, newChat, openChat, persist, refreshChats } from "./state";
+import { app, loadSettings, newChat, openChat, persist, refreshChats, toast } from "./state";
+import { shortModel } from "./components/EngineNotice";
 import { startDesktop } from "./lib/desktop";
 import { QuickAsk } from "./components/QuickAsk";
 import "./styles.css";
@@ -12,14 +13,15 @@ import "./panel.css";
 import "./rail.css";
 import "./polish.css";
 import "./settings.css";
+import "./details.css";
 import "./motion.css";
 import { checkWhatsNew } from "./components/WhatsNew";
 import { checkForUpdates } from "./components/Updates";
 import { startScheduler } from "./agent/tasks";
 import { startPhone } from "./lib/phone";
-import { startSegs } from "./lib/segs";
 import { loadAccount } from "./components/Account";
 import { checkSignUp } from "./components/SignUp";
+import { checkSetup } from "./components/Setup";
 import "highlight.js/styles/github-dark.css";
 
 // the store (and chat saving), for looking at the app from DevTools and tests
@@ -42,10 +44,16 @@ setTimeout(() => document.documentElement.classList.add("booted"), 1200);
 
 // the engine's status: often while loading, now and then otherwise
 let lastPath = "";
+let loadingSince = 0;
 async function poll() {
   try {
     const st = await engine.status();
     app.set({ status: st });
+    if (st.state === "loading") loadingSince ||= Date.now();
+    else {
+      if (st.state === "ready" && loadingSince && Date.now() - loadingSince > 4000) toast(`${shortModel(st.model)} is ready.`);
+      loadingSince = 0;
+    }
     if (st.state === "ready" && st.path !== lastPath) {
       lastPath = st.path || "";
       app.set({ context: null });
@@ -79,6 +87,7 @@ const quick = location.hash === "#quick";
   }
   if (bridge) {
     loadAccount().then(checkSignUp);
+    checkSetup();
     bridge.account.onChanged(loadAccount);
     bridge.settings.onPushed((patch) => app.set({ settings: { ...app.get().settings, ...patch } }));
     bridge.account.onSynced(async (c) => {
@@ -96,6 +105,5 @@ const quick = location.hash === "#quick";
   startDesktop();
   startScheduler();
   startPhone();
-  startSegs();
   createRoot(document.getElementById("root")!).render(<App />);
 })();

@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld("pelica", {
   lib: { search: call("lib:search"), files: call("lib:files"), download: call("lib:download"), downloads: call("lib:downloads"), cancel: call("lib:cancel"), pause: call("lib:pause"), resume: call("lib:resume"), uninstall: call("lib:uninstall"), repack: call("lib:repack"), repacks: call("lib:repacks"), repackStop: call("lib:repackStop"), onRepack: on("lib:repack"), pickDir: call("lib:pickDir"), hardware: call("lib:hardware"), drives: call("lib:drives"), space: call("lib:space"), move: call("lib:move"), moves: call("lib:moves"), moveStop: call("lib:moveStop"), onMove: on("lib:move"), onProgress: on("lib:progress") },
   phone: { status: call("phone:status"), push: call("phone:push"), newKey: call("phone:newKey"), onCmd: on("phone:cmd") },
   engine: { log: call("engine:log"), restart: call("engine:restart"), api: call("api:status") },
+  restore: { info: call("restore:info"), undo: call("restore:undo"), redo: call("restore:redo") },
   docs: { index: call("docs:index"), info: call("docs:info"), search: call("docs:search"), forget: call("docs:forget"), onProgress: on("docs:progress") },
   media: { ocr: call("media:ocr"), dictateStart: call("media:dictateStart"), dictateStop: call("media:dictateStop"), onDictate: on("media:dictate") },
   app: { info: call("app:info"), busy: call("app:busy"), notify: call("app:notify"), hotkey: call("app:hotkey"), login: call("app:login"), onAction: on("app:action") },

@@ -26,7 +26,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: var(--r-lg);
 }
 /* Claude's light settings: a white page beside a cream nav */
 :root[data-theme="light"] .modal.settings {
@@ -64,7 +64,7 @@
   height: 32px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  border-radius: var(--r);
   color: var(--text-2);
 }
 .set-top .ghost-btn:hover {
@@ -95,7 +95,7 @@
   margin: 0 14px 6px 2px;
   padding: 0 10px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--r);
   border: 1px solid var(--set-search-line);
   background: var(--set-search);
   color: var(--muted);
@@ -131,7 +131,7 @@
   width: 100%;
   padding: 6px 8px;
   margin: 1px 0;
-  border-radius: 8px;
+  border-radius: var(--r);
   font-size: 0.95em;
   color: var(--text);
   font-weight: 400;
@@ -259,7 +259,7 @@
 .settings .toggle {
   width: 36px;
   height: 20px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
 }
 .settings .toggle::after {
   width: 14px;
@@ -268,28 +268,28 @@
 .settings .toggle.on::after {
   transform: translateX(16px);
 }
-/* choices: a flat track, the chosen one a lighter chip with a fine edge (it slides) */
+/* choices: a flat track, the chosen one a plain lighter box */
 .settings .seg {
   --seg-chip: var(--set-chip);
-  --seg-chip-line: var(--set-chip-line);
+  --seg-chip-line: transparent;
   --seg-chip-shadow: none;
   background: var(--set-field);
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--r-md);
   padding: 2px;
   gap: 0;
 }
 .settings .seg button {
   padding: 5px 13px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: var(--r);
   color: var(--set-title);
   font-size: 0.92em;
   font-weight: 500;
 }
 .settings .seg button.sel {
   background: var(--set-chip);
-  border-color: var(--set-chip-line);
+  border-color: transparent;
   box-shadow: none;
 }
 :root[data-theme="light"] .settings .seg {
@@ -303,7 +303,7 @@
 .settings .text-input {
   background: var(--set-field);
   border: 1px solid var(--set-field-line);
-  border-radius: 8px;
+  border-radius: var(--r);
   padding: 7px 11px;
   color: var(--set-title);
 }
@@ -332,12 +332,12 @@
   gap: 7px;
   padding: 0;
   text-align: left;
-  border-radius: 10px;
+  border-radius: var(--r-md);
 }
 .theme-mini {
   display: flex;
   height: 64px;
-  border-radius: 9px;
+  border-radius: var(--r-md);
   overflow: hidden;
   border: 1px solid var(--set-line);
   outline: 2px solid transparent;
@@ -395,7 +395,7 @@
 }
 .settings .set-row.code-preview .diff {
   border: 1px solid var(--set-line);
-  border-radius: 9px;
+  border-radius: var(--r-md);
 }
 
 /* permissions */
@@ -446,7 +446,7 @@
 .settings .log-pre {
   margin-top: 10px;
   border: 1px solid var(--set-line);
-  border-radius: 10px;
+  border-radius: var(--r-md);
 }
 
 /* devices */
@@ -511,7 +511,7 @@
   padding: 16px;
   margin: 4px 0 18px;
   border: 1px solid var(--set-line);
-  border-radius: 12px;
+  border-radius: var(--r-lg);
   background: var(--set-field);
 }
 .acct-card.signed-out {
@@ -569,7 +569,7 @@
   justify-content: center;
   gap: 10px;
   padding: 11px 16px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   font-weight: 500;
 }
 .signup-note {
@@ -580,7 +580,7 @@
   margin-top: 6px;
   padding: 7px 14px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r);
   background: none;
   color: var(--text);
   font: inherit;
@@ -609,7 +609,7 @@
 .acct-steps code {
   font-size: 0.9em;
   padding: 1px 5px;
-  border-radius: 5px;
+  border-radius: var(--r-sm);
   background: var(--set-field);
 }
 .settings .text-input.acct-field:not(.wide):not(.narrow) {

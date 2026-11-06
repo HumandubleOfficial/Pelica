@@ -44,7 +44,15 @@ export function MemoryList() {
           </div>
         ),
       )}
-      {!list.length && <div className="muted small">Nothing yet. Tell Pelica “remember that…” in any chat, or add something here.</div>}
+      {!list.length && (
+        <div className="empty-state">
+          <span className="empty-icon">
+            <Icon name="brain" size={20} />
+          </span>
+          <b>Nothing remembered yet</b>
+          <span className="muted small">Say “remember that…” in any chat, or add something here. Pelica sees these in every chat.</span>
+        </div>
+      )}
       <div className="memory-add">
         <input className="text-input" value={add} placeholder="Add something to remember, e.g. “I live in Lisbon”" onChange={(e) => setAdd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addOne()} />
         <button className="btn small" disabled={!add.trim()} onClick={addOne}>

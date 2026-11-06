@@ -50,6 +50,8 @@ export interface ToolUI {
   running?: boolean;
   /** a command's few words on what it does (the row shows them) */
   about?: string;
+  /** the restore point that can undo this change */
+  undo?: string;
   /** GitHub safety check of the repositories it fetches or reads */
   safety?: { repo: string; verdict: "ok" | "caution" | "risky"; reasons: string[] }[];
 }
@@ -94,10 +96,13 @@ export interface SpeedParts {
 }
 
 export type Msg =
-  | { id: string; role: "user"; content: string; ts: number; summary?: boolean; images?: Photo[] }
+  // tails: what came after this message, one list per Retry (tailAt is the
+  // one showing, and its own list is empty: it's in messages)
+  | { id: string; role: "user"; content: string; ts: number; summary?: boolean; images?: Photo[]; tails?: Msg[][]; tailAt?: number }
   | { id: string; role: "assistant"; content: string; reasoning?: string; tool_calls?: WireCall[]; stats?: Stats; model?: string; effort?: string; ts: number; ack?: boolean }
   | { id: string; role: "tool"; tool_call_id: string; name: string; content: string; ui: ToolUI; ts: number; images?: Photo[] }
-  | { id: string; role: "event"; kind: "compact" | "cqs" | "error" | "info"; text: string; detail?: string; ts: number };
+  // forModel: put in front of your next message, so the model knows too
+  | { id: string; role: "event"; kind: "compact" | "cqs" | "error" | "info"; text: string; detail?: string; ts: number; forModel?: string };
 
 /** A photo sent with a message (downscaled, as a data: URL). */
 export interface Photo {
@@ -114,6 +119,8 @@ export interface Chat {
   folder: string | null;
   /** the project it belongs to (Settings' projects) */
   project?: string;
+  /** the user's own labels, to find it by */
+  tags?: string[];
   /** brought in from another app's export: where from, and its id there */
   imported?: { from: "chatgpt" | "claude"; id: string };
   messages: Msg[];
@@ -236,6 +243,17 @@ export interface Settings {
   syncOn: boolean;
   /** the first start's "Sign up or log in" was answered (or the user was already signed in) */
   accountAsked: boolean;
+  /** first-run setup: seen, or not needed */
+  setupDone: boolean;
+  /** a tag's own colour, when it isn't the one from its name */
+  tagColors: Record<string, string>;
+  /** the pinned chats in the order they were dragged into */
+  pinOrder: string[];
+  /** the voice replies are read in ("" = Windows' default), and how fast */
+  voiceName: string;
+  voiceRate: number;
+  /** voice mode keeps listening while Pelica talks, so talking stops it */
+  voiceTalkOver: boolean;
   /** where to look for new versions (a latest.json: web address or path; empty: Pelica's GitHub releases) */
   updateFeed: string;
   /** when to check for a new version by itself */
@@ -321,6 +339,12 @@ export const DEFAULTS: Settings = {
   googleClientSecret: "",
   syncOn: true,
   accountAsked: false,
+  setupDone: false,
+  tagColors: {},
+  pinOrder: [],
+  voiceName: "",
+  voiceRate: 1,
+  voiceTalkOver: false,
   updateFeed: "",
   updateCheck: "start",
   updatePreview: false,
@@ -395,8 +419,14 @@ export interface AppState {
   account: import("./lib/bridge").AccountStatus | null;
   /** the first start's "Sign up or log in" (SignUp.tsx) */
   signUp: boolean;
+  /** the first-run setup is open */
+  setup: boolean;
+  /** chats ticked in the sidebar (null: not selecting) */
+  picked: string[] | null;
+  /** the tag the sidebar's list is narrowed to */
+  sideTag: string | null;
   /** voice mode (Voice.tsx): what it's doing, and what it last heard */
-  voice: { phase: "starting" | "listening" | "thinking" | "speaking"; heard: string } | null;
+  voice: { phase: "starting" | "listening" | "thinking" | "speaking"; heard: string; line: string; full: boolean } | null;
   context: ContextInfo | null;
   mcp: McpServer[];
   sidebar: boolean;
@@ -463,6 +493,9 @@ export const app = createStore<AppState>({
   approval: null,
   account: null,
   signUp: false,
+  setup: false,
+  picked: null,
+  sideTag: null,
   voice: null,
   context: null,
   mcp: [],
@@ -517,13 +550,46 @@ export function toast(msg: string, action?: { label: string; run: () => void }) 
 const memChats = new Map<string, Chat>();
 
 export async function refreshChats() {
-  const chats = bridge ? await bridge.chats.list().catch(() => []) : [...memChats.values()].map((c) => ({ id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder, project: c.project }));
+  const chats = bridge ? await bridge.chats.list().catch(() => []) : [...memChats.values()].map((c) => ({ id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder, project: c.project, tags: c.tags }));
   app.set({ chats: chats.sort((a, b) => b.updated - a.updated) });
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Replaces the open chat (and saves it, debounced). */
+/** Retry: the reply after your last message stays as a version, and the next
+ *  one is a new version. False if there's no message to answer again. */
+export function newVersion(): boolean {
+  const c = app.get().chat;
+  const i = c ? c.messages.map((m) => m.role).lastIndexOf("user") : -1;
+  if (i < 0) return false;
+  updateChat((x) => {
+    const u = x.messages[i] as Extract<Msg, { role: "user" }>;
+    const tail = x.messages.slice(i + 1);
+    const head = x.messages.slice(0, i);
+    // (no reply came, so there's nothing to keep: this try is used again)
+    if (!tail.some((m) => m.role === "assistant")) return { ...x, messages: [...head, u] };
+    const tails = [...(u.tails || [[]])];
+    tails[u.tailAt ?? 0] = tail;
+    return { ...x, messages: [...head, { ...u, tails: [...tails, []], tailAt: tails.length }] };
+  });
+  return true;
+}
+
+/** Shows another version of what came after message `id`. */
+export function showVersion(id: string, to: number) {
+  updateChat((x) => {
+    const i = x.messages.findIndex((m) => m.id === id);
+    const u = x.messages[i];
+    if (u?.role !== "user" || !u.tails?.[to]) return x;
+    const tails = [...u.tails];
+    const next = tails[to];
+    tails[to] = [];
+    tails[u.tailAt ?? 0] = x.messages.slice(i + 1);
+    return { ...x, messages: [...x.messages.slice(0, i), { ...u, tails, tailAt: to }, ...next] };
+  });
+}
+
 export function updateChat(fn: (c: Chat) => Chat) {
   const c = app.get().chat;
   if (!c) return;
@@ -543,7 +609,7 @@ export async function persist(c: Chat) {
   if (!c.messages.length && !c.archive?.length) return;
   if (bridge) await bridge.chats.save(c).catch(() => {});
   else memChats.set(c.id, c);
-  const meta = { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder, project: c.project };
+  const meta = { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder, project: c.project, tags: c.tags };
   app.set((s) => ({ chats: [meta, ...s.chats.filter((x) => x.id !== c.id)].sort((a, b) => b.updated - a.updated) }));
 }
 
@@ -638,7 +704,7 @@ export async function deleteProject(id: string) {
 /** Opens Brain, if it's turned on in Settings → Experimental. */
 export function openBrain() {
   if (app.get().settings.brainMenu) return app.set({ view: "brain", settingsOpen: false });
-  toast("Brain is experimental: turn it on in Settings → Experimental.", { label: "Open", run: () => app.set({ settingsOpen: true, settingsTab: "Experimental" }) });
+  toast("Brain is experimental: turn it on in Settings → Advanced.", { label: "Open", run: () => app.set({ settingsOpen: true, settingsTab: "Experimental" }) });
 }
 
 export function openProject(id: string) {
@@ -661,6 +727,27 @@ export async function deleteChat(id: string) {
         // (back to it if it was open and nothing else has been started since)
         const c = app.get().chat;
         if (open && c && !c.messages.length) app.set({ chat: was, view: "chat" });
+      },
+    });
+}
+
+/** Deletes several chats, with one Undo (the files go to the Recycle Bin). */
+export async function deleteChats(ids: string[]) {
+  const mine = ids.filter((id) => live?.id !== id);
+  if (mine.length < ids.length) toast("Pelica is still replying in one of those chats: it was left alone.");
+  const was: Chat[] = [];
+  for (const id of mine) {
+    const c = app.get().chat?.id === id ? app.get().chat : bridge ? await bridge.chats.load(id).catch(() => null) : memChats.get(id) || null;
+    if (c) was.push(c);
+    if (bridge) await bridge.chats.remove(id).catch(() => {});
+    memChats.delete(id);
+  }
+  app.set((s) => ({ chats: s.chats.filter((c) => !mine.includes(c.id)), chat: s.chat && mine.includes(s.chat.id) ? newChat(null) : s.chat }));
+  if (was.length)
+    toast(`Deleted ${was.length} ${was.length === 1 ? "chat" : "chats"}`, {
+      label: "Undo",
+      run: async () => {
+        for (const c of was) await persist(c);
       },
     });
 }

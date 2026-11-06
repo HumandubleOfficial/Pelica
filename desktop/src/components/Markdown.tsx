@@ -19,6 +19,17 @@ renderer.link = function ({ href, title, tokens }: Tokens.Link) {
   const inner = this.parser.parseInline(tokens);
   return ok ? `<a href="${esc(href)}"${title ? ` title="${esc(title)}"` : ""}>${inner}</a>` : inner;
 };
+// [1] in a reply that has passages to cite becomes a button (Citations.tsx)
+let citeNums: Set<number> | null = null;
+const plainText = Renderer.prototype.text;
+renderer.text = function (t: Tokens.Text | Tokens.Escape) {
+  const out = plainText.call(this, t);
+  if (!citeNums || ("tokens" in t && t.tokens)) return out;
+  return out.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (all: string, list: string) => {
+    const nums = list.split(",").map(Number);
+    return nums.every((n) => citeNums!.has(n)) ? nums.map((n) => `<button class="cite" data-cite="${n}">${n}</button>`).join("") : all;
+  });
+};
 renderer.image = ({ href, text }: Tokens.Image) => (/^https:/i.test(href || "") ? `<img src="${esc(href)}" alt="${esc(text || "")}" loading="lazy">` : esc(text || ""));
 
 const SHELL = new Set(["bash", "sh", "shell", "zsh", "cmd", "bat", "batch", "powershell", "ps", "ps1", "pwsh", "console", "terminal"]);
@@ -166,9 +177,11 @@ function useFadeIn(ref: React.RefObject<HTMLDivElement | null>, on: boolean, htm
 // A block re-renders only when its source changes: while a reply streams,
 // the finished blocks above the last one are left alone.
 const Block = memo(
-  function Block({ tok, streaming, quiet }: { tok: Token; streaming: boolean; quiet?: boolean }) {
+  function Block({ tok, streaming, quiet, cites }: { tok: Token; streaming: boolean; quiet?: boolean; cites?: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  citeNums = cites ? new Set(cites.split(",").map(Number)) : null;
   const html = tok.type === "code" ? "" : Parser.parse([tok], { renderer, gfm: true, breaks: false });
+  citeNums = null;
   useFadeIn(ref, streaming, html);
   if (tok.type === "code") {
     const t = tok as Tokens.Code;
@@ -178,11 +191,12 @@ const Block = memo(
   }
   return <div ref={ref} className="md-block" dangerouslySetInnerHTML={{ __html: html }} />;
   },
-  (a, b) => a.streaming === b.streaming && a.quiet === b.quiet && a.tok.type === b.tok.type && a.tok.raw === b.tok.raw,
+  (a, b) => a.streaming === b.streaming && a.quiet === b.quiet && a.cites === b.cites && a.tok.type === b.tok.type && a.tok.raw === b.tok.raw,
 );
 
-/** `quiet`: no run boxes for shell blocks (thinking, where commands are drafts). */
-export const Markdown = memo(function Markdown({ text, streaming = false, quiet = false, className = "" }: { text: string; streaming?: boolean; quiet?: boolean; className?: string }) {
+/** `quiet`: no run boxes for shell blocks (thinking, where commands are drafts).
+ *  `cites`: the passage numbers this text can cite, "1,2,3". */
+export const Markdown = memo(function Markdown({ text, streaming = false, quiet = false, className = "", cites }: { text: string; streaming?: boolean; quiet?: boolean; className?: string; cites?: string }) {
   const toks = useMemo(() => {
     try {
       return Lexer.lex(streaming ? closeOpen(text) : text, { gfm: true });
@@ -202,7 +216,7 @@ export const Markdown = memo(function Markdown({ text, streaming = false, quiet 
         }
       }}
     >
-      {toks.map((t, i) => (t.type === "space" ? null : <Block key={i} tok={t} streaming={streaming && i === toks.length - 1} quiet={quiet} />))}
+      {toks.map((t, i) => (t.type === "space" ? null : <Block key={i} tok={t} streaming={streaming && i === toks.length - 1} quiet={quiet} cites={cites} />))}
     </div>
   );
 });

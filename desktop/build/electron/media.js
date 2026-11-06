@@ -78,10 +78,24 @@ if (-not $ri) { $ri = $all[0] }
 $r = New-Object System.Speech.Recognition.SpeechRecognitionEngine($ri)
 $r.LoadGrammar((New-Object System.Speech.Recognition.DictationGrammar))
 $r.SetInputToDefaultAudioDevice()
+$null = Register-ObjectEvent -InputObject $r -EventName SpeechRecognized -SourceIdentifier said
+$null = Register-ObjectEvent -InputObject $r -EventName SpeechHypothesized -SourceIdentifier saying
+$r.RecognizeAsync([System.Speech.Recognition.RecognizeMode]::Multiple)
 [Console]::Out.WriteLine('READY ' + $ri.Culture.Name); [Console]::Out.Flush()
+$last = -1
 while ($true) {
-  $res = $r.Recognize([TimeSpan]::FromSeconds(20))
-  if ($res -and $res.Text) { [Console]::Out.WriteLine('TEXT ' + $res.Text); [Console]::Out.Flush() }
+  foreach ($e in @(Get-Event -ErrorAction SilentlyContinue)) {
+    $text = $e.SourceEventArgs.Result.Text
+    if ($text) {
+      if ($e.SourceIdentifier -eq 'said') { [Console]::Out.WriteLine('TEXT ' + $text) }
+      elseif ($e.SourceIdentifier -eq 'saying') { [Console]::Out.WriteLine('SAYING ' + $text) }
+    }
+    Remove-Event -EventIdentifier $e.EventIdentifier
+  }
+  $lvl = $r.AudioLevel
+  if ($lvl -ne $last) { [Console]::Out.WriteLine('LEVEL ' + $lvl); $last = $lvl }
+  [Console]::Out.Flush()
+  Start-Sleep -Milliseconds 70
 }
 `;
 let rec = null;
@@ -105,6 +119,10 @@ function dictateStart(emit) {
                 emit({ kind: "ready", lang: line.slice(6) });
             else if (line.startsWith("TEXT "))
                 emit({ kind: "text", text: line.slice(5) });
+            else if (line.startsWith("SAYING "))
+                emit({ kind: "saying", text: line.slice(7) });
+            else if (line.startsWith("LEVEL "))
+                emit({ kind: "level", level: +line.slice(6) });
         }
     });
     p.stderr.on("data", (d) => (err += d));

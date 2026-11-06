@@ -1,5 +1,38 @@
 [
   {
+    "version": "1.3.0",
+    "date": "2026-11-06",
+    "title": "Undo what Pelica changed, keep every Retry, and a full voice mode",
+    "notes": [
+      "Undo what Pelica changed: a reply that changed files now has an Undo these changes button, and Put back if you change your mind. Your own newer edits are never replaced without asking, and files Pelica created go to the Recycle Bin.",
+      "Undo covers the files Pelica wrote, edited or deleted itself. Commands it ran are not undone (the reply says so when it ran any), and files over 50 MB are too big to keep a copy of. Restore points last 30 days.",
+      "Retry keeps every reply: flip between them with the arrows under the reply (2 of 3). Flipping changes the chat, not your files.",
+      "First start: with no model on this PC, Pelica checks your GPU, RAM and free space, recommends one model, downloads it and loads it.",
+      "Citations: [1] in a reply is now a button. Hover it to read the passage, click it to open the passage under the reply, with a button to open the file.",
+      "Voice mode opens full-window, with a big animated circle that follows your microphone and the words as they're read. Fold it down to a bar to see the chat.",
+      "Pick the voice and speed for voice mode and Read aloud, in voice mode or Settings → Capabilities.",
+      "Talk over Pelica: a new option that keeps the microphone open while it talks, so just speaking stops it. Use headphones.",
+      "Fixed: stopping Pelica in voice mode could carry on reading the rest of the old reply.",
+      "Tags: give chats your own coloured tags from their menu, and click a tag in the sidebar to show only those chats.",
+      "Select chats: choose Select chats in a chat's menu, or Ctrl-click (Shift-click for a range), to pin, tag or delete many at once. Deleting has an Undo.",
+      "Settings is tidier: 13 sections instead of 18, and rows that don't apply to your models stay hidden. Context and CQS moved into Capabilities, Phone into Devices, Updates into About, and Experimental and Developer into Advanced.",
+      "One set of corner sizes across the whole app, in place of more than a dozen slightly different ones.",
+      "Calmer buttons: nothing shrinks, springs or slides between buttons any more. Hovering or choosing one just fades in a plain grey box.",
+      "Dropdowns are now Pelica's own menus instead of the plain Windows ones, and every menu works with the arrow keys.",
+      "Loading a model shows a progress bar over the message box with the time left, and says when it's ready.",
+      "If the engine stops or a model won't load, a note over the message box says so, with a Restart or Try again button. A failed download has a Try again button too.",
+      "Chats are grouped by date: Today, Yesterday, Last 7 days, Last 30 days and Older.",
+      "Right-click a tag to rename it or pick its colour. Drag a chat onto a tag to tag it, or onto a project on the Projects page to move it there.",
+      "Drag pinned chats into your own order, or drag a chat onto a pinned one to pin it.",
+      "Long chats get a mark for each of your messages along the right side: point at it for the list, click one to go there. The button back to the latest message now says Latest.",
+      "Shorter Settings pages: setup steps, the engine log and older release notes stay folded until you open them.",
+      "Better first screens for empty Projects and Memory pages.",
+      "Moving by keyboard shows where you are, the arrow keys move through chats and choices, and setup and voice mode fit small windows.",
+      "Small details: fields warm up under the pointer, table rows highlight, tooltips fade in, and Copy answers with a check.",
+      "Light mode: fixed the outline around run boxes, the avatar with no background, and the Models search box. Code box headers no longer use the reply's serif font."
+    ]
+  },
+  {
     "version": "1.2.1",
     "date": "2026-11-02",
     "title": "Signing in opens a small window",

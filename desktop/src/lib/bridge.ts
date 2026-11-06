@@ -33,13 +33,13 @@ export interface Bridge {
   fs: {
     list(root: string, rel: string, depth: number): Promise<string>;
     read(root: string, rel: string, offset: number, limit: number): Promise<{ text: string; lines: number; path: string }>;
-    write(root: string, rel: string, content: string): Promise<{ path: string; before: string | null; after: string }>;
-    edit(root: string, rel: string, o: string, n: string, all: boolean): Promise<{ path: string; before: string; after: string; count: number }>;
+    write(root: string, rel: string, content: string, turn?: string): Promise<{ path: string; before: string | null; after: string }>;
+    edit(root: string, rel: string, o: string, n: string, all: boolean, turn?: string): Promise<{ path: string; before: string; after: string; count: number }>;
     search(root: string, pattern: string, rel: string, glob?: string): Promise<string>;
     find(root: string, glob: string): Promise<string[]>;
     raw(root: string, rel: string): Promise<string>;
     notes(root: string): Promise<string>;
-    trash(root: string, rel: string): Promise<void>;
+    trash(root: string, rel: string, turn?: string): Promise<void>;
     reveal(root: string, rel: string): Promise<void>;
   };
   cmd: { run(id: string, root: string, command: string, timeoutMs: number, background: boolean): Promise<RunResult>; kill(id: string): Promise<void>; onData(fn: (v: { id: string; data: string }) => void): () => void; onExit(fn: (v: { id: string; code: number | null }) => void): () => void };
@@ -105,12 +105,17 @@ export interface Bridge {
   quick: { submit(text: string, reply?: string): Promise<void>; hide(): Promise<void>; resize(h: number): Promise<void>; clip(): Promise<string>; onShown(fn: () => void): () => void };
   sys: { info(): Promise<Record<string, string>>; open(root: string, rel: string): Promise<void>; clipRead(): Promise<string>; clipWrite(t: string): Promise<void>; external(url: string): Promise<void>; saveAs(name: string, text: string, dir?: string): Promise<string | null>; reveal(path: string): Promise<void>; awake(on: boolean): Promise<boolean> };
   /** a project's documents (electron/docs.ts) */
+  restore: {
+    info(turns: string[]): Promise<{ files: string[]; cant: string[]; undone: boolean }>;
+    undo(turns: string[], force?: boolean): Promise<RestoreResult>;
+    redo(turns: string[], force?: boolean): Promise<RestoreResult>;
+  };
   docs: { index(folder: string): Promise<DocsInfo>; info(folder: string): Promise<DocsInfo>; search(folders: string[], query: string, k?: number): Promise<DocPassage[]>; forget(folder: string): Promise<void>; onProgress(fn: (p: { folder: string; done: number; total: number; file: string }) => void): () => void };
   media: { ocr(dataUrl: string): Promise<string>; dictateStart(): Promise<void>; dictateStop(): Promise<void>; onDictate(fn: (e: DictateEvent) => void): () => void };
   pathFor(f: File): string;
 }
 
-export type DictateEvent = { kind: "ready"; lang: string } | { kind: "text"; text: string } | { kind: "error"; error: string } | { kind: "end" };
+export type DictateEvent = { kind: "ready"; lang: string } | { kind: "text"; text: string } | { kind: "saying"; text: string } | { kind: "level"; level: number } | { kind: "error"; error: string } | { kind: "end" };
 
 export type Material = "none" | "mica" | "acrylic" | "tabbed";
 
@@ -124,6 +129,7 @@ export interface ChatMeta {
   pinned: boolean;
   folder: string | null;
   project?: string;
+  tags?: string[];
 }
 
 export interface McpServer {
@@ -252,6 +258,12 @@ export interface PhoneCmd {
 
 /** Settings → Account: the Google account, and the sync through its Drive. */
 /** A folder of documents a project searches: how much of it is read. */
+export interface RestoreResult {
+  done: string[];
+  changed: string[];
+  failed: string[];
+}
+
 export interface DocsInfo {
   folder: string;
   /** when it was last read (ms; 0: never) */

@@ -19,7 +19,7 @@
 
 <p align="center">
   <a href="https://github.com/HumandubleOfficial/Pelica/releases/latest"><b>Download for Windows</b></a> ·
-  <a href="https://humandubleofficial.github.io/Pelica/">Website</a> ·
+  <a href="https://pelica.scrper.co.uk/">Website</a> ·
   <a href="docs/ENGINE.md">How the engine works</a> ·
   <a href="https://github.com/HumandubleOfficial/Pelica/issues">Report a problem</a>
 </p>
@@ -56,7 +56,7 @@ Prompt processing runs on the tensor cores: 1,773 tok/s for gpt-oss-20b, 2,155 t
 
 ## Getting started
 
-1. **[Download the installer](https://github.com/HumandubleOfficial/Pelica/releases/latest)** and run it. Pelica updates itself from then on (Settings → Updates).
+1. **[Download the installer](https://github.com/HumandubleOfficial/Pelica/releases/latest)** and run it. Pelica updates itself from then on (Settings → About).
 2. **Pick a model.** Open **Models** in the sidebar. It suggests models that fit your PC and searches Hugging Face for GGUF files, showing which ones will run before you download.
 3. **Chat.** To let it work on files, choose a folder in the message box. It shows every change and asks before running a command.
 
@@ -147,7 +147,7 @@ Bug reports and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIB
 
 ## Privacy
 
-Pelica has no server and collects nothing. It only goes online when you use a feature that needs it: downloading models, web search, update checks and connectors. See the [privacy policy](https://humandubleofficial.github.io/Pelica/privacy.html).
+Pelica has no server and collects nothing. It only goes online when you use a feature that needs it: downloading models, web search, update checks and connectors. See the [privacy policy](https://pelica.scrper.co.uk/privacy.html).
 
 ## License
 

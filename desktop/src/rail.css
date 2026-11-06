@@ -13,7 +13,7 @@
   display: inline-block;
   width: 22px;
   height: 5px;
-  border-radius: 3px;
+  border-radius: var(--r-xs);
   overflow: hidden;
   background: var(--track, var(--panel-2));
 }
@@ -21,7 +21,7 @@
   display: block;
   height: 100%;
   min-width: 3px;
-  border-radius: 3px;
+  border-radius: var(--r-xs);
   background: var(--accent);
 }
 .sp-row.sp-todo {
@@ -50,7 +50,7 @@
   padding: 5px;
   background: var(--raised);
   border: 1px solid var(--line-2);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   box-shadow: var(--shadow);
 }
 .ctx-title {
@@ -64,7 +64,7 @@
   gap: 9px;
   width: 100%;
   padding: 5px 8px;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   font-size: 0.88em;
   text-align: left;
   color: var(--text);
@@ -78,7 +78,7 @@
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   border: 1.5px solid var(--line-2);
 }
 .ctx-check.on {
@@ -148,7 +148,7 @@
   align-items: center;
   gap: 6px;
   padding: 5px 9px;
-  border-radius: 7px;
+  border-radius: var(--r);
   font-size: 0.82em;
   color: var(--muted);
   white-space: nowrap;
@@ -255,7 +255,7 @@
 .chg-file {
   margin-bottom: 10px;
   border: 1px solid var(--card-line, var(--line));
-  border-radius: 10px;
+  border-radius: var(--r-md);
   overflow: hidden;
 }
 .chg-head {
@@ -298,7 +298,7 @@
   height: 28px;
   padding: 0 10px;
   margin: 0 4px;
-  border-radius: 7px;
+  border-radius: var(--r);
   border: 1px solid var(--line);
   background: var(--input-bg, var(--panel));
   color: var(--text);
@@ -352,7 +352,7 @@ body.resizing iframe {
   gap: 6px;
   height: 28px;
   padding-right: 4px;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   font-size: 0.85em;
   cursor: pointer;
 }
@@ -392,7 +392,7 @@ body.resizing iframe {
   width: max-content;
   max-width: 300px;
   padding: 4px 9px;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   border: 1px solid var(--line-2);
   background: var(--raised);
   color: var(--text);
@@ -417,7 +417,7 @@ body.resizing iframe {
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   color: var(--muted);
   opacity: 0;
   cursor: grab;
@@ -506,7 +506,7 @@ body.dragging-sec * {
 .tool-group {
   margin: 8px 0;
   border: 1px solid var(--card-line, var(--line));
-  border-radius: 12px;
+  border-radius: var(--r-lg);
   overflow: hidden;
 }
 .tool-group .tool,
@@ -572,7 +572,7 @@ body.dragging-sec * {
 }
 .tool-group .tool-pre {
   border: 1px solid var(--card-line, var(--line));
-  border-radius: 8px;
+  border-radius: var(--r);
 }
 .tool-group .sources {
   padding: 0;
@@ -591,7 +591,7 @@ body.dragging-sec * {
 }
 .tool-group .diff {
   border: 1px solid var(--card-line, var(--line));
-  border-radius: 8px;
+  border-radius: var(--r);
 }
 
 /* diffs: one gutter ("+ 12"); a new file is all green */
@@ -652,23 +652,12 @@ body.dragging-sec * {
 .plus-btn,
 .send-btn,
 .composer-row .chip.mic {
-  border-radius: 10px;
+  border-radius: var(--r-md);
 }
 .plus-btn svg,
 .plus-btn.open svg {
   transform: none;
   transition: none;
-}
-.btn:active:not(:disabled),
-.chip:active:not(:disabled),
-.idea:active,
-.nav-item:active,
-.attach-chip:active,
-.send-btn:active:not(:disabled),
-.send:active:not(:disabled),
-.nmap-btn:active:not(:disabled),
-.play:hover:not(:disabled) {
-  transform: none;
 }
 
 /* ---------- the line under the title bar (over the chat side only) ---------- */
@@ -761,7 +750,7 @@ body.dragging-sec * {
   max-height: 340px;
   overflow: auto;
   border: 1px solid var(--card-line, var(--line));
-  border-radius: 8px;
+  border-radius: var(--r);
   background: var(--code-bg);
   font-family: var(--mono);
   font-size: 0.82em;
@@ -786,11 +775,11 @@ body.dragging-sec * {
 /* the words that changed in an edited line */
 .diff-line.del .diff-word {
   background: rgba(248, 81, 73, 0.38);
-  border-radius: 3px;
+  border-radius: var(--r-xs);
 }
 .diff-line.add .diff-word {
   background: rgba(46, 160, 67, 0.45);
-  border-radius: 3px;
+  border-radius: var(--r-xs);
 }
 
 /* ---------- code: the chosen font and Claude Dark's colors ---------- */
@@ -909,6 +898,6 @@ kbd,
 }
 .code-preview .diff {
   border: 1px solid var(--card-line, var(--line));
-  border-radius: 8px;
+  border-radius: var(--r);
   max-height: none;
 }

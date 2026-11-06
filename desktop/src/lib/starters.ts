@@ -79,6 +79,16 @@ export function bestFor(vram: number, ram: number): Starter | undefined {
   return STARTERS.find((s) => s.id !== "qwen3.8-flash" && !s.wont(vram, ram)) || STARTERS.find((s) => !s.wont(vram, ram));
 }
 
+/** Starts downloading a starter, with its real sizes from Hugging Face. */
+export async function getStarter(m: Starter, going: Download[]): Promise<string | null> {
+  const listed = await bridge!.lib.files(m.repo).catch(() => [] as { path: string; size: number }[]);
+  return getFiles(
+    m.repo,
+    m.files.map((f) => ({ path: f, size: listed.find((x) => x.path === f)?.size || m.size / m.files.length })),
+    going,
+  );
+}
+
 /** Starts downloading `files` (with their sizes) when the download folder's
  *  drive has room for them and the downloads already going; else says why.
  *  Returns an error message, or null when it started. */

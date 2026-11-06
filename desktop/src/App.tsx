@@ -8,6 +8,8 @@ import { Sidebar, TitleBar } from "./components/Sidebar";
 import { SettingsModal } from "./components/Settings";
 import { WhatsNew } from "./components/WhatsNew";
 import { SignUp } from "./components/SignUp";
+import { VoiceFull } from "./components/Voice";
+import { Setup } from "./components/Setup";
 import { TasksModal } from "./components/Tasks";
 import { Shortcuts } from "./components/Shortcuts";
 import { PromptEditor } from "./components/Prompts";
@@ -141,7 +143,7 @@ function Welcome() {
         <b>Welcome to Pelica</b>
         <span className="muted small">To chat, Pelica needs a model on this PC. The model library suggests the ones that run well on this PC, and finds more on Hugging Face.</span>
       </div>
-      <button className="btn primary small" onClick={() => app.set({ view: "library", libTab: "discover" })}>
+      <button className="btn primary small" onClick={() => app.set({ setup: true })}>
         <Icon name="library" size={14} /> Get a model
       </button>
     </div>
@@ -175,15 +177,6 @@ function Home() {
             </button>
           ))}
         </div>
-        {st?.state === "loading" && (
-          <div className="load-note">
-            <div className="load-bar">
-              <span style={{ width: `${st.progress || 2}%` }} />
-            </div>
-            Loading {st.model}… {st.progress ? `${Math.round(st.progress)}%` : ""}
-          </div>
-        )}
-        {st?.state === "error" && <div className="err-text center">Loading failed: {st.error}</div>}
         {st?.state === "ready" && st.experts_ram ? (
           <div className="muted small center">
             {st.model}: {st.experts! - st.experts_ram} experts in VRAM, {st.experts_ram} in RAM · {Math.round((st.ctx || 0) / 1024)}K context
@@ -314,6 +307,8 @@ export function App() {
       <SettingsModal />
       <WhatsNew />
       <SignUp />
+      <VoiceFull />
+      <Setup />
       <TasksModal />
       <Shortcuts />
       <PromptEditor />

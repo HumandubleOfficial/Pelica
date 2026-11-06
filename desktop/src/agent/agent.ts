@@ -5,7 +5,7 @@
 import { bridge } from "../lib/bridge";
 import { engine, type ChatEvent, type ToolSpec, type WireCall, type WireMsg } from "../lib/engine";
 import { app, beginLive, endLive, experts, liveChat, refreshChats, toast, uid, updateChat, updateLive, type Chat, type Draft, type Msg, type Photo, type SpeedParts, type ToolUI } from "../state";
-import { runTool, toolsFor } from "./tools";
+import { runTool, toolsFor, turnNow } from "./tools";
 import { pixelsOf, preparePixels, type Pixels } from "../lib/pixels";
 import { docName, excerptsFor, projectDocs } from "../lib/docs";
 import { splitAttachments } from "../components/Attachments";
@@ -195,10 +195,18 @@ export function wire(chat: Chat, trim: boolean): WireMsg[] {
   const keepFrom = users.length >= 2 ? users[users.length - 2] : 0;
   const lastUser = users.length ? users[users.length - 1] : 0;
   const out: WireMsg[] = [];
+  // (what happened between messages that the model should know: it goes in
+  // front of your next message)
+  const told = new Map<string, string>();
+  let note = "";
+  for (const m of chat.messages) {
+    if (m.role === "event") note += m.forModel || "";
+    else if (m.role === "user" && note) told.set(m.id, note), (note = "");
+  }
   msgs.forEach((m, i) => {
     if (m.role === "user") {
       const px = m.images?.length && app.get().status?.vision ? m.images.map((x) => pixelsOf(x.data)).filter((x): x is Pixels => !!x) : [];
-      out.push({ role: "user", content: m.content, images: px.length ? px : undefined });
+      out.push({ role: "user", content: (told.get(m.id) || "") + m.content, images: px.length ? px : undefined });
     }
     else if (m.role === "assistant") {
       out.push({ role: "assistant", content: m.content, reasoning: i > lastUser ? m.reasoning : undefined, tool_calls: m.tool_calls?.length ? m.tool_calls : undefined });
@@ -510,6 +518,7 @@ export async function run(target?: Chat) {
   stopFlag = { stopped: false };
   const id = chat.id;
   let failed = false;
+  turnNow.id = uid();
   beginLive(chat);
   app.set({ running: true });
   try {
@@ -523,6 +532,7 @@ export async function run(target?: Chat) {
     failed = true;
     if (!stopFlag.stopped) pushEvent("error", String(e?.message || e));
   } finally {
+    turnNow.id = "";
     app.set({ running: false, draft: null });
     endLive();
     refreshChats();

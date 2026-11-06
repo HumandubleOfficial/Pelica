@@ -2,7 +2,7 @@
 // reply being written, live (with its speed as it goes).
 import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { run, send } from "../agent/agent";
-import { app, persist, toast, uid, updateChat, useApp, type Draft, type Msg, type Stats } from "../state";
+import { app, newVersion, persist, showVersion, toast, uid, updateChat, useApp, type Draft, type Msg, type Stats } from "../state";
 import { Icon, Orbs, TodoMark } from "./Icons";
 import { AttachChips, splitAttachments } from "./Attachments";
 import { Markdown } from "./Markdown";
@@ -10,8 +10,10 @@ import { ToolGroup } from "./ToolCard";
 import { SpeedGraph, TweenNum } from "./Speed";
 import { FindBar } from "./FindBar";
 import { editPrompt } from "./Prompts";
-import { cited, docName, excerptsOf, projectDocs, rootOf } from "../lib/docs";
-import { bridge } from "../lib/bridge";
+import { excerptsOf } from "../lib/docs";
+import { Sources, useCites } from "./Citations";
+import { tuneVoice } from "./Voice";
+import { UndoChanges } from "./Undo";
 
 /** Keeps a scroll box at its bottom as it grows, until the user scrolls up;
  *  scrolling back down to the bottom picks it up again. Content growing never
@@ -249,7 +251,7 @@ const UserMsg = memo(function UserMsg({ m }: { m: Extract<Msg, { role: "user" }>
   const { text, files } = splitAttachments(m.content, m.images);
   const found = excerptsOf(m.content).length;
   return (
-    <div className="user-row">
+    <div className="user-row" data-q={m.id}>
       <AttachChips files={files} />
       {found > 0 && (
         <div className="docs-note" title="The passages of the project's documents that match this question went along with it">
@@ -290,47 +292,37 @@ type ToolMsg = Extract<Msg, { role: "tool" }>;
 
 /** Under a reply: the passages of the project's documents it cites, each
  *  opening its file (or, citing none, the ones it was given). */
-function Sources({ src, reply }: { src: string; reply: string }) {
-  const projects = useApp((s) => s.settings.projects);
-  const chat = useApp((s) => s.chat);
-  const ex = excerptsOf(src);
-  if (!ex.length) return null;
-  const nums = cited(reply).filter((n) => ex.some((e) => e.n === n));
-  const show = nums.length ? nums.map((n) => ex.find((e) => e.n === n)!) : ex;
-  const folders = projectDocs(chat, projects);
-  return (
-    <div className="sources">
-      <span className="sources-head">{nums.length ? "Sources" : "Passages it read"}</span>
-      {show.map((e) => (
-        <button
-          key={e.n}
-          className="source-chip"
-          title={`${e.file}${e.page ? `, page ${e.page}` : ""}
-
-${e.text.slice(0, 400)}${e.text.length > 400 ? "…" : ""}`}
-          onClick={() => {
-            const root = rootOf(e.file, folders);
-            if (!root || !bridge) return toast("That folder isn't one of the project's documents any more.");
-            bridge.sys.open(root, e.file.slice(root.replace(/[\\/]+$/, "").length + 1)).catch((err) => toast(String(err?.message || err)));
-          }}
-        >
-          <b>{e.n}</b> {docName(e.file)}
-          {e.page ? <span className="muted"> · p. {e.page}</span> : null}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /** Drops the last reply (and its tool calls) and answers the last message again. */
 function retryLast() {
   const c = app.get().chat;
   if (!c) return;
   if (app.get().running) return toast("Wait for the reply to finish, or stop it first.");
-  const i = c.messages.map((m) => m.role).lastIndexOf("user");
-  if (i < 0) return;
-  updateChat((x) => ({ ...x, messages: x.messages.slice(0, i + 1) }));
-  run();
+  if (newVersion()) run();
+}
+
+interface Ver {
+  id: string;
+  at: number;
+  n: number;
+}
+
+/** ‹ 2 of 3 ›: the replies Retry kept. Files stay as they are. */
+function Versions({ v }: { v: Ver }) {
+  const busy = useApp((s) => s.running && s.liveId === s.chat?.id);
+  if (busy) return null;
+  return (
+    <span className="versions">
+      <button className="ghost-btn" title="Previous reply" aria-label="Previous reply" disabled={v.at === 0} onClick={() => showVersion(v.id, v.at - 1)}>
+        <Icon name="chevronLeft" size={14} />
+      </button>
+      <span className="versions-n">
+        {v.at + 1} of {v.n}
+      </span>
+      <button className="ghost-btn" title="Next reply" aria-label="Next reply" disabled={v.at === v.n - 1} onClick={() => showVersion(v.id, v.at + 1)}>
+        <Icon name="chevron" size={14} />
+      </button>
+    </span>
+  );
 }
 
 /** A new chat with this one's messages up to the reply, to try another direction. */
@@ -347,6 +339,81 @@ async function branchFrom(id: string) {
 }
 
 /** Reads the reply out with Windows' voices (again to stop). */
+/** Along the chat's right side in a long chat: a mark for each of your
+ *  messages. Pointing at it lists them; choosing one goes there. */
+function QuestionRail({ messages, scroller, stick }: { messages: Msg[]; scroller: React.RefObject<HTMLDivElement | null>; stick: { current: boolean } }) {
+  const [at, setAt] = useState(-1);
+  const qs = messages.flatMap((m) => (m.role === "user" && !m.summary ? [{ id: m.id, text: splitAttachments(m.content, m.images).text.replace(/\s+/g, " ").trim() || "(a picture or file)" }] : []));
+  const key = qs.map((q) => q.id).join();
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || qs.length < MIN_QUESTIONS) return;
+    const find = () => {
+      const top = el.getBoundingClientRect().top + el.clientHeight / 3;
+      let n = -1;
+      el.querySelectorAll<HTMLElement>("[data-q]").forEach((r, i) => {
+        if (r.getBoundingClientRect().top <= top) n = i;
+      });
+      setAt(n);
+    };
+    find();
+    el.addEventListener("scroll", find, { passive: true });
+    return () => el.removeEventListener("scroll", find);
+  }, [key]);
+  if (qs.length < MIN_QUESTIONS) return null;
+  const go = (id: string) => {
+    const el = scroller.current;
+    const r = el?.querySelector<HTMLElement>(`[data-q="${id}"]`);
+    if (!el || !r) return;
+    stick.current = false;
+    el.scrollTo({ top: el.scrollTop + r.getBoundingClientRect().top - el.getBoundingClientRect().top - 16, behavior: "auto" });
+  };
+  return (
+    <div className="q-rail">
+      <nav className="q-rail-in" aria-label="Your messages in this chat">
+        <div className="q-ticks" aria-hidden="true">
+          {qs.map((q, i) => (
+            <i key={q.id} className={i === at ? "on" : ""} />
+          ))}
+        </div>
+        <div className="q-list">
+          {qs.map((q, i) => (
+            <button key={q.id} className={i === at ? "on" : ""} onClick={() => go(q.id)}>
+              {q.text}
+            </button>
+          ))}
+        </div>
+      </nav>
+    </div>
+  );
+}
+
+/** Copy, answering with a check for a moment. */
+function CopyBtn({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
+  const copy = () => {
+    navigator.clipboard.writeText(text);
+    setDone(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setDone(false), 1400);
+  };
+  return (
+    <button className="ghost-btn" title={done ? "Copied" : "Copy"} onClick={copy}>
+      {done ? (
+        <span className="copied-pop">
+          <Icon name="check" size={14} />
+        </span>
+      ) : (
+        <Icon name="copy" size={14} />
+      )}
+    </button>
+  );
+}
+
+const MIN_QUESTIONS = 3;
+
 function ReadAloud({ text }: { text: string }) {
   const [on, setOn] = useState(false);
   useEffect(() => () => void (on && speechSynthesis.cancel()), [on]);
@@ -357,6 +424,7 @@ function ReadAloud({ text }: { text: string }) {
       .replace(/[*_#>`]/g, "")
       .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
     const u = new SpeechSynthesisUtterance(plain);
+    tuneVoice(u);
     u.onend = u.onerror = () => setOn(false);
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
@@ -402,7 +470,7 @@ function groupTools(msgs: Msg[]): (Msg | ToolMsg[])[] {
 
 /** Consecutive assistant and tool messages: one turn of Pelica's. */
 const Turn = memo(
-  function Turn({ msgs, last, src }: { msgs: Msg[]; last: boolean; src: string }) {
+  function Turn({ msgs, last, src, ver }: { msgs: Msg[]; last: boolean; src: string; ver?: Ver }) {
     const text = msgs
       .filter((m) => m.role === "assistant")
       .map((m) => (m as any).content)
@@ -410,31 +478,35 @@ const Turn = memo(
       .join("\n\n");
     const final = [...msgs].reverse().find((m) => m.role === "assistant") as Extract<Msg, { role: "assistant" }> | undefined;
     const liveNow = useApp((s) => s.running && s.liveId === s.chat?.id) && last;
+    const c = useCites(src);
     if (msgs.length === 1 && final?.ack) return null;
     const groups = groupTools(msgs);
+    const tools = msgs.flatMap((m) => (m.role === "tool" ? [m.ui] : []));
+    const points = [...new Set(tools.flatMap((u) => (u.undo ? [u.undo] : [])))];
     return (
       <div className="turn">
         <div className="turn-avatar">
           <Orbs live={liveNow} />
         </div>
-        <div className="turn-body">
+        <div className="turn-body" {...c.handlers}>
           {groups.map((g, gi) =>
             Array.isArray(g) ? (
               <ToolGroup key={g[0].id} items={g.map((m) => m.ui)} pictures={g.flatMap((m) => m.images || [])} live={liveNow && gi === groups.length - 1} />
             ) : g.role === "assistant" ? (
               <div key={g.id}>
                 {g.reasoning && <Thinking text={g.reasoning} seconds={g.stats?.think_s} />}
-                {g.content && <Markdown text={g.content} />}
+                {g.content && <Markdown text={g.content} cites={c.numbers} />}
               </div>
             ) : null,
           )}
-          {final && !liveNow && <Sources src={src} reply={text} />}
+          {final && !liveNow && <Sources ex={c.ex} reply={text} open={c.open} close={() => c.setOpen(null)} />}
+          {c.preview}
+          {final && !liveNow && points.length > 0 && <UndoChanges turns={points} commands={tools.some((u) => u.kind === "command")} />}
           {final && !liveNow && (
             <div className={`turn-foot ${last ? "last" : ""}`}>
+              {ver && <Versions v={ver} />}
               <div className="msg-actions">
-                <button className="ghost-btn" title="Copy" onClick={() => navigator.clipboard.writeText(text)}>
-                  <Icon name="copy" size={14} />
-                </button>
+                <CopyBtn text={text} />
                 <button className="ghost-btn" title="Branch from here" onClick={() => branchFrom(final.id)}>
                   <Icon name="branch" size={14} />
                 </button>
@@ -453,7 +525,7 @@ const Turn = memo(
       </div>
     );
   },
-  (a, b) => a.last === b.last && a.src === b.src && a.msgs.length === b.msgs.length && a.msgs.every((m, i) => m === b.msgs[i]),
+  (a, b) => a.last === b.last && a.src === b.src && a.ver?.at === b.ver?.at && a.ver?.n === b.ver?.n && a.msgs.length === b.msgs.length && a.msgs.every((m, i) => m === b.msgs[i]),
 );
 
 function PhaseLine({ d }: { d: Draft }) {
@@ -640,7 +712,7 @@ export function ChatView() {
   }, []);
 
   if (!chat) return null;
-  const rows: { key: string; node: React.ReactNode | Msg[]; ts: number; src?: string }[] = [];
+  const rows: { key: string; node: React.ReactNode | Msg[]; ts: number; src?: string; ver?: Ver }[] = [];
   const list = [...(showArchive ? (chat.archive || []).map((m) => ({ ...m, id: "a" + m.id })) : []), ...chat.messages];
   let turn: Msg[] = [];
   // the last turn is the one after the last message of yours, even with a
@@ -648,9 +720,19 @@ export function ChatView() {
   let lastTurn = -1;
   // (the question a turn answers: its passages from the project's documents)
   let asked = "";
+  // (Retry's versions show under the message's last turn, or on their own
+  // when the version on show has no reply)
+  let ver: Ver | null = null;
+  let verRow = -1;
   const flush = () => {
-    if (turn.length) (lastTurn = rows.length), rows.push({ key: turn[0].id, node: turn, ts: turn[0].ts, src: asked });
+    if (turn.length) (lastTurn = verRow = rows.length), rows.push({ key: turn[0].id, node: turn, ts: turn[0].ts, src: asked });
     turn = [];
+  };
+  const placeVer = () => {
+    if (ver && verRow >= 0) rows[verRow].ver = ver;
+    else if (ver) rows.push({ key: `v${ver.id}`, node: <div className="versions-row"><Versions v={ver} /></div>, ts: rows[rows.length - 1].ts });
+    ver = null;
+    verRow = -1;
   };
   for (const m of list) {
     if (m.role === "assistant" || m.role === "tool") {
@@ -658,13 +740,19 @@ export function ChatView() {
       continue;
     }
     flush();
-    if (m.role === "user") (lastTurn = -1), (asked = m.content), rows.push({ key: m.id, node: <UserMsg m={m} />, ts: m.ts });
-    else rows.push({ key: m.id, node: <EventRow m={m} />, ts: m.ts });
+    if (m.role === "user") {
+      placeVer();
+      lastTurn = -1;
+      asked = m.content;
+      rows.push({ key: m.id, node: <UserMsg m={m} />, ts: m.ts });
+      if ((m.tails?.length || 0) > 1 && chat.messages.includes(m)) ver = { id: m.id, at: m.tailAt ?? 0, n: m.tails!.length };
+    } else rows.push({ key: m.id, node: <EventRow m={m} />, ts: m.ts });
   }
   // (the last message is Pelica's: a reply being written carries that turn on)
   const turn0 = !!list.length && (list[list.length - 1].role === "assistant" || list[list.length - 1].role === "tool");
   flush();
-  for (let i = 0; i < rows.length; i++) if (Array.isArray(rows[i].node)) rows[i].node = <Turn msgs={rows[i].node as Msg[]} last={i === lastTurn} src={rows[i].src || ""} />;
+  placeVer();
+  for (let i = 0; i < rows.length; i++) if (Array.isArray(rows[i].node)) rows[i].node = <Turn msgs={rows[i].node as Msg[]} last={i === lastTurn} src={rows[i].src || ""} ver={rows[i].ver} />;
   // a chat that spans more than one day gets a line where each day starts
   const days = rows.length > 1 && !!rows[0].ts && dayOf(rows[0].ts) !== dayOf(rows[rows.length - 1].ts || Date.now());
 
@@ -685,6 +773,7 @@ export function ChatView() {
     >
       <FindBar root={col} />
       <QuoteButton col={col} />
+      <QuestionRail messages={chat.messages} scroller={scroller} stick={stick} />
       <div className="chat-col" ref={col}>
         {chat.archive?.length ? (
           <button className="archive-btn" onClick={() => setShowArchive(!showArchive)}>
@@ -708,7 +797,7 @@ export function ChatView() {
         <div className="jump-wrap">
           <button
             className="jump-latest"
-            title="Jump to the latest message"
+            title="Back to the latest message (Alt+↓ moves one message at a time)"
             onClick={() => {
               const el = scroller.current;
               if (!el) return;
@@ -717,7 +806,7 @@ export function ChatView() {
             }}
           >
             <Icon name="down" size={15} />
-            {live && <span>Pelica is writing</span>}
+            <span>{live ? "Pelica is writing" : "Latest"}</span>
           </button>
         </div>
       )}

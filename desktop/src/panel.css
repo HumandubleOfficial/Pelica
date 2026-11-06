@@ -6,7 +6,7 @@
 }
 .composer.slim {
   padding: 6px;
-  border-radius: 16px;
+  border-radius: var(--r-xl);
 }
 .composer.slim > .agent-hint,
 .composer.slim > .attach-chips {
@@ -39,9 +39,9 @@
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   color: var(--text-2);
-  transition: background 0.12s, color 0.12s, transform 0.1s;
+  transition: background 0.12s, color 0.12s;
 }
 .plus-btn:hover,
 .plus-btn.open,
@@ -63,9 +63,6 @@
 }
 .send-btn.ready {
   color: var(--text);
-}
-.send-btn:active:not(:disabled) {
-  transform: scale(0.92);
 }
 .send-btn.stop {
   background: var(--text);
@@ -104,7 +101,7 @@
   gap: 6px;
   height: 26px;
   padding: 0 8px;
-  border-radius: 7px;
+  border-radius: var(--r);
   font-size: 0.84em;
   color: var(--text-2);
   white-space: nowrap;
@@ -177,7 +174,7 @@
   gap: 11px;
   width: 100%;
   padding: 7px 9px;
-  border-radius: 8px;
+  border-radius: var(--r);
   text-align: left;
   color: var(--text);
 }
@@ -249,7 +246,7 @@
 }
 .sp-card {
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--r-xl);
   background: color-mix(in srgb, var(--side) 70%, transparent);
   padding: 10px 6px 8px;
 }
@@ -298,7 +295,7 @@
   gap: 11px;
   min-height: 34px;
   padding: 0 8px;
-  border-radius: 8px;
+  border-radius: var(--r);
   font-size: 0.9em;
   color: var(--text);
   text-align: left;
@@ -355,7 +352,7 @@
   height: 24px;
   display: grid;
   place-items: center;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   color: var(--muted);
   flex: none;
 }
@@ -378,7 +375,7 @@
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 5px;
+  border-radius: var(--r-sm);
   background: var(--panel-2);
   color: var(--accent-2);
 }
@@ -429,7 +426,7 @@
   display: flex;
   height: 5px;
   margin: 0 8px 10px;
-  border-radius: 3px;
+  border-radius: var(--r-xs);
   overflow: hidden;
   background: var(--panel-2);
   gap: 1px;
@@ -458,7 +455,7 @@
 .sp-ctx-row i {
   width: 10px;
   height: 10px;
-  border-radius: 3px;
+  border-radius: var(--r-xs);
 }
 .sp-ctx-row i.free {
   background: var(--panel-2);
@@ -514,7 +511,7 @@
 .sp-card {
   background: color-mix(in srgb, var(--text) 2.5%, transparent);
   border-color: var(--card-line, var(--line));
-  border-radius: 14px;
+  border-radius: var(--r-xl);
   padding: 12px 8px 10px;
 }
 .sp-card.folded {

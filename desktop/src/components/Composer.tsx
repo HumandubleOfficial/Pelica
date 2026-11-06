@@ -8,6 +8,8 @@ import { engine, type LocalModel } from "../lib/engine";
 import { app, openChat, PERM_MODES, setChatFolder, setSettings, toast, useApp, type Photo } from "../state";
 import { ContextMeter } from "./ContextMeter";
 import { VoiceBar, VoiceButton } from "./Voice";
+import { Select } from "./Select";
+import { EngineNotice } from "./EngineNotice";
 import { EffortPicker } from "./Effort";
 import { Icon } from "./Icons";
 import { Menu, type MenuItem } from "./Menu";
@@ -103,13 +105,7 @@ function ModelChip() {
             Models on this PC
             <label className="ctx-select">
               context
-              <select value={ctx} onChange={(e) => setCtx(Number(e.target.value))}>
-                {[4096, 8192, 16384, 32768, 65536, 131072, 262144].map((n) => (
-                  <option key={n} value={n}>
-                    {n >= 1024 ? `${n / 1024}K` : n}
-                  </option>
-                ))}
-              </select>
+              <Select className="tiny" label="Context" value={ctx} onChange={setCtx} options={[4096, 8192, 16384, 32768, 65536, 131072, 262144].map((n) => ({ value: n, label: `${n / 1024}K` }))} />
             </label>
           </div>
           {changed && (
@@ -580,6 +576,7 @@ export function Composer({ big = false }: { big?: boolean }) {
 
   return (
     <div className={`composer-wrap ${big ? "big" : ""}`}>
+    <EngineNotice />
     <VoiceBar />
     <div className={`composer slim ${big ? "big" : ""}`}>
       <AgentHint folder={folder} />

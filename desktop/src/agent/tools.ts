@@ -7,6 +7,9 @@ import type { ToolSpec } from "../lib/engine";
 import { app, setSettings, uid, type Chat, type Photo, type Todo, type ToolUI } from "../state";
 import { shrink } from "../components/Attachments";
 
+/** The reply being written: its file changes share one restore point. */
+export const turnNow = { id: "" };
+
 const obj = (properties: Record<string, any>, required: string[]) => ({ type: "object", properties, required });
 const str = (description: string) => ({ type: "string", description });
 
@@ -198,14 +201,14 @@ export async function runTool(chat: Chat, name: string, args: any, live: (ui: Pa
         const content = String(a.content ?? "");
         const denied = await fileOk(chat, `Write ${p}`, `${content.split("\n").length} lines`, signal);
         if (denied) return denied;
-        const r = await need().fs.write(root, p, content);
-        return { content: `${r.before === null ? "Created" : "Wrote"} ${r.path} (${r.after.split("\n").length} lines).`, ui: { kind: "write", title: r.path, path: r.path, before: r.before, after: r.after } };
+        const r = await need().fs.write(root, p, content, turnNow.id);
+        return { content: `${r.before === null ? "Created" : "Wrote"} ${r.path} (${r.after.split("\n").length} lines).`, ui: { kind: "write", undo: turnNow.id, title: r.path, path: r.path, before: r.before, after: r.after } };
       }
       case "edit_file": {
         const denied = await fileOk(chat, `Edit ${p}`, `Replace:\n${String(a.old_string ?? "").slice(0, 600)}\n\nwith:\n${String(a.new_string ?? "").slice(0, 600)}`, signal);
         if (denied) return denied;
-        const r = await need().fs.edit(root, p, String(a.old_string ?? ""), String(a.new_string ?? ""), !!a.replace_all);
-        return { content: `Edited ${r.path} (${r.count} replacement${r.count > 1 ? "s" : ""}).`, ui: { kind: "edit", title: r.path, path: r.path, before: r.before, after: r.after } };
+        const r = await need().fs.edit(root, p, String(a.old_string ?? ""), String(a.new_string ?? ""), !!a.replace_all, turnNow.id);
+        return { content: `Edited ${r.path} (${r.count} replacement${r.count > 1 ? "s" : ""}).`, ui: { kind: "edit", undo: turnNow.id, title: r.path, path: r.path, before: r.before, after: r.after } };
       }
       case "search_files": {
         const t = await need().fs.search(root, String(a.pattern || ""), p || ".", a.glob ? String(a.glob) : undefined);
@@ -214,8 +217,8 @@ export async function runTool(chat: Chat, name: string, args: any, live: (ui: Pa
       case "delete_file": {
         const denied = await fileOk(chat, `Move ${p} to the Recycle Bin`, "It can be restored from the Recycle Bin.", signal);
         if (denied) return denied;
-        await need().fs.trash(root, p);
-        return { content: `Moved ${p} to the Recycle Bin.`, ui: { kind: "trash", title: p, path: p } };
+        await need().fs.trash(root, p, turnNow.id);
+        return { content: `Moved ${p} to the Recycle Bin.`, ui: { kind: "trash", title: p, path: p, undo: turnNow.id } };
       }
       case "todo_write": {
         const todos: Todo[] = (Array.isArray(a.todos) ? a.todos : []).map((t: any) => ({ content: String(t.content ?? t.task ?? ""), status: ["pending", "in_progress", "completed"].includes(t.status) ? t.status : "pending" })).filter((t: Todo) => t.content);

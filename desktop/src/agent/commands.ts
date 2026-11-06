@@ -1,7 +1,7 @@
 // Slash commands typed in the message box.
 import { bridge } from "../lib/bridge";
 import { copyChat, exportChat } from "../lib/exportChat";
-import { app, openBrain, PERM_MODES, setChatFolder, setSettings, startNewChat, toast, updateChat } from "../state";
+import { app, newVersion, openBrain, PERM_MODES, setChatFolder, setSettings, startNewChat, toast } from "../state";
 import { compactNow, forgetNotes, pushEvent, refreshContext, run, send } from "./agent";
 import { runCQS } from "./cqs";
 import { startBackground } from "./tasks";
@@ -66,12 +66,7 @@ export const COMMANDS: Command[] = [
     name: "retry",
     help: "Answer the last message again",
     run: () => {
-      const c = app.get().chat;
-      if (!c) return;
-      const i = c.messages.map((m) => m.role).lastIndexOf("user");
-      if (i < 0) return;
-      updateChat((x) => ({ ...x, messages: x.messages.slice(0, i + 1) }));
-      run();
+      if (newVersion()) run();
     },
   },
   { name: "continue", help: "Keep going where it stopped", run: () => send("Continue.") },

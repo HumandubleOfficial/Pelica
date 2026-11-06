@@ -4,7 +4,7 @@
 // right. The agent puts a chat's project into its system prompt (agent.ts).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { bridge, type DocsInfo } from "../lib/bridge";
-import { app, deleteProject, newProject, openChat, openProject, projectOf, saveProject, startNewChat, toast, useApp, type Project } from "../state";
+import { app, deleteProject, newProject, openChat, openProject, patchChat, projectOf, saveProject, startNewChat, toast, useApp, type Project } from "../state";
 import { Icon } from "./Icons";
 import { docName } from "../lib/docs";
 
@@ -18,6 +18,7 @@ const ago = (t: number) => {
 };
 
 export function ProjectsPage() {
+  const [over, setOver] = useState<string | null>(null);
   const projects = useApp((s) => s.settings.projects);
   const chats = useApp((s) => s.chats);
   const create = () => openProject(newProject().id);
@@ -35,7 +36,22 @@ export function ProjectsPage() {
           const mine = chats.filter((c) => c.project === p.id);
           const last = Math.max(p.created, ...mine.map((c) => c.updated));
           return (
-            <button key={p.id} className="proj-card" onClick={() => openProject(p.id)}>
+            <button
+              key={p.id}
+              className={`proj-card ${over === p.id ? "drop" : ""}`}
+              onClick={() => openProject(p.id)}
+              onDragOver={(e) => {
+                if (!e.dataTransfer.types.includes("application/x-pelica-chat")) return;
+                e.preventDefault();
+                setOver(p.id);
+              }}
+              onDragLeave={() => setOver(null)}
+              onDrop={(e) => {
+                setOver(null);
+                const id = e.dataTransfer.getData("application/x-pelica-chat");
+                if (id) patchChat(id, (c) => ({ ...c, project: p.id })).then(() => toast(`Moved to ${p.name}.`));
+              }}
+            >
               <b>{p.name}</b>
               <span className="muted small proj-card-desc">{p.instructions.trim().split("\n")[0] || "No instructions yet"}</span>
               <span className="muted small">
@@ -46,10 +62,14 @@ export function ProjectsPage() {
           );
         })}
         {!projects.length && (
-          <div className="empty-note">
-            No projects yet.{" "}
-            <button className="btn small" onClick={create}>
-              Create one
+          <div className="empty-state">
+            <span className="empty-icon">
+              <Icon name="layers" size={20} />
+            </span>
+            <b>No projects yet</b>
+            <span className="muted small">A project keeps related chats together, with its own instructions, files and documents to answer from.</span>
+            <button className="btn primary small" onClick={create}>
+              Create a project
             </button>
           </div>
         )}

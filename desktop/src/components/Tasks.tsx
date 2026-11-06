@@ -1,6 +1,7 @@
 // Scheduled tasks: prompts that run on their own (once, hourly, daily, on
 // weekdays, weekly), each run in a chat of its own. See agent/tasks.ts.
 import { useEffect, useState } from "react";
+import { Select } from "./Select";
 import { blankTask, DAYS, describe, dueAt, removeTask, runTask, saveTask, type Repeat, type Task } from "../agent/tasks";
 import { bridge } from "../lib/bridge";
 import { app, openChat, useApp } from "../state";
@@ -27,22 +28,21 @@ function Editor({ task, done }: { task: Task; done: () => void }) {
         <textarea className="text-input wide" rows={5} value={t.prompt} placeholder="Search the web for today's top tech news and write a short summary with links." onChange={(e) => set({ prompt: e.target.value })} />
       </label>
       <div className="task-when">
-        <select className="text-input" value={t.repeat} onChange={(e) => set({ repeat: e.target.value as Repeat })}>
-          <option value="once">Once</option>
-          <option value="hourly">Every hour</option>
-          <option value="daily">Every day</option>
-          <option value="weekdays">Weekdays</option>
-          <option value="weekly">Every week</option>
-        </select>
+        <Select<Repeat>
+          label="Repeat"
+          value={t.repeat}
+          onChange={(repeat) => set({ repeat })}
+          options={[
+            { value: "once", label: "Once" },
+            { value: "hourly", label: "Every hour" },
+            { value: "daily", label: "Every day" },
+            { value: "weekdays", label: "Weekdays" },
+            { value: "weekly", label: "Every week" },
+          ]}
+        />
         {t.repeat === "once" && <input className="text-input" type="date" value={t.date || ""} onChange={(e) => set({ date: e.target.value })} />}
         {t.repeat === "weekly" && (
-          <select className="text-input" value={t.day} onChange={(e) => set({ day: Number(e.target.value) })}>
-            {DAYS.map((d, i) => (
-              <option key={d} value={i}>
-                {d}
-              </option>
-            ))}
-          </select>
+          <Select label="Day" value={t.day} onChange={(day) => set({ day })} options={DAYS.map((d, i) => ({ value: i, label: d }))} />
         )}
         <input className="text-input" type="time" value={t.time} onChange={(e) => set({ time: e.target.value || "09:00" })} />
       </div>

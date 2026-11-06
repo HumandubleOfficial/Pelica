@@ -18,6 +18,8 @@ import { AccountTab } from "./Account";
 import { checkNow } from "./Updates";
 import { StorageRows } from "./Storage";
 import { engine } from "../lib/engine";
+import { SpeedSelect, VoiceSelect } from "./Voice";
+import { Fold } from "./Fold";
 
 const PREVIEW_A = 'function greet(name: string) {\n  return "Hello, " + name;\n}\n';
 const PREVIEW_B = "function greet(name: string) {\n  return `Hello, ${name}!`;\n}\n";
@@ -28,21 +30,19 @@ const TABS: { name: string; icon: string; group: string; keys: string }[] = [
   { name: "Account", icon: "user-circle", group: "Preferences", keys: "account google sign in sync drive profile other pc" },
   { name: "Appearance", icon: "palette", group: "Preferences", keys: "theme dark light warm midnight neural background backdrop mica acrylic text size font serif code animations" },
   { name: "Memory", icon: "brain", group: "Preferences", keys: "remember forget across chats facts about me" },
-  { name: "Capabilities", icon: "bolt", group: "Preferences", keys: "web search steps thinking effort" },
+  { name: "Capabilities", icon: "bolt", group: "Preferences", keys: "web search steps thinking effort voice speed talk over read aloud auto-compact compact context trim tool output cqs code quality scanner fix checkers" },
   { name: "Permissions", icon: "shield", group: "Preferences", keys: "manual accept edits plan bypass folders deleting recycle shell cmd powershell" },
-  { name: "Context", icon: "gauge", group: "Preferences", keys: "auto-compact compact trim tool output" },
-  { name: "CQS", icon: "scan", group: "Preferences", keys: "code quality scanner fix checkers" },
   { name: "Usage", icon: "spark", group: "Preferences", keys: "tokens days models" },
   { name: "Desktop", icon: "monitor", group: "This computer", keys: "quick ask shortcut hotkey tray start with windows notifications computer tools" },
   { name: "Models", icon: "library", group: "This computer", keys: "storage disk space drive move delete uninstall model folders load download speed up repack local api openai port engine restart keep long chats ready saved cache clear" },
-  { name: "Phone", icon: "phone", group: "This computer", keys: "mobile phone qr code wifi tailscale remote pair" },
-  { name: "Devices", icon: "monitor", group: "This computer", keys: "bridge ram lend pairing network" },
-  { name: "Developer", icon: "terminal", group: "This computer", keys: "versions electron engine log data folder" },
-  { name: "Connectors", icon: "plug", group: "Customize", keys: "mcp servers tools github memory browser" },
-  { name: "Updates", icon: "download", group: "Customize", keys: "update version check install feed preview pre-release skip github releases daily" },
-  { name: "Experimental", icon: "flask", group: "Customize", keys: "experimental brain experts 3d labs beta" },
-  { name: "About", icon: "info", group: "Customize", keys: "version release notes github" },
+  { name: "Devices", icon: "phone", group: "This computer", keys: "mobile phone qr code wifi tailscale remote pair bridge ram lend pairing network" },
+  { name: "Connectors", icon: "plug", group: "More", keys: "mcp servers tools github memory browser" },
+  { name: "Advanced", icon: "terminal", group: "More", keys: "experimental brain experts 3d labs beta developer versions electron engine log data folder" },
+  { name: "About", icon: "info", group: "More", keys: "version release notes github update check install feed preview pre-release skip releases daily" },
 ];
+
+/** Sections that moved into another, for links into Settings. */
+const MOVED: Record<string, string> = { Context: "Capabilities", CQS: "Capabilities", Phone: "Devices", Experimental: "Advanced", Developer: "Advanced", Updates: "About" };
 
 /** What each theme looks like, for the picker (the colours in styles.css / polish.css). */
 const THEMES: { id: S["theme"]; name: string; bg: string; side: string; panel: string; text: string; accent: string }[] = [
@@ -100,8 +100,18 @@ function Section({ title, children }: { title: string; children?: React.ReactNod
 }
 
 function Seg<T extends string | number | boolean>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (v: T) => void }) {
+  // (Left and Right move the choice, as in any set of radio buttons)
+  const keys = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    const i = options.findIndex(([v]) => v === value);
+    const n = options[i + (e.key === "ArrowRight" ? 1 : -1)];
+    if (!n) return;
+    e.preventDefault();
+    onChange(n[0]);
+    (e.currentTarget.children[options.indexOf(n)] as HTMLElement).focus();
+  };
   return (
-    <div className="seg">
+    <div className="seg" onKeyDown={keys}>
       {options.map(([v, l]) => (
         <button key={String(v)} className={v === value ? "sel" : ""} onClick={() => onChange(v)}>
           {l}
@@ -478,7 +488,7 @@ function UpdatesTab() {
           </button>
         </Row>
       )}
-      <Section title="Where updates come from" />
+      <Fold title="Where updates come from">
       <Row title="Releases" desc="Every version, with its installer and release notes, is on Pelica's GitHub page.">
         <button className="btn small" onClick={() => bridge?.sys.external("https://github.com/HumandubleOfficial/Pelica/releases")}>
           Open on GitHub
@@ -497,6 +507,7 @@ function UpdatesTab() {
           placeholder="Pelica's GitHub releases"
         />
       </Row>
+      </Fold>
     </>
   );
 }
@@ -506,6 +517,14 @@ function ModelsTab() {
   const [dirs, setDirs] = useState(s.modelDirs.join("; "));
   const [auto, setAuto] = useState("");
   useEffect(() => setDirs(s.modelDirs.join("; ")), [s.modelDirs.join(";")]);
+  // (that row only means something with one of those models on this PC)
+  const [repackable, setRepackable] = useState(false);
+  useEffect(() => {
+    engine
+      .models()
+      .then((m) => setRepackable(m.models.some((x) => /deepseek[-_. ]?v?4|qwen3\.8/i.test(x.path))))
+      .catch(() => {});
+  }, []);
   useEffect(() => {
     bridge?.lib
       .hardware()
@@ -538,9 +557,9 @@ function ModelsTab() {
         <Toggle on={s.loadOnStart} set={(v) => setSettings({ loadOnStart: v })} />
       </Row>
       <SavedChatsRow />
-      <Row title="Speed up DeepSeek V4 and Qwen3.8 downloads" desc="Rearrange a DeepSeek V4 or Qwen3.8 file as soon as it finishes downloading, so each expert loads in one read (answers about 20% faster). Other programs can't open the file afterwards; Models → Undo speed-up puts it back.">
+      {repackable && <Row title="Speed up DeepSeek V4 and Qwen3.8 downloads" desc="Rearrange a DeepSeek V4 or Qwen3.8 file as soon as it finishes downloading, so each expert loads in one read (answers about 20% faster). Other programs can't open the file afterwards; Models → Undo speed-up puts it back.">
         <Toggle on={s.autoRepack} set={(v) => setSettings({ autoRepack: v })} />
-      </Row>
+      </Row>}
       <Section title="Local API" />
       <ApiRows />
       <Section title="Engine" />
@@ -583,20 +602,19 @@ function DevTab() {
           </Row>
         </>
       )}
-      <div className="set-section set-section-row">
-        Engine log
-        <button className="btn ghost small" onClick={() => bridge?.engine.log().then(setLog)}>
+      <Fold title="Engine log">
+        <button className="btn ghost small log-refresh" onClick={() => bridge?.engine.log().then(setLog)}>
           Refresh
         </button>
-      </div>
-      <pre className="log-pre">{log.slice(-12000) || "(empty)"}</pre>
+        <pre className="log-pre">{log.slice(-12000) || "(empty)"}</pre>
+      </Fold>
     </>
   );
 }
 
 export function SettingsModal() {
   const open = useApp((x) => x.settingsOpen);
-  const tab = useApp((x) => x.settingsTab);
+  const tab = useApp((x) => MOVED[x.settingsTab] || x.settingsTab);
   const s = useApp((x) => x.settings);
   const st = useApp((x) => x.status);
   const [q, setQ] = useState("");
@@ -676,7 +694,7 @@ export function SettingsModal() {
           <Row title="Reply font" desc="Replies in a serif face, as in Claude, or the same sans as the rest of the app.">
             <Seg value={s.replyFont} options={[["serif", "Serif"], ["sans", "Sans"]]} onChange={(v) => set({ replyFont: v })} />
           </Row>
-          <Row title="Animations" desc="Buttons that spring back, highlights that slide, pages that ease in, effort orbs, the shimmer while working, the expert grid.">
+          <Row title="Animations" desc="Buttons that fade, pages that ease in, effort orbs, the shimmer while working, the expert grid.">
             <Toggle on={s.animations} set={(v) => set({ animations: v })} />
           </Row>
           <Section title="Code appearance" />
@@ -709,9 +727,41 @@ export function SettingsModal() {
           <Row title="Steps per task" desc="How many tool calls a task may take before Pelica pauses. Long tasks (building an app) need many.">
             <Seg value={s.maxSteps} options={[[25, "25"], [60, "60"], [150, "150"], [400, "400"]]} onChange={(v) => set({ maxSteps: v })} />
           </Row>
-          <Row title="Thinking effort" desc={st?.efforts?.length ? `This model: ${st.efforts.join(", ")}.` : "The loaded model has no effort levels."}>
+          {!!st?.efforts?.length && <Row title="Thinking effort" desc={`This model: ${st.efforts.join(", ")}.`}>
             {st?.efforts?.length ? <Seg value={st.efforts.includes(s.effort) ? s.effort : st.effort || st.efforts[0]} options={st.efforts.map((e) => [e, e[0].toUpperCase() + e.slice(1)] as [string, string])} onChange={(v) => set({ effort: v })} /> : <span className="muted">—</span>}
+          </Row>}
+          <Section title="Voice" />
+          <Row title="Voice" desc="For voice mode and Read aloud. These are the voices installed in Windows.">
+            <VoiceSelect />
           </Row>
+          <Row title="Speed">
+            <SpeedSelect />
+          </Row>
+          <Row title="Talk over Pelica" desc="Keeps the microphone open while Pelica talks, so just speaking stops it. Use headphones, or it can hear itself.">
+            <Toggle on={s.voiceTalkOver} set={(v) => set({ voiceTalkOver: v })} />
+          </Row>
+          <Section title="Long chats" />
+          <Row title="Auto-compact" desc="When the context is nearly full, the conversation is summarized (by the model) and continues from the summary.">
+            <Toggle on={s.autocompact} set={(v) => set({ autocompact: v })} />
+          </Row>
+          <Row title="Compact at" desc="How full the context gets before it is summarized.">
+            <Seg value={s.compactAt} options={[[0.6, "60%"], [0.7, "70%"], [0.8, "80%"], [0.9, "90%"]]} onChange={(v) => set({ compactAt: v })} />
+          </Row>
+          <Row title="Trim old tool output" desc="Search results, pages and files from earlier turns are cut to a short preview, so long tasks fill the context much more slowly.">
+            <Toggle on={s.trimToolResults} set={(v) => set({ trimToolResults: v })} />
+          </Row>
+          <Section title="Code checks" />
+          <p className="set-intro">CQS (code quality scanner) checks code after Pelica writes it: syntax, brackets, tags, leftover placeholders, and your project's own compilers. It hands what it finds to a fixer subagent, then checks again. Run it any time with /cqs, or /cqs polish to also tidy code and UI.</p>
+          <Row title="Scan after changes" desc="Run CQS when a reply changed files.">
+            <Toggle on={s.cqsAuto} set={(v) => set({ cqsAuto: v })} />
+          </Row>
+          <Row title="Fix what it finds" desc="Send errors to the fixer subagent (otherwise just report them).">
+            <Toggle on={s.cqsFix} set={(v) => set({ cqsFix: v })} />
+          </Row>
+          <Row title="Run checkers without asking" desc="Your project's own checkers (tsc, eslint, python, node --check…) only read the code, so CQS runs them quietly. Cargo still asks (build scripts can run code), and Manual mode asks for everything.">
+            <Toggle on={s.cqsQuiet} set={(v) => set({ cqsQuiet: v })} />
+          </Row>
+          <p className="set-note">Besides syntax and compilers, CQS catches files that are imported or linked but were never written, and has the fixer create them. It runs up to two fix rounds, checking again after each.</p>
         </>
       );
       break;
@@ -746,38 +796,6 @@ export function SettingsModal() {
         </>
       );
       break;
-    case "Context":
-      body = (
-        <>
-          <Row title="Auto-compact" desc="When the context is nearly full, the conversation is summarized (by the model) and continues from the summary.">
-            <Toggle on={s.autocompact} set={(v) => set({ autocompact: v })} />
-          </Row>
-          <Row title="Compact at" desc="How full the context gets before it is summarized.">
-            <Seg value={s.compactAt} options={[[0.6, "60%"], [0.7, "70%"], [0.8, "80%"], [0.9, "90%"]]} onChange={(v) => set({ compactAt: v })} />
-          </Row>
-          <Row title="Trim old tool output" desc="Search results, pages and files from earlier turns are cut to a short preview, so long tasks fill the context much more slowly.">
-            <Toggle on={s.trimToolResults} set={(v) => set({ trimToolResults: v })} />
-          </Row>
-        </>
-      );
-      break;
-    case "CQS":
-      body = (
-        <>
-          <p className="set-intro">CQS (code quality scanner) checks code after Pelica writes it: syntax, brackets, tags, leftover placeholders, and your project's own compilers. It hands what it finds to a fixer subagent, then checks again. Run it any time with /cqs, or /cqs polish to also tidy code and UI.</p>
-          <Row title="Scan after changes" desc="Run CQS when a reply changed files.">
-            <Toggle on={s.cqsAuto} set={(v) => set({ cqsAuto: v })} />
-          </Row>
-          <Row title="Fix what it finds" desc="Send errors to the fixer subagent (otherwise just report them).">
-            <Toggle on={s.cqsFix} set={(v) => set({ cqsFix: v })} />
-          </Row>
-          <Row title="Run checkers without asking" desc="Your project's own checkers (tsc, eslint, python, node --check…) only read the code, so CQS runs them quietly. Cargo still asks (build scripts can run code), and Manual mode asks for everything.">
-            <Toggle on={s.cqsQuiet} set={(v) => set({ cqsQuiet: v })} />
-          </Row>
-          <p className="set-note">Besides syntax and compilers, CQS catches files that are imported or linked but were never written, and has the fixer create them. It runs up to two fix rounds, checking again after each.</p>
-        </>
-      );
-      break;
     case "Connectors":
       body = <ConnectorsTab />;
       break;
@@ -787,30 +805,31 @@ export function SettingsModal() {
     case "Account":
       body = <AccountTab Row={Row} Toggle={Toggle} />;
       break;
-    case "Experimental":
+    case "Devices":
       body = (
         <>
-          <p className="set-intro">Features still being worked on. They may change, or go away.</p>
-          <Row title="Brain" desc="A page that shows the loaded model's experts in 3D, lighting up as it writes, and which experts each word goes to. It appears in the sidebar, the palette and the tray menu.">
-            <Toggle on={s.brainMenu} set={(v) => set({ brainMenu: v })} />
-          </Row>
+          <Section title="Your phone" />
+          <PhoneTab Row={Row} Toggle={Toggle} />
+          <Section title="Other PCs" />
+          <DevicesTab />
         </>
       );
-      break;
-    case "Phone":
-      body = <PhoneTab Row={Row} Toggle={Toggle} />;
-      break;
-    case "Devices":
-      body = <DevicesTab />;
       break;
     case "Usage":
       body = <UsageTab />;
       break;
-    case "Developer":
-      body = <DevTab />;
-      break;
-    case "Updates":
-      body = <UpdatesTab />;
+    case "Advanced":
+      body = (
+        <>
+          <Section title="Experimental" />
+          <p className="set-intro">Features still being worked on. They may change, or go away.</p>
+          <Row title="Brain" desc="A page that shows the loaded model's experts in 3D, lighting up as it writes, and which experts each word goes to. It appears in the sidebar, the palette and the tray menu.">
+            <Toggle on={s.brainMenu} set={(v) => set({ brainMenu: v })} />
+          </Row>
+          <Section title="For developers" />
+          <DevTab />
+        </>
+      );
       break;
     case "About":
       body = (
@@ -826,11 +845,16 @@ export function SettingsModal() {
             </button>
           </div>
           <p className="set-intro">
-            Pelica runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow, the update check on GitHub (Settings → Updates), and what you ask the online connectors you add.
+            Pelica runs mixture-of-experts models on your own GPU, with the experts that don't fit in VRAM kept in RAM and long contexts spilling to RAM and disk. Nothing leaves your PC except the web searches and pages you allow, the update check on GitHub (Settings → About), and what you ask the online connectors you add.
           </p>
           <p className="set-intro">Pelica is open source under the MIT License.</p>
+          <Section title="Updates" />
+          <UpdatesTab />
           <Section title="Release notes" />
-          <ReleaseNotes releases={RELEASES.filter((r) => r.version !== "next")} />
+          <ReleaseNotes releases={RELEASES.filter((r) => r.version !== "next").slice(0, 3)} />
+          <Fold title="Older releases">
+            <ReleaseNotes releases={RELEASES.filter((r) => r.version !== "next").slice(3)} />
+          </Fold>
         </div>
       );
       break;

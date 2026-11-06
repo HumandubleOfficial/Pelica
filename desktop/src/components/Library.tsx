@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { bridge, type Download, type Hardware, type Repack } from "../lib/bridge";
 import { engine, type LocalModel } from "../lib/engine";
-import { bestFor, getFiles, gib, gpuOf, STARTERS, type Starter } from "../lib/starters";
+import { bestFor, getFiles, getStarter as fetchStarter, gib, gpuOf, STARTERS, type Starter } from "../lib/starters";
 import { app, setSettings, toast, useApp } from "../state";
 import { Icon } from "./Icons";
 
@@ -288,13 +288,9 @@ function Discover() {
     const why = await getFiles(repo, files, downloads).catch((e) => cleanErr(e));
     if (why) toast(why);
   }
-  // a starter's real sizes come from Hugging Face
   async function getStarter(m: Starter) {
-    const listed = await bridge!.lib.files(m.repo).catch(() => [] as { path: string; size: number }[]);
-    await get(
-      m.repo,
-      m.files.map((f) => ({ path: f, size: listed.find((x) => x.path === f)?.size || m.size / m.files.length })),
-    );
+    const why = await fetchStarter(m, downloads).catch((e) => cleanErr(e));
+    if (why) toast(why);
   }
 
   async function search(text = q) {
@@ -393,9 +389,14 @@ function Discover() {
                     <Icon name="pause" size={14} />
                   </button>
                 )}
-                {(d.state === "paused" || d.state === "error") && (
+                {d.state === "paused" && (
                   <button className="ghost-btn" onClick={() => bridge?.lib.resume(d.id)} title="Resume">
                     <Icon name="play" size={14} />
+                  </button>
+                )}
+                {d.state === "error" && (
+                  <button className="btn small" onClick={() => bridge?.lib.resume(d.id)}>
+                    Try again
                   </button>
                 )}
                 {(d.state === "running" || d.state === "paused" || d.state === "error") && (

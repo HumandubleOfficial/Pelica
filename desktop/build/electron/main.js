@@ -55,6 +55,7 @@ const mcp = __importStar(require("./mcp"));
 const lib = __importStar(require("./library"));
 const media = __importStar(require("./media"));
 const docs = __importStar(require("./docs"));
+const restore = __importStar(require("./restore"));
 const authwin_1 = require("./authwin");
 const chatdata_1 = require("./chatdata");
 const repocheck_1 = require("./repocheck");
@@ -782,7 +783,7 @@ function registerIpc() {
             .map((f) => {
             try {
                 const c = JSON.parse(node_fs_1.default.readFileSync(node_path_1.default.join(chatsDir, f), "utf8"));
-                return { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder || null, project: c.project || undefined };
+                return { id: c.id, title: c.title, updated: c.updated, pinned: !!c.pinned, folder: c.folder || null, project: c.project || undefined, tags: c.tags?.length ? c.tags : undefined };
             }
             catch {
                 return null;
@@ -970,8 +971,20 @@ function registerIpc() {
     });
     handle("fs:list", (root, rel, depth) => ws.listFiles(checkRoot(root), rel, depth));
     handle("fs:read", (root, rel, offset, limit) => ws.readFile(checkRoot(root), rel, offset, limit));
-    handle("fs:write", (root, rel, content) => ws.writeFile(checkRoot(root), rel, content));
-    handle("fs:edit", (root, rel, o, n, all) => ws.editFile(checkRoot(root), rel, o, n, all));
+    // (the file tools keep a copy first, so the reply's changes can be undone)
+    const kept = async (turn, root, rel, change) => {
+        const r = checkRoot(root);
+        restore.before(turn, r, rel);
+        const out = await change(r);
+        restore.after(turn, r, rel);
+        return out;
+    };
+    restore.init(userDir, checkRoot);
+    handle("restore:info", (turns) => restore.info(turns));
+    handle("restore:undo", (turns, force) => restore.undo(turns, force));
+    handle("restore:redo", (turns, force) => restore.redo(turns, force));
+    handle("fs:write", (root, rel, content, turn) => kept(turn, root, rel, (r) => ws.writeFile(r, rel, content)));
+    handle("fs:edit", (root, rel, o, n, all, turn) => kept(turn, root, rel, (r) => ws.editFile(r, rel, o, n, all)));
     handle("fs:search", (root, pattern, rel, glob) => ws.searchFiles(checkRoot(root), pattern, rel, glob));
     // the project's instructions: PELICA.md (or AGENTS.md / CLAUDE.md) in the
     // folder and in the folders above it up to the repository's root (the one
@@ -1018,7 +1031,7 @@ function registerIpc() {
             throw new Error(rel + " is too big to attach");
         return node_fs_1.default.readFileSync(p, "utf8");
     });
-    handle("fs:trash", (root, rel) => electron_1.shell.trashItem(ws.inside(checkRoot(root), rel)));
+    handle("fs:trash", (root, rel, turn) => kept(turn, root, rel, (r) => electron_1.shell.trashItem(ws.inside(r, rel))));
     handle("fs:reveal", (root, rel) => electron_1.shell.showItemInFolder(ws.inside(checkRoot(root), rel)));
     handle("cmd:run", (id, root, command, timeoutMs, background) => runCommand(id, root, command, timeoutMs || 120000, !!background, settings.shell || "cmd"));
     handle("cmd:kill", (id) => {

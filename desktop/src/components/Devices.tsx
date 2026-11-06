@@ -2,6 +2,7 @@
 // `pelica bridge`. The list lives in settings (the engine gets it as
 // PELICA_DEVICES at start) and every change is sent to the engine at once.
 import { useEffect, useRef, useState } from "react";
+import { Fold } from "./Fold";
 import { bridge } from "../lib/bridge";
 import { engine, type Device } from "../lib/engine";
 import { setSettings, useApp } from "../state";
@@ -115,7 +116,7 @@ export function DevicesTab() {
         </div>
       )}
 
-      <div className="set-section">Setting up a computer</div>
+      <Fold title="How to set up another computer">
       <ol className="dev-steps">
         <li>
           Copy <code>pelica.exe</code> to the other computer (Windows 10 or 11, 64-bit).{" "}
@@ -141,6 +142,7 @@ export function DevicesTab() {
       <p className="set-desc">
         Phones and tablets can't lend memory. iOS stops apps that hold gigabytes in the background and has no way to run the bridge, and their Wi-Fi is too slow for the back-and-forth.
       </p>
+      </Fold>
     </>
   );
 }

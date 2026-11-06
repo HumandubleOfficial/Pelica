@@ -3,6 +3,7 @@
 // GLM 5.3). Every number has a source; a score nobody published shows as
 // n/a rather than a guess.
 import { useEffect, useMemo, useState } from "react";
+import { Select } from "./Select";
 import { engine, type LocalModel } from "../lib/engine";
 import { app, openLink, useApp } from "../state";
 import { Icon } from "./Icons";
@@ -110,14 +111,7 @@ export function Compare() {
         <div className="cmp-pick">
           <label className="cmp-mine">
             <span className="muted small">Your model</span>
-            <select value={mine} onChange={(e) => setMine(e.target.value)}>
-              {!mine && <option value="">Choose a model</option>}
-              {options.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
+            <Select label="Model" value={mine} onChange={setMine} options={[...(mine ? [] : [{ value: "", label: "Choose a model" }]), ...options.map((n) => ({ value: n, label: n }))]} />
           </label>
           <div className="cmp-vs">vs</div>
           <div className="cmp-flags">

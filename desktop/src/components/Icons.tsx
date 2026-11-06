@@ -15,6 +15,7 @@ const P: Record<string, string> = {
   x: "M18 6L6 18M6 6l12 12",
   chevron: "M9 18l6-6-6-6",
   chevronDown: "M6 9l6 6 6-6",
+  chevronLeft: "M15 18l-6-6 6-6",
   down: "M6 9l6 6 6-6",
   play: "M6 3.8a1 1 0 0 1 1.5-.86l11.9 7.3a1 1 0 0 1 0 1.72l-11.9 7.3A1 1 0 0 1 6 20.2z",
   pause: "M8 5v14M16 5v14",

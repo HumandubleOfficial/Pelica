@@ -1,13 +1,20 @@
-/* Motion: buttons that give under the pointer, toggles and highlights that
-   slide, pages that ease in, Settings zooming in and out. Menus and What's
-   new still open at once. Settings → Appearance → Animations off (.no-anim)
-   stills all of it. */
+/* Motion: a button's grey box fades in and out where the button is (nothing
+   shrinks, springs or slides between buttons), pages ease in, Settings zooms
+   in and out. Menus and What's new open at once. Settings → Appearance →
+   Animations off (.no-anim) stills all of it. */
 :root {
-  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* one scale of corners */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r: 8px;
+  --r-md: 10px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-2xl: 20px;
 }
 
-/* ---------- buttons: a soft hover, a press, a spring back ---------- */
+/* ---------- buttons: the grey box fades, nothing else moves ---------- */
 .btn,
 .ghost-btn,
 .chip,
@@ -29,117 +36,15 @@
     background-color 0.14s ease,
     color 0.14s ease,
     border-color 0.14s ease,
-    opacity 0.14s ease,
-    box-shadow 0.18s ease,
-    transform 0.38s var(--spring);
-}
-.btn:active:not(:disabled),
-.ghost-btn:active:not(:disabled),
-.chip:active:not(:disabled),
-.foot-btn:active:not(:disabled),
-.title-btn:active,
-.plus-btn:active,
-.send-btn:active:not(:disabled),
-.idea:active,
-.side-group-new:active,
-.chat-row-more:active,
-.msg-actions button:active,
-.dock-tab:active,
-.seg > button:active {
-  transform: scale(0.95);
-  transition-duration: 0s, 0s, 0s, 0s, 0s, 0.08s;
-}
-/* big, wide buttons give less, or they look like they're shrinking */
-.btn:not(.small):active:not(:disabled),
-.idea:active,
-.nav-item:active,
-.user-chip:active,
-.set-nav button:active {
-  transform: scale(0.98);
-}
-.btn.primary:hover:not(:disabled) {
-  box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+    opacity 0.14s ease;
 }
 
-/* the send button comes alive when there's something to send */
-.send-btn.ready svg {
-  animation: send-ready 0.34s var(--spring);
-}
-@keyframes send-ready {
-  from {
-    transform: scale(0.6) translateY(3px);
-    opacity: 0.4;
-  }
-}
-
-/* ---------- toggles: a springy knob that stretches while held ---------- */
+/* ---------- toggles ---------- */
 .toggle {
-  transition: background-color 0.22s ease;
+  transition: background-color 0.18s ease;
 }
 .toggle::after {
-  transition:
-    transform 0.34s var(--spring),
-    width 0.2s var(--ease-out);
-}
-.toggle:active::after {
-  width: 20px;
-}
-.toggle.on:active::after {
-  transform: translateX(12px);
-}
-.settings .toggle:active::after {
-  width: 18px;
-}
-.settings .toggle.on:active::after {
-  transform: translateX(12px);
-}
-.toggle.small:active::after {
-  width: 15px;
-}
-.toggle.small.on:active::after {
-  transform: translateX(9px);
-}
-
-/* ---------- gliding lists: one highlight that slides to the chosen row ---------- */
-.glide {
-  position: relative;
-}
-:where(.glide-live) > :where(*) {
-  position: relative;
-  z-index: 1;
-}
-.glide-live::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: var(--glide-w);
-  height: var(--glide-h);
-  transform: translate(var(--glide-x), var(--glide-y));
-  border-radius: var(--glide-r, 9px);
-  background: var(--glide-bg, var(--sel));
-  pointer-events: none;
-  z-index: 0;
-}
-.glide-ready::before {
-  transition:
-    transform 0.3s var(--ease-out),
-    width 0.3s var(--ease-out),
-    height 0.3s var(--ease-out);
-}
-.settings .set-nav-list {
-  --glide-bg: var(--set-sel);
-  --glide-r: 8px;
-}
-.settings .set-nav-list.glide-live button.sel,
-.sidebar .side-nav.glide-live .nav-item.active,
-.sidebar .side-lists.glide-live .chat-row.active {
-  background: transparent;
-}
-/* (held down, the open row still lightens, over the highlight) */
-.sidebar .side-lists.glide-live .chat-row.active:has(.chat-row-main:active),
-.sidebar .side-nav.glide-live .nav-item.active:active {
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+  transition: transform 0.18s ease;
 }
 
 /* ---------- Settings zooms in and out ---------- */
@@ -221,7 +126,7 @@
   transition: transform 0.22s var(--ease-out);
 }
 
-/* ---------- cards lift a little under the pointer ---------- */
+/* ---------- cards: the edge and fill change under the pointer ---------- */
 .lib-card,
 .proj-card,
 .conn-card,
@@ -229,22 +134,8 @@
 .idea,
 .starter {
   transition:
-    background-color 0.16s ease,
-    border-color 0.16s ease,
-    box-shadow 0.22s ease,
-    transform 0.3s var(--ease-out);
-}
-.proj-card:hover,
-.theme-card:hover,
-.starter:hover,
-.idea:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.55);
-}
-.proj-card:active,
-.theme-card:active {
-  transform: translateY(0) scale(0.99);
-  transition-duration: 0.08s;
+    background-color 0.14s ease,
+    border-color 0.14s ease;
 }
 
 /* ---------- small touches ---------- */
@@ -258,4 +149,68 @@
 .progress > i,
 .progress-fill {
   transition: width 0.45s var(--ease-out);
+}
+
+/* ---------- small details ---------- */
+::selection {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.chat-row {
+  transition: background-color 0.12s ease;
+}
+.chat-row-more {
+  transition: opacity 0.14s ease, background-color 0.14s ease;
+}
+.tool-tri {
+  transition: transform 0.2s var(--ease-out);
+}
+.tool-head.clickable {
+  transition: color 0.14s ease;
+}
+.tooltip {
+  animation: tip-in 0.12s ease;
+}
+@keyframes tip-in {
+  from {
+    opacity: 0;
+  }
+}
+/* fields warm up under the pointer (a colour change: no glow) */
+.text-input,
+.select,
+.side-search,
+.set-search {
+  transition: border-color 0.14s ease, background-color 0.14s ease;
+}
+.text-input:hover:not(:focus):not(:disabled) {
+  border-color: color-mix(in srgb, var(--text) 26%, transparent);
+}
+.btn:disabled,
+.chip:disabled {
+  cursor: not-allowed;
+}
+/* replies */
+.md a {
+  text-underline-offset: 2px;
+  transition: color 0.14s ease, text-decoration-color 0.14s ease;
+}
+.md img {
+  border-radius: var(--r-lg);
+}
+.md tbody tr td {
+  transition: background-color 0.12s ease;
+}
+.md tbody tr:hover td {
+  background: var(--hover);
+}
+.code,
+.runbox {
+  transition: border-color 0.16s ease;
+}
+/* "Copied": a check where the copy icon was */
+.copied-pop {
+  color: var(--accent);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text) 32%, transparent);
 }
