@@ -934,11 +934,11 @@ function registerIpc() {
     const client = () => (settings.googleClientId ? { id: settings.googleClientId, secret: settings.googleClientSecret || "" } : builtIn);
     const accountStatus = () => ({ profile: google.profile(), sync: sync.status(), clientId: client().id, hasSecret: !!client().secret, builtIn: !!builtIn.id });
     handle("account:status", accountStatus);
-    // sign-in pages open in a small browser window over Pelica (authwin.ts)
+    // sign-in pages open in a maximized browser window (authwin.ts)
     const signInWindow = async (go, cancel) => {
         let w = null;
         try {
-            const r = await go((u) => (w = (0, authwin_1.openSmall)(u, node_path_1.default.join(userDir, "sign-in"), win?.getBounds(), cancel)));
+            const r = await go((u) => (w = (0, authwin_1.openSignIn)(u, node_path_1.default.join(userDir, "sign-in"), win?.getBounds(), cancel)));
             w?.close(1200);
             return r;
         }

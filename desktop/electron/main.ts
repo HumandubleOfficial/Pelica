@@ -18,7 +18,7 @@ import * as lib from "./library";
 import * as media from "./media";
 import * as docs from "./docs";
 import * as restore from "./restore";
-import { openSmall, type AuthWindow } from "./authwin";
+import { openSignIn, type AuthWindow } from "./authwin";
 import { chatUsage, searchChats } from "./chatdata";
 import { checkRepo, reposIn } from "./repocheck";
 import * as updates from "./updates";
@@ -894,11 +894,11 @@ function registerIpc() {
   const client = () => (settings.googleClientId ? { id: settings.googleClientId, secret: settings.googleClientSecret || "" } : builtIn);
   const accountStatus = () => ({ profile: google.profile(), sync: sync.status(), clientId: client().id, hasSecret: !!client().secret, builtIn: !!builtIn.id });
   handle("account:status", accountStatus);
-  // sign-in pages open in a small browser window over Pelica (authwin.ts)
+  // sign-in pages open in a maximized browser window (authwin.ts)
   const signInWindow = async <T>(go: (open: (u: string) => void) => Promise<T>, cancel: () => void): Promise<T> => {
     let w: AuthWindow | null = null;
     try {
-      const r = await go((u) => (w = openSmall(u, path.join(userDir, "sign-in"), win?.getBounds(), cancel)));
+      const r = await go((u) => (w = openSignIn(u, path.join(userDir, "sign-in"), win?.getBounds(), cancel)));
       (w as AuthWindow | null)?.close(1200);
       return r;
     } catch (e) {
