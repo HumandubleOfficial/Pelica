@@ -16,6 +16,7 @@ import "./settings.css";
 import "./details.css";
 import "./motion.css";
 import "./pages.css";
+import "./glass-theme.css";
 import { startSegs } from "./lib/segs";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { checkWhatsNew } from "./components/WhatsNew";
@@ -30,12 +31,24 @@ import "highlight.js/styles/github-dark.css";
 // the store (and chat saving), for looking at the app from DevTools and tests
 (window as any).__pelica = { app, persist, openChat, refreshChats };
 
+// the Liquid Glass theme's WebGL glass, loaded only when it's chosen (lib/liquid.ts)
+let glassOn = false;
+function glass(on: boolean) {
+  if (on === glassOn) return;
+  glassOn = on;
+  import("./lib/liquid").then((m) => (glassOn ? m.startGlass() : m.stopGlass()));
+}
+
 // theme and text size follow the settings
 app.sub(() => {
   const s = app.get().settings;
   const el = document.documentElement;
-  if (el.dataset.theme !== s.theme) el.dataset.theme = s.theme;
-  if (el.dataset.material !== s.material) el.dataset.material = bridge ? s.material : "none";
+  // (the quick-ask bar has no glass: it's dark there)
+  const theme = s.theme === "glass" && location.hash === "#quick" ? "dark" : s.theme;
+  if (el.dataset.theme !== theme) el.dataset.theme = theme;
+  glass(theme === "glass");
+  const mat = bridge && theme !== "glass" ? s.material : "none";
+  if (el.dataset.material !== mat) el.dataset.material = mat;
   el.style.setProperty("--font-size", `${s.fontSize}px`);
   el.style.setProperty("--left-w", `${s.sideWidth}px`);
   el.style.setProperty("--side-w", `${s.sideWidth}px`);

@@ -163,7 +163,9 @@ export interface Memory {
 // ---------- settings ----------
 
 export interface Settings {
-  theme: "dark" | "warm" | "light" | "midnight" | "neural";
+  theme: "dark" | "warm" | "light" | "midnight" | "neural" | "glass";
+  /** the Liquid Glass theme's wallpaper (lib/liquid.ts) */
+  glassWall: "night" | "bloom" | "dunes" | "tiles" | "picture";
   background: "none" | "experts";
   userName: string;
   web: boolean;
@@ -297,6 +299,7 @@ export const PERM_MODES: { id: PermMode; label: string; desc: string }[] = [
 
 export const DEFAULTS: Settings = {
   theme: "dark",
+  glassWall: "night",
   background: "none",
   userName: "",
   web: true,

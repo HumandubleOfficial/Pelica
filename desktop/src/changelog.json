@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.6.1",
+    "date": "2026-11-07",
+    "title": "Liquid Glass (experimental)",
+    "notes": [
+      "New experimental theme, Liquid Glass (Settings → Appearance): the sidebar, the chat and the message box are see-through glass over a wallpaper. Real glass: it bends what is behind it at the edges, frosted in the middle.",
+      "With Liquid Glass, menus and windows grow out of the button you clicked and fold back into it when they close.",
+      "Pick the wallpaper: Night, Bloom, Dunes, Tiles, or a picture of your own (it stays on this PC, and bright pictures are dimmed so text stays readable).",
+      "The glass only redraws when something moves, so it leaves the graphics card to your model while you read or a reply is written."
+    ]
+  },
+  {
     "version": "1.6.0",
     "date": "2026-11-07",
     "title": "Faster start, updates you can't miss",

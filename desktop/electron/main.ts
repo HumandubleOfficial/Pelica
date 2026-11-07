@@ -332,10 +332,10 @@ body{display:grid;place-items:center;background:radial-gradient(600px 400px at 5
 
 type Material = "none" | "mica" | "acrylic" | "tabbed";
 /** Windows 11's backdrop behind the window (the page lets it show through). */
-const material = (): Material => (["mica", "acrylic", "tabbed"].includes(settings.material) ? settings.material : "none");
+const material = (): Material => (settings.theme !== "glass" && ["mica", "acrylic", "tabbed"].includes(settings.material) ? settings.material : "none");
 const SOLID = "#1f1e1d";
 /** The window before the page has drawn: each theme's own page color. */
-const THEME_BG: Record<string, string> = { dark: "#191919", warm: "#262624", light: "#faf9f5", midnight: "#0f1420", neural: "#0b0a0c" };
+const THEME_BG: Record<string, string> = { dark: "#191919", warm: "#262624", light: "#faf9f5", midnight: "#0f1420", neural: "#0b0a0c", glass: "#05070d" };
 /** The engine, started before Electron is ready (it needs nothing from it). */
 let engineUp: Promise<void> = Promise.resolve();
 /** Mica and Acrylic take their tint from the app's light or dark theme. */

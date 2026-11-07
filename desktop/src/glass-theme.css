@@ -1,0 +1,154 @@
+/* The Liquid Glass theme (experimental; lib/liquid.ts).
+   The wallpaper and the glass of the sidebar, the chat sheet, the message box
+   and your messages are drawn by WebGL under the page, so those have no
+   background of their own here. Menus, pickers and windows that float over
+   text are CSS glass: they blur and tint what's under them. */
+
+:root[data-theme="glass"] {
+  --bg: #0c0f18;
+  --side: transparent;
+  --panel: rgba(255, 255, 255, 0.07);
+  --panel-2: rgba(255, 255, 255, 0.11);
+  --raised: rgba(255, 255, 255, 0.09);
+  --bubble: transparent;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-2: rgba(255, 255, 255, 0.16);
+  --card-line: rgba(255, 255, 255, 0.08);
+  --input-bg: rgba(255, 255, 255, 0.07);
+  --button: rgba(255, 255, 255, 0.12);
+  --track: rgba(255, 255, 255, 0.13);
+  --text: #f4f6fb;
+  --text-2: #d6dae4;
+  --muted: #a4abbb;
+  --dim: #6d7487;
+  --accent: #3f95ff;
+  --accent-2: #6db0ff;
+  --accent-ink: #fff;
+  --code-bg: rgba(0, 0, 0, 0.32);
+  --hover: rgba(255, 255, 255, 0.09);
+  --press: rgba(255, 255, 255, 0.16);
+  --press-on: rgba(255, 255, 255, 0.2);
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --expert-hot: 110, 160, 255;
+  --expert-dim: 90, 105, 140;
+  color-scheme: dark;
+}
+
+/* ---------- the window: two glass cards over the wallpaper ---------- */
+html.lg-on body {
+  background: #05070d;
+}
+html.lg-on .lg-canvas {
+  z-index: 0;
+}
+html.lg-on .shell {
+  z-index: 1;
+  padding: 8px;
+  gap: 8px;
+}
+html.lg-on .shell > .sidebar:not(.peek) {
+  background: transparent;
+  border: 0;
+  border-radius: 22px;
+  backdrop-filter: none;
+}
+html.lg-on .shell > .main {
+  background: transparent;
+  border-radius: 22px;
+}
+/* (the window buttons sit in the sheet's rounded corner) */
+html.lg-on .win-btns .close:hover {
+  border-top-right-radius: 22px;
+}
+html.lg-on .shell.compact {
+  padding: 0;
+  gap: 0;
+}
+html.lg-on .shell.compact > .main {
+  border-radius: 0;
+}
+
+/* the message box and your messages: WebGL glass floating on the sheet */
+html.lg-on .composer,
+html.lg-on .composer:focus-within {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 26px;
+}
+html.lg-on .composer-dock::before {
+  display: none;
+}
+html.lg-on .user-bubble {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* inputs and choice rows are lighter glass inside the glass */
+html.lg-on :is(.text-input, .ctx-select select, .chat-row-edit) {
+  background: rgba(255, 255, 255, 0.06);
+}
+html.lg-on .seg {
+  background: rgba(0, 0, 0, 0.18);
+}
+html.lg-on .seg::before,
+html.lg-on .seg .on,
+html.lg-on .seg [aria-pressed="true"] {
+  box-shadow: inset 1px 1px 0.5px -0.5px rgba(255, 255, 255, 0.55), inset 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+}
+
+/* ---------- glass that floats over text: menus, pickers, windows ---------- */
+html.lg-on :is(.popover, .modal, .toast, .palette, .sidebar.peek) {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.03) 42%, rgba(255, 255, 255, 0.06) 100%),
+    rgba(20, 24, 36, 0.52) !important;
+  -webkit-backdrop-filter: blur(calc(4px + 20px * var(--lg-frost, 1))) saturate(1.8) !important;
+  backdrop-filter: blur(calc(4px + 20px * var(--lg-frost, 1))) saturate(1.8) !important;
+  border-color: transparent !important;
+  box-shadow:
+    inset 1.5px 1.5px 0.5px -0.5px rgba(255, 255, 255, 0.55),
+    inset -1px -1px 0.5px -0.5px rgba(255, 255, 255, 0.3),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.2),
+    0 16px 44px rgba(0, 0, 0, 0.42) !important;
+}
+html.lg-on :is(.popover, .palette) {
+  border-radius: 18px;
+}
+html.lg-on .modal {
+  border-radius: 26px;
+}
+html.lg-on .toast {
+  border-radius: 999px;
+}
+/* (inside a glass window, its own panes are clear) */
+html.lg-on .modal :is(.set-nav, .mm-side) {
+  background: transparent;
+}
+html.lg-on .modal-back {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+/* while a menu grows out of its button, its content comes in last */
+.lg-morph > * {
+  opacity: var(--lg-in, 1);
+}
+.lg-ghost * {
+  pointer-events: none !important;
+}
+
+/* the theme card's preview */
+.theme-mini.glass-mini {
+  background:
+    radial-gradient(ellipse at 40% 85%, rgba(110, 64, 38, 0.9), transparent 60%),
+    linear-gradient(#020309, #070b18) !important;
+}
+.theme-mini.glass-mini .theme-mini-side,
+.theme-mini.glass-mini .theme-mini-box {
+  background: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.45);
+}
+.theme-tag {
+  font-size: 0.72em;
+  color: var(--muted);
+  margin-left: 4px;
+}

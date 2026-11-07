@@ -81,7 +81,7 @@ function actions(): Item[] {
     { id: "settings", group: "Go to", label: "Settings", icon: "settings", keys: "Ctrl+,", run: go(() => app.set({ settingsOpen: true })) },
     { id: "desktop", group: "Go to", label: "Desktop settings: shortcut, tray, notifications", icon: "monitor", run: go(() => app.set({ settingsOpen: true, settingsTab: "Desktop" })) },
     { id: "side", group: "View", label: (app.get().compact ? app.get().drawer : app.get().sidebar) ? "Hide the sidebar" : "Show the sidebar", icon: "sidebar", keys: "Ctrl+B", run: go(() => toggleSidebar()) },
-    ...(["dark", "warm", "light", "midnight", "neural"] as const).map((t) => ({ id: `theme-${t}`, group: "View", label: `Theme: ${t[0].toUpperCase() + t.slice(1)}`, icon: "palette", hint: s.theme === t ? "current" : undefined, run: go(() => setSettings({ theme: t })) })),
+    ...(["dark", "warm", "light", "midnight", "neural", "glass"] as const).map((t) => ({ id: `theme-${t}`, group: "View", label: `Theme: ${t === "glass" ? "Liquid Glass" : t[0].toUpperCase() + t.slice(1)}`, icon: "palette", hint: s.theme === t ? "current" : undefined, run: go(() => setSettings({ theme: t })) })),
     ...(bridge
       ? ([
           ["none", "Solid"],

@@ -29,7 +29,7 @@ const PREVIEW_B = "function greet(name: string) {\n  return `Hello, ${name}!`;\n
 const TABS: { name: string; icon: string; group: string; keys: string }[] = [
   { name: "General", icon: "user", group: "Preferences", keys: "name instructions send enter reply length saved prompts back up restore chats import chatgpt claude export" },
   { name: "Account", icon: "user-circle", group: "Preferences", keys: "account google sign in sync drive profile other pc" },
-  { name: "Appearance", icon: "palette", group: "Preferences", keys: "theme dark light warm midnight neural background backdrop mica acrylic text size font serif code animations" },
+  { name: "Appearance", icon: "palette", group: "Preferences", keys: "theme dark light warm midnight neural liquid glass wallpaper picture background backdrop mica acrylic text size font serif code animations" },
   { name: "Menus", icon: "list", group: "Preferences", keys: "customize customise hide show menu plus sidebar buttons reply items" },
   { name: "Memory", icon: "book", group: "Preferences", keys: "remember forget across chats facts about me" },
   { name: "Capabilities", icon: "bolt", group: "Preferences", keys: "web search steps thinking effort voice speed talk over read aloud auto-compact compact context trim tool output cqs code quality scanner fix checkers" },
@@ -55,14 +55,35 @@ const THEMES: { id: S["theme"]; name: string; bg: string; side: string; panel: s
   { id: "light", name: "Light", bg: "#faf9f5", side: "#f3f1ea", panel: "#ffffff", text: "#1f1e1c", accent: "#c96442" },
   { id: "midnight", name: "Midnight", bg: "#0f1420", side: "#0b0f18", panel: "#161d2c", text: "#e4e9f4", accent: "#6d8dff" },
   { id: "neural", name: "Neural", bg: "#0b0a0c", side: "#141215", panel: "#1c191b", text: "#f1ece8", accent: "#ff8a4c" },
+  { id: "glass", name: "Liquid Glass", bg: "#05070d", side: "", panel: "", text: "#f4f6fb", accent: "#3f95ff" },
 ];
+
+/** The Liquid Glass theme's wallpaper: one of the built-in ones, or a picture of yours. */
+function GlassWallRow({ value, onChange }: { value: S["glassWall"]; onChange: (v: S["glassWall"]) => void }) {
+  const file = useRef<HTMLInputElement>(null);
+  const pick = async (f: File | undefined) => {
+    if (!f) return;
+    const m = await import("../lib/liquid");
+    await m.savePicture(f);
+    if (value === "picture") m.reloadPicture();
+    else onChange("picture");
+  };
+  return (
+    <Row title="Wallpaper" desc="What the glass sits on. Your picture stays on this PC.">
+      <div className="glass-wall-pick">
+        <Seg value={value} options={[["night", "Night"], ["bloom", "Bloom"], ["dunes", "Dunes"], ["tiles", "Tiles"], ["picture", "Picture"]]} onChange={(v) => (v === "picture" ? file.current?.click() : onChange(v))} />
+        <input ref={file} type="file" accept="image/*" hidden onChange={(e) => (pick(e.target.files?.[0]), (e.target.value = ""))} />
+      </div>
+    </Row>
+  );
+}
 
 function ThemePicker({ value, onChange }: { value: string; onChange: (v: S["theme"]) => void }) {
   return (
     <div className="theme-cards">
       {THEMES.map((t) => (
         <button key={t.id} className={`theme-card ${t.id === value ? "sel" : ""}`} onClick={() => onChange(t.id)} aria-pressed={t.id === value}>
-          <span className="theme-mini" style={{ background: t.bg }}>
+          <span className={`theme-mini ${t.id === "glass" ? "glass-mini" : ""}`} style={{ background: t.bg }}>
             <span className="theme-mini-side" style={{ background: t.side }} />
             <span className="theme-mini-main">
               <span className="theme-mini-line" style={{ background: t.text, width: "70%" }} />
@@ -72,7 +93,10 @@ function ThemePicker({ value, onChange }: { value: string; onChange: (v: S["them
               </span>
             </span>
           </span>
-          <span className="theme-name">{t.name}</span>
+          <span className="theme-name">
+            {t.name}
+            {t.id === "glass" && <span className="theme-tag">Experimental</span>}
+          </span>
         </button>
       ))}
     </div>
@@ -749,12 +773,15 @@ export function SettingsModal() {
             <div className="set-title">Theme</div>
             <ThemePicker value={s.theme} onChange={(v) => set({ theme: v })} />
           </div>
+          {s.theme === "glass" && <GlassWallRow value={s.glassWall} onChange={(v) => set({ glassWall: v })} />}
           <Row title="Background" desc="Live experts: the model's experts as a grid behind the chat, lighting up as the model uses them (mixture-of-experts models). The Neural theme turns it on.">
             <Seg value={s.background} options={[["none", "Plain"], ["experts", "Live experts"]]} onChange={(v) => set({ background: v })} />
           </Row>
-          <Row title="Window backdrop" desc="Windows 11's Mica or Acrylic material shows softly through the window.">
-            <Seg value={bridge ? s.material : "none"} options={[["none", "Solid"], ["mica", "Mica"], ["acrylic", "Acrylic"]]} onChange={(v) => setMaterial(v)} />
-          </Row>
+          {s.theme !== "glass" && (
+            <Row title="Window backdrop" desc="Windows 11's Mica or Acrylic material shows softly through the window.">
+              <Seg value={bridge ? s.material : "none"} options={[["none", "Solid"], ["mica", "Mica"], ["acrylic", "Acrylic"]]} onChange={(v) => setMaterial(v)} />
+            </Row>
+          )}
           <Row title="Text size" desc={`${SIZES.find((x) => x[0] === s.fontSize)?.[1] ?? "Default"}. Ctrl+= and Ctrl+- change it anywhere; Ctrl+0 goes back to Default.`}>
             <SizePicker value={s.fontSize} onChange={(v) => set({ fontSize: v })} />
           </Row>

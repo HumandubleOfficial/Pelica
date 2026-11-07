@@ -1,0 +1,86 @@
+/* liquid-glass base styles */
+
+.lg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  display: block;
+  pointer-events: none;
+}
+
+/* Text and icons sitting on glass adapt to what is behind it. */
+[data-glass-tone='light'] {
+  --lg-fg: rgba(16, 18, 24, 0.92);
+  --lg-fg-2: rgba(16, 18, 24, 0.58);
+}
+[data-glass-tone='dark'],
+[data-glass]:not([data-glass-tone]) {
+  --lg-fg: rgba(255, 255, 255, 0.96);
+  --lg-fg-2: rgba(255, 255, 255, 0.64);
+}
+
+/* HTML content that the renderer draws through the glass. The element stays
+   in the page for hit-testing, focus and screen readers but doesn't paint.
+   filter (unlike opacity) leaves its computed opacity and hit-testing alone. */
+.lg-content-hidden {
+  filter: opacity(0) !important;
+}
+.lg-content-hidden:focus-visible,
+.lg-content-hidden:has(:focus-visible) {
+  filter: none !important;
+}
+
+/* Live layers (experimental HTML-in-canvas): viewport-size boxes stacked
+   inside the glass canvas. Direct canvas children are forced static, so each
+   pulls the next one back up with a negative margin. */
+.lg-live-layer {
+  width: 100vw;
+  height: 100vh;
+  margin-bottom: -100vh;
+  pointer-events: none;
+}
+.lg-live-layer > * {
+  pointer-events: auto;
+}
+
+/* ---- CSS fallback material (no WebGL2) ---- */
+
+.lg-css {
+  isolation: isolate;
+}
+
+/* Two layers: Chromium drops an element's own background when its
+   backdrop-filter contains an SVG url(), so the refracted backdrop and the
+   tint/highlights live on separate pseudo-elements. */
+.lg-css::before,
+.lg-css::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--lg-opacity, 1);
+}
+.lg-css::before {
+  -webkit-backdrop-filter: var(--lg-backdrop, blur(8px) saturate(1.7));
+  backdrop-filter: var(--lg-backdrop, blur(8px) saturate(1.7));
+}
+.lg-css::after {
+  background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, calc(0.16 + var(--lg-glow, 0) * 0.2)) 0%,
+      rgba(255, 255, 255, 0.03) 42%,
+      rgba(255, 255, 255, 0.07) 100%),
+    linear-gradient(var(--lg-lift, transparent), var(--lg-lift, transparent)),
+    var(--lg-tint, transparent);
+  box-shadow:
+    inset 1.5px 1.5px 0.5px -0.5px rgba(255, 255, 255, 0.75),
+    inset -1px -1px 0.5px -0.5px rgba(255, 255, 255, 0.45),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.35),
+    inset 0 0 16px rgba(255, 255, 255, 0.08),
+    0 6px 22px rgba(0, 0, 0, calc(var(--lg-shadow, 0.2) * 1.1));
+  transition: background 0.2s;
+}

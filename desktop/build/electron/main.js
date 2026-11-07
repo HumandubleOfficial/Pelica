@@ -364,10 +364,10 @@ body{display:grid;place-items:center;background:radial-gradient(600px 400px at 5
 </style></head><body><div class="w"><svg class="m" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb26b"/><stop offset="1" stop-color="#e5533d"/></linearGradient></defs><rect width="64" height="64" rx="18" fill="url(#g)"/><path d="M17 47c0-15 5-27 15-27 6 0 9 4 9.5 8L55 31.5c1 .4 1 1.6 0 2L41.5 36C40 44 33 48 26 51z" fill="#fff"/><circle cx="33" cy="27" r="2.3" fill="#e5533d"/></svg>
 <div class="t">Pelica</div><div class="s">Starting the engine…</div><div class="bar"><i></i></div></div></body></html>`)}`;
 /** Windows 11's backdrop behind the window (the page lets it show through). */
-const material = () => (["mica", "acrylic", "tabbed"].includes(settings.material) ? settings.material : "none");
+const material = () => (settings.theme !== "glass" && ["mica", "acrylic", "tabbed"].includes(settings.material) ? settings.material : "none");
 const SOLID = "#1f1e1d";
 /** The window before the page has drawn: each theme's own page color. */
-const THEME_BG = { dark: "#191919", warm: "#262624", light: "#faf9f5", midnight: "#0f1420", neural: "#0b0a0c" };
+const THEME_BG = { dark: "#191919", warm: "#262624", light: "#faf9f5", midnight: "#0f1420", neural: "#0b0a0c", glass: "#05070d" };
 /** The engine, started before Electron is ready (it needs nothing from it). */
 let engineUp = Promise.resolve();
 /** Mica and Acrylic take their tint from the app's light or dark theme. */
