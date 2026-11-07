@@ -115,4 +115,6 @@ const quick = location.hash === "#quick";
     </ErrorBoundary>,
   );
   startSegs();
+  // (for measuring how long a start takes)
+  requestAnimationFrame(() => performance.mark("pelica:rendered"));
 })();

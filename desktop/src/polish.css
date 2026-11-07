@@ -12,6 +12,19 @@
   --rim: #404040; /* the message box's lighter rim (Claude's) */
   --glass: color-mix(in srgb, #262626 86%, transparent);
 }
+/* (Dark only: the other themes keep a shade of their own text color) */
+:root[data-theme="dark"] {
+  --hover: #2a2a2a; /* under the pointer */
+  --press: #393939; /* held down */
+  --press-on: #454545; /* held down, on something already on */
+}
+/* (on the lighter surfaces those greys would be darker than what's under them,
+   so there they're the same step up, measured from the page) */
+:root[data-theme="dark"] :is(.composer, .popover, .menu, .sp-sub) {
+  --hover: color-mix(in srgb, #fff 7.4%, transparent);
+  --press: color-mix(in srgb, #fff 13.9%, transparent);
+  --press-on: color-mix(in srgb, #fff 18%, transparent);
+}
 :root[data-theme="light"] {
   --edge: #e3e0d8;
   --rule: #e6e3db;
@@ -920,6 +933,9 @@
   background: var(--press-on);
   transition-duration: 0s;
 }
+.chat-row.active .chat-row-more:active {
+  background: color-mix(in srgb, var(--text) 16%, transparent);
+}
 .chat-row.active:has(.chat-row-main:active),
 .nav-item.active:active {
   background: color-mix(in srgb, var(--text) 9%, var(--sel));
@@ -1384,7 +1400,7 @@ button,
 /* Settings → Devices */
 .dev-list { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 4px; border: 1px solid var(--line); border-radius: var(--r-md); padding: 4px; }
 .dev-row { display: flex; align-items: center; gap: 10px; padding: 8px 8px; border-radius: var(--r); }
-.dev-row:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
+.dev-row:hover { background: var(--hover); }
 .dev-main { flex: 1; min-width: 0; }
 .dev-name { font-weight: 550; }
 .dev-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: color-mix(in srgb, var(--text) 30%, transparent); }
@@ -1396,7 +1412,7 @@ button,
 .dev-add .dev-code { flex: 0 0 120px; min-width: 0; font-variant-numeric: tabular-nums; letter-spacing: .08em; }
 .dev-found { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
 .dev-found-item { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: var(--r); text-align: left; }
-.dev-found-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.dev-found-item:hover { background: var(--hover); }
 .dev-steps { margin: 6px 0 10px; padding-left: 1.3em; line-height: 1.6; }
 .dev-steps li { margin: .3em 0; }
 .dev-steps code { font-size: .9em; padding: 1px 5px; border-radius: var(--r-xs); background: color-mix(in srgb, var(--text) 9%, transparent); }

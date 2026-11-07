@@ -11,7 +11,7 @@ import { DOCKS } from "./Dock";
 import { Icon, Logo } from "./Icons";
 import { Menu, type MenuItem } from "./Menu";
 import { useShown } from "../lib/menus";
-import { SideUpdate } from "./Updates";
+import { SideUpdate, UpdatePill, useUpdateReady } from "./Updates";
 
 const base = (p: string) => p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || p;
 
@@ -442,6 +442,8 @@ function SideHead({ id, label }: { id: string; label: string }) {
 export function Sidebar({ peek }: { peek?: boolean }) {
   // (made the lasting one from a peek: it's already on screen, so it doesn't slide in)
   const peeked = useRef(app.get().peek !== "off");
+  const updateReady = useUpdateReady();
+  const showPicture = useApp((s) => s.settings.accountPicture);
   // (the window measures its drag areas when they change, so the top row is
   // only made clickable once the slide has finished: mid-slide it's elsewhere)
   const [settled, setSettled] = useState(false);
@@ -577,15 +579,16 @@ export function Sidebar({ peek }: { peek?: boolean }) {
             setUserMenu(userMenu ? null : { x: r.left, y: r.top - 150 });
           }}
         >
-          {acct?.picture ? <img className="avatar" src={acct.picture} alt="" /> : <span className="avatar">{(name || acct?.name || "You").slice(0, 1).toUpperCase()}</span>}
+          {acct?.picture && showPicture ? <img className="avatar" src={acct.picture} alt="" /> : <span className="avatar">{(name || acct?.name || "You").slice(0, 1).toUpperCase()}</span>}
           <span className="user-name">
             {name || acct?.name || "You"}
             <span className="user-plan"> · {acct ? (syncOn ? "Synced" : "Not syncing") : "Local"}</span>
           </span>
           <Icon name="chevronDown" size={13} />
         </button>
-        <button className="ghost-btn" title="Settings" onClick={() => app.set({ settingsOpen: true })}>
+        <button className="ghost-btn side-gear" title={updateReady ? "Settings (an update is ready)" : "Settings"} onClick={() => app.set({ settingsOpen: true, ...(updateReady ? { settingsTab: "Updates" } : {}) })}>
           <Icon name="settings" size={16} />
+          {updateReady && <i className="new-dot" />}
         </button>
       </div>
       {userMenu && (
@@ -750,6 +753,7 @@ export function TitleBar() {
           <ViewOptions />
         </div>
       )}
+      <UpdatePill />
       <WinBtns max={max} />
     </div>
   );

@@ -29,6 +29,10 @@
   border-radius: var(--r-lg);
 }
 /* Claude's light settings: a white page beside a cream nav */
+:root[data-theme="dark"] .modal.settings {
+  --set-sel: var(--press);
+  --set-hover: var(--hover);
+}
 :root[data-theme="light"] .modal.settings {
   --set-page: var(--panel);
   --set-nav: var(--bg);
@@ -1123,4 +1127,23 @@
   .mm-split {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* ---------- Settings → Account ---------- */
+.acct-sure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--bad) 8%, transparent);
+  font-size: 0.9em;
+  line-height: 1.45;
+}
+.acct-sure span {
+  flex: 1;
+  min-width: 240px;
 }

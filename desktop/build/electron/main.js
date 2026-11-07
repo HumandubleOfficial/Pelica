@@ -173,7 +173,7 @@ async function startEngine() {
     });
     engine.on("error", (e) => (engineLog += `\n[could not start pelica: ${e.message}]\n`));
     // ready when the status answers
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 1200; i++) {
         if (!engine)
             throw new Error("pelica stopped:\n" + engineLog.slice(-2000));
         try {
@@ -182,7 +182,7 @@ async function startEngine() {
                 return announceEngine();
         }
         catch { }
-        await new Promise((ok) => setTimeout(ok, 100));
+        await new Promise((ok) => setTimeout(ok, 25));
     }
     throw new Error("pelica didn't answer:\n" + engineLog.slice(-2000));
 }
@@ -366,6 +366,10 @@ body{display:grid;place-items:center;background:radial-gradient(600px 400px at 5
 /** Windows 11's backdrop behind the window (the page lets it show through). */
 const material = () => (["mica", "acrylic", "tabbed"].includes(settings.material) ? settings.material : "none");
 const SOLID = "#1f1e1d";
+/** The window before the page has drawn: each theme's own page color. */
+const THEME_BG = { dark: "#191919", warm: "#262624", light: "#faf9f5", midnight: "#0f1420", neural: "#0b0a0c" };
+/** The engine, started before Electron is ready (it needs nothing from it). */
+let engineUp = Promise.resolve();
 /** Mica and Acrylic take their tint from the app's light or dark theme. */
 const syncTheme = () => (electron_1.nativeTheme.themeSource = settings.theme === "light" ? "light" : "dark");
 async function createWindow() {
@@ -378,15 +382,15 @@ async function createWindow() {
         minWidth: 460,
         minHeight: 420,
         frame: false,
-        backgroundColor: m === "none" ? SOLID : "#00000000",
+        backgroundColor: m === "none" ? THEME_BG[settings.theme] || SOLID : "#00000000",
         backgroundMaterial: m,
-        show: false,
+        // (at once, in the page's own color: the page fills it a moment later)
+        show: !startHidden,
         title: "Pelica",
         icon: icon ?? undefined,
         webPreferences: { preload: node_path_1.default.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: true, webviewTag: true },
     });
     electron_1.Menu.setApplicationMenu(null);
-    win.once("ready-to-show", () => !startHidden && win?.show());
     win.on("maximize", () => win?.webContents.send("win:state", { maximized: true }));
     win.on("unmaximize", () => win?.webContents.send("win:state", { maximized: false }));
     win.on("focus", () => win?.flashFrame(false));
@@ -414,9 +418,12 @@ async function createWindow() {
         external(url);
         return { action: "deny" };
     });
-    await win.loadURL(SPLASH);
     try {
-        await startEngine();
+        // the splash is only for an engine that's slow to come up
+        const quick = await Promise.race([engineUp.then(() => true, () => true), new Promise((ok) => setTimeout(() => ok(false), 700))]);
+        if (!quick)
+            await win.loadURL(SPLASH);
+        await engineUp;
         await win.loadURL(`http://127.0.0.1:${port}/`);
         setIcon();
     }
@@ -737,6 +744,7 @@ function registerIpc() {
     handle("settings:set", (patch) => {
         // (roots only grow through the folder picker)
         const { roots: _r, ...rest } = patch || {};
+        const was = settings;
         settings = { ...settings, ...rest };
         saveSettings();
         if ("theme" in rest)
@@ -749,6 +757,8 @@ function registerIpc() {
             trayMenu();
         if (sync.SYNCED.some((k) => k in rest))
             sync.noteProfile();
+        if ("syncSkip" in rest)
+            sync.skipChanged(was.syncSkip || [], rest.syncSkip || []);
         if ("syncOn" in rest && rest.syncOn)
             sync.soon(300);
         if ("modelDirs" in rest || "downloadDir" in rest)
@@ -1018,6 +1028,15 @@ function registerIpc() {
     });
     handle("sync:now", async () => {
         await sync.syncNow();
+        return accountStatus();
+    });
+    handle("account:usage", () => sync.usage());
+    // everything in Pelica's Drive folder goes, and syncing stops; this PC keeps its copy
+    handle("account:wipe", async () => {
+        await sync.wipe();
+        settings = { ...settings, syncOn: false };
+        saveSettings();
+        win?.webContents.send("settings:pushed", { syncOn: false });
         return accountStatus();
     });
     handle("fs:list", (root, rel, depth) => ws.listFiles(checkRoot(root), rel, depth));
@@ -1474,6 +1493,8 @@ else {
             });
         }
     });
+    engineUp = startEngine();
+    engineUp.catch(() => { });
     electron_1.app.whenReady().then(async () => {
         // (connector sign-ins first: connectors may start as soon as the window asks)
         oauth.init(userDir);
@@ -1490,10 +1511,12 @@ else {
             on: () => settings.syncOn !== false,
         });
         registerIpc();
+        // (the window first: these run while its page is loading)
+        const shown = createWindow();
         makeTray();
         registerHotkey();
         jumpList();
-        await createWindow();
+        await shown;
         syncApi();
         syncPhone();
         sync.soon(3000);

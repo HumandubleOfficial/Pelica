@@ -12,6 +12,9 @@ import * as google from "./google";
 /** The settings that travel with the account (the rest belong to this PC). */
 export const SYNCED = ["userName", "customInstructions", "projects", "memoryOn", "memories", "prompts"] as const;
 
+/** What Settings → Account can keep off the sync (settings.syncSkip), besides "chats". */
+const GROUPS: Record<string, readonly string[]> = { profile: ["userName", "customInstructions"], projects: ["projects"], memory: ["memoryOn", "memories"], prompts: ["prompts"] };
+
 interface State {
   /** chat id → its `updated` when it last matched Drive */
   synced: Record<string, number>;
@@ -20,6 +23,8 @@ interface State {
   /** when the synced settings last changed here, and the profile on Drive then */
   profileAt: number;
   lastSync: number;
+  /** something was put back on the sync: the profile's lists join again, as on a first sync */
+  rejoin?: boolean;
 }
 
 export interface SyncStatus {
@@ -80,6 +85,15 @@ export function noteDelete(id: string) {
   soon();
 }
 
+/** Settings → Account changed what's kept off the sync. */
+export function skipChanged(was: string[], now: string[]) {
+  if (was.some((g) => g in GROUPS && !now.includes(g))) {
+    st.rejoin = true;
+    saveState();
+  }
+  soon(500);
+}
+
 export function noteProfile() {
   st.profileAt = Date.now();
   saveState();
@@ -92,6 +106,7 @@ interface Remote {
   id: string;
   name: string;
   updated: number;
+  size: number;
 }
 
 async function ok(r: Response) {
@@ -104,9 +119,9 @@ async function listAll(): Promise<Remote[]> {
   const out: Remote[] = [];
   let page = "";
   do {
-    const u = `${google.DRIVE}/files?spaces=appDataFolder&pageSize=1000&fields=nextPageToken,files(id,name,appProperties)${page ? `&pageToken=${encodeURIComponent(page)}` : ""}`;
+    const u = `${google.DRIVE}/files?spaces=appDataFolder&pageSize=1000&fields=nextPageToken,files(id,name,size,appProperties)${page ? `&pageToken=${encodeURIComponent(page)}` : ""}`;
     const j: any = await (await ok(await google.api(u))).json();
-    for (const f of j.files || []) out.push({ id: f.id, name: f.name, updated: Number(f.appProperties?.updated || 0) });
+    for (const f of j.files || []) out.push({ id: f.id, name: f.name, updated: Number(f.appProperties?.updated || 0), size: Number(f.size || 0) });
     page = j.nextPageToken || "";
   } while (page);
   return out;
@@ -129,6 +144,25 @@ const remove = async (id: string) => {
   const r = await google.api(`${google.DRIVE}/files/${id}`, { method: "DELETE" });
   if (!r.ok && r.status !== 404) await ok(r);
 };
+
+/** What's in Pelica's folder on Drive. */
+export async function usage() {
+  const all = await listAll();
+  return { files: all.length, bytes: all.reduce((n, f) => n + f.size, 0) };
+}
+
+/** Empties Pelica's folder on Drive (this PC keeps everything). */
+export async function wipe() {
+  if (busy) throw new Error("A sync is running. Try again in a moment.");
+  busy = true;
+  if (timer) clearTimeout(timer);
+  try {
+    for (const f of await listAll()) await remove(f.id);
+    reset();
+  } finally {
+    busy = false;
+  }
+}
 
 // ---------- this PC's chats ----------
 
@@ -211,6 +245,8 @@ export async function syncNow(): Promise<SyncStatus> {
       else if (f.name === "deleted.json") deletedFile = f;
     }
 
+    const skip = new Set<string>(hooks.settings().syncSkip || []);
+    if (!skip.has("chats")) {
     // deletions, from every PC
     const remoteDeleted: Record<string, number> = deletedFile ? (await download(deletedFile.id).catch(() => ({}))).ids || {} : {};
     const deleted: Record<string, number> = { ...remoteDeleted };
@@ -263,25 +299,32 @@ export async function syncNow(): Promise<SyncStatus> {
     }
     // copies kept just now go up next time (soon)
 
-    // the profile
-    const here = pickProfile(hooks.settings());
-    if (profileFile && (first || profileFile.updated > st.profileAt)) {
-      const there = await download(profileFile.id);
-      const next = first ? joinProfile(here, there) : there;
-      hooks.apply(next);
-      settingsChanged = true;
-      st.profileAt = first ? Date.now() : profileFile.updated;
-      if (first) await upload("profile.json", next, st.profileAt, profileFile.id);
-    } else if (!profileFile || st.profileAt > profileFile.updated) {
-      st.profileAt ||= Date.now();
-      await upload("profile.json", here, st.profileAt, profileFile?.id);
-    }
-
     // deleted.json: what's new, and nothing older than 90 days
     const cutoff = Date.now() - 90 * 86400e3;
     const keep = Object.fromEntries(Object.entries(deleted).filter(([, t]) => t > cutoff));
     if (JSON.stringify(keep) !== JSON.stringify(remoteDeleted)) await upload("deleted.json", { ids: keep }, Date.now(), deletedFile?.id);
     st.deleted = {};
+    }
+
+    // the profile, without what's kept off the sync: that's neither sent nor
+    // taken here, and what's on Drive for the other PCs stays as it is
+    const held = new Set(Object.entries(GROUPS).flatMap(([g, keys]) => (skip.has(g) ? keys : [])));
+    const shared = (o: Record<string, any>) => Object.fromEntries(Object.entries(o).filter(([k]) => !held.has(k)));
+    const here = shared(pickProfile(hooks.settings()));
+    const join = first || !!st.rejoin;
+    if (profileFile && (join || profileFile.updated > st.profileAt)) {
+      const there = await download(profileFile.id);
+      const next = shared(join ? joinProfile(here, shared(there)) : there);
+      hooks.apply(next);
+      settingsChanged = true;
+      st.profileAt = join ? Date.now() : profileFile.updated;
+      if (join) await upload("profile.json", { ...there, ...next }, st.profileAt, profileFile.id);
+    } else if (!profileFile || st.profileAt > profileFile.updated) {
+      st.profileAt ||= Date.now();
+      const there = held.size && profileFile ? await download(profileFile.id).catch(() => ({})) : {};
+      await upload("profile.json", { ...there, ...here }, st.profileAt, profileFile?.id);
+    }
+    st.rejoin = false;
     st.lastSync = Date.now();
     saveState();
   } catch (e: any) {

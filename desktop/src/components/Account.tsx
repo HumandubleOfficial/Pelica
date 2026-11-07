@@ -26,6 +26,9 @@ const ago = (t: number) => {
         : new Date(t).toLocaleDateString();
 };
 
+const size = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`);
+const plural = (n: number, one: string) => `${n.toLocaleString()} ${one}${n === 1 ? "" : "s"}`;
+
 /** Refreshes the account's status (the sidebar chip and this page read it). */
 export async function loadAccount() {
   if (!bridge) return;
@@ -53,6 +56,165 @@ export function GoogleG() {
         d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.2-5.6c-2 1.4-4.7 2.3-8.7 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"
       />
     </svg>
+  );
+}
+
+type RowT = (p: { title: string; desc?: React.ReactNode; children: React.ReactNode }) => React.ReactElement;
+type ToggleT = (p: { on: boolean; set: (v: boolean) => void }) => React.ReactElement;
+
+/** Who you are: on this PC, signed in or not. */
+function ProfileRows({ Row, Toggle, picture }: { Row: RowT; Toggle: ToggleT; picture: boolean }) {
+  const name = useApp((s) => s.settings.userName);
+  const show = useApp((s) => s.settings.accountPicture);
+  const [text, setText] = useState(name);
+  useEffect(() => setText(name), [name]);
+  return (
+    <>
+      <div className="set-section">Profile</div>
+      <Row title="Your name" desc="What Pelica calls you, here and in its replies.">
+        <input
+          className="text-input acct-field"
+          value={text}
+          placeholder="Your name"
+          spellCheck={false}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => text.trim() !== name && setSettings({ userName: text.trim() })}
+          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+        />
+      </Row>
+      {picture && (
+        <Row title="Show your Google picture" desc="In the sidebar. Off: the first letter of your name.">
+          <Toggle on={show} set={(v) => setSettings({ accountPicture: v })} />
+        </Row>
+      )}
+    </>
+  );
+}
+
+/** What travels between your PCs, one kind at a time. */
+function SyncChoices({ Row, Toggle }: { Row: RowT; Toggle: ToggleT }) {
+  const skip = useApp((s) => s.settings.syncSkip);
+  const on = useApp((s) => s.settings.syncOn);
+  const chats = useApp((s) => s.chats.length);
+  const projects = useApp((s) => s.settings.projects.length);
+  const memories = useApp((s) => s.settings.memories.length);
+  const prompts = useApp((s) => s.settings.prompts.length);
+  if (!on) return null;
+  const kinds: [string, string, string][] = [
+    ["chats", "Chats", plural(chats, "chat")],
+    ["projects", "Projects", plural(projects, "project")],
+    ["memory", "Memory", plural(memories, "memory").replace("memorys", "memories")],
+    ["prompts", "Saved prompts", plural(prompts, "prompt")],
+    ["profile", "Name and instructions", "What Pelica calls you, and your custom instructions"],
+  ];
+  return (
+    <>
+      <div className="set-section">What syncs</div>
+      <p className="set-intro">Something turned off stays as it is on each PC. What's already in your Drive isn't removed.</p>
+      {kinds.map(([id, title, desc]) => (
+        <Row key={id} title={title} desc={desc}>
+          <Toggle on={!skip.includes(id)} set={(v) => setSettings({ syncSkip: v ? skip.filter((x) => x !== id) : [...skip, id] })} />
+        </Row>
+      ))}
+    </>
+  );
+}
+
+/** What's where, a backup, and emptying Drive. */
+function DataRows({ Row, signedIn }: { Row: RowT; signedIn: boolean }) {
+  const chats = useApp((s) => s.chats.length);
+  const projects = useApp((s) => s.settings.projects.length);
+  const memories = useApp((s) => s.settings.memories.length);
+  const [drive, setDrive] = useState<{ files: number; bytes: number } | null>(null);
+  const [driveErr, setDriveErr] = useState("");
+  const [sure, setSure] = useState(false);
+  const [wiping, setWiping] = useState(false);
+  const look = () =>
+    bridge?.account
+      .usage()
+      .then((u) => (setDrive(u), setDriveErr("")))
+      .catch((e) => setDriveErr(ipcErr(e)));
+  useEffect(() => {
+    if (signedIn) look();
+  }, [signedIn]);
+  async function wipe() {
+    setWiping(true);
+    try {
+      app.set({ account: await bridge!.account.wipe() });
+      setDrive({ files: 0, bytes: 0 });
+      toast("Your Google Drive folder is empty, and syncing is off. Everything is still on this PC.");
+    } catch (e) {
+      toast(ipcErr(e));
+    }
+    setWiping(false);
+    setSure(false);
+  }
+  return (
+    <>
+      <div className="set-section">Your data</div>
+      <Row title="On this PC" desc={`${plural(chats, "chat")}, ${plural(projects, "project")} and ${memories === 1 ? "1 memory" : `${memories.toLocaleString()} memories`}.`}>
+        <button
+          className="btn"
+          disabled={!bridge}
+          onClick={async () => {
+            try {
+              const r = await bridge!.chats.backup();
+              if (r) toast(`Saved a backup of ${plural(r.count, "chat")}.`);
+            } catch (e) {
+              toast(ipcErr(e));
+            }
+          }}
+        >
+          <Icon name="download" size={13} /> Back up chats
+        </button>
+      </Row>
+      {signedIn && (
+        <>
+          <Row
+            title="In your Google Drive"
+            desc={
+              driveErr ? (
+                <span className="danger-text">{driveErr}</span>
+              ) : drive ? (
+                drive.files ? (
+                  `${plural(drive.files, "file")}, ${size(drive.bytes)}, in a hidden folder only Pelica can see.`
+                ) : (
+                  "Nothing yet."
+                )
+              ) : (
+                "Looking…"
+              )
+            }
+          >
+            <button className="btn" onClick={look}>
+              <Icon name="reload" size={13} /> Refresh
+            </button>
+          </Row>
+          {sure ? (
+            <div className="acct-sure">
+              <span>This deletes Pelica's folder from your Google Drive for good, and turns syncing off. Your other PCs keep their copies. Delete it?</span>
+              <button className="btn small danger" disabled={wiping} onClick={wipe}>
+                {wiping ? "Deleting…" : "Delete from Drive"}
+              </button>
+              <button className="btn small ghost" disabled={wiping} onClick={() => setSure(false)}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <Row title="Delete your data from Google Drive" desc="Empties Pelica's folder and turns syncing off. Everything stays on this PC.">
+              <button className="btn" disabled={!drive?.files} onClick={() => setSure(true)}>
+                Delete…
+              </button>
+            </Row>
+          )}
+          <Row title="Your Google account" desc="Your password, security, and which apps can use your account are managed by Google. Signing out here also takes back Pelica's access.">
+            <button className="btn" onClick={() => bridge?.sys.external("https://myaccount.google.com/")}>
+              <Icon name="external" size={13} /> Manage
+            </button>
+          </Row>
+        </>
+      )}
+    </>
   );
 }
 
@@ -142,8 +304,10 @@ export function AccountTab({
           {busy && <SignInHelp />}
         </div>
       )}
+      <ProfileRows Row={Row} Toggle={Toggle} picture={!!p?.picture} />
       {p && (
         <>
+          <div className="set-section">Sync</div>
           <Row
             title="Sync between your PCs"
             desc="Chats, projects, memory, saved prompts, your name and instructions. Models, folders and connectors stay on each PC. A chat changed on two PCs keeps both versions; one deleted on another PC goes to this PC's Recycle Bin."
@@ -176,8 +340,10 @@ export function AccountTab({
               <Icon name="reload" size={13} /> Sync now
             </button>
           </Row>
+          <SyncChoices Row={Row} Toggle={Toggle} />
         </>
       )}
+      <DataRows Row={Row} signedIn={!!p} />
       {acct?.builtIn && !own && !setup ? (
         <div className="row-end">
           <button className="btn small ghost" onClick={() => setSetup(true)}>

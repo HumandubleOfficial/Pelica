@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.6.0",
+    "date": "2026-11-07",
+    "title": "Faster start, updates you can't miss",
+    "notes": [
+      "Pelica opens about 40% faster: from 0.84 seconds to 0.5, and its window appears sooner, in your theme's own color.",
+      "A button at the top of the window now tells you when an update is ready, whatever page you're on. Click it to see what's new and install, without opening Settings.",
+      "Pelica now looks for updates a few seconds after starting (it took 15 seconds), and every few hours while it's open.",
+      "Settings → Account has more: your name and picture, a choice of what syncs (chats, projects, memory, saved prompts, name and instructions), how much is in your Google Drive, a chat backup, and a way to delete your data from Drive.",
+      "In the Dark theme, buttons and rows now use the same grey under the pointer and a lighter grey while clicked, all across the app."
+    ]
+  },
+  {
     "version": "1.5.0",
     "date": "2026-11-06",
     "title": "A sidebar that's there when you reach for it",

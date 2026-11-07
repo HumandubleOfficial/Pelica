@@ -16,7 +16,7 @@ import { PromptList } from "./Prompts";
 import { MemoryList } from "./Memory";
 import { PhoneTab } from "./Phone";
 import { AccountTab } from "./Account";
-import { checkNow, installUpdate, UpdateProgress } from "./Updates";
+import { checkNow, installUpdate, UpdateProgress, useUpdateReady } from "./Updates";
 import { StorageRows } from "./Storage";
 import { engine } from "../lib/engine";
 import { SpeedSelect, VoiceSelect } from "./Voice";
@@ -533,14 +533,14 @@ function UpdatesTab() {
       <UpdateProgress />
       {res?.newer && res.latest?.notes?.length ? <ReleaseNotes releases={[{ version: res.latest.version, date: "", title: res.latest.title, notes: res.latest.notes }]} /> : null}
       <Section title="Options" />
-      <Row title="Check for updates" desc="When Pelica asks for a newer version by itself, and says so when one is out. Nothing is downloaded until you choose Install.">
-        <Seg value={s.updateCheck} options={[["start", "At start"], ["daily", "Once a day"], ["off", "Never"]]} onChange={(x) => setSettings({ updateCheck: x })} />
+      <Row title="Check for updates" desc="How often Pelica asks for a newer version while it's open, as well as each time it starts. A new version shows at the top of the window. Nothing is downloaded until you choose Install.">
+        <Seg value={s.updateCheck} options={[["start", "Every few hours"], ["daily", "Once a day"], ["off", "Never"]]} onChange={(x) => setSettings({ updateCheck: x })} />
       </Row>
       <Row title="Preview versions" desc="Also offer versions marked as previews on GitHub: newer features, tried less. Off: only regular releases.">
         <Toggle on={s.updatePreview} set={(x) => (setSettings({ updatePreview: x }), setRes(null))} />
       </Row>
       {s.updateSkip && !(res?.newer && skipped) && (
-        <Row title="Skipped version" desc={`Pelica ${s.updateSkip} isn't announced at start. A newer version is.`}>
+        <Row title="Skipped version" desc={`Pelica ${s.updateSkip} isn't offered. A newer version will be.`}>
           <button className="btn small ghost" onClick={() => setSettings({ updateSkip: "" })}>
             Don't skip
           </button>
@@ -552,7 +552,7 @@ function UpdatesTab() {
           Open on GitHub
         </button>
       </Row>
-      <Row title="Update feed" desc={<>The web address or folder of a <code>latest.json</code>, for builds you host yourself. Empty: Pelica's releases on GitHub.</>}>
+      <Row title="Update feed" desc={<>The web address or file path of a <code>latest.json</code>, for builds you host yourself. Empty: Pelica's releases on GitHub.</>}>
         <input
           className="text-input wide"
           value={feed}
@@ -696,6 +696,7 @@ export function SettingsModal() {
     return () => window.removeEventListener("keydown", f);
   }, []);
   // (the render right after closing, before the effect above has run, counts as leaving too)
+  const updateReady = useUpdateReady();
   // the list's highlight: one block that moves to the page picked
   const navList = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -943,6 +944,7 @@ export function SettingsModal() {
                   <button className={t.name === tab ? "sel" : ""} onClick={() => app.set({ settingsTab: t.name })}>
                     <Icon name={t.icon} size={16} />
                     {t.name}
+                    {t.name === "Updates" && updateReady && <i className="new-dot" />}
                   </button>
                 </div>
               ))}

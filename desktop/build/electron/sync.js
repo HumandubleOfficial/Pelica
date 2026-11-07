@@ -41,7 +41,10 @@ exports.init = init;
 exports.reset = reset;
 exports.soon = soon;
 exports.noteDelete = noteDelete;
+exports.skipChanged = skipChanged;
 exports.noteProfile = noteProfile;
+exports.usage = usage;
+exports.wipe = wipe;
 exports.syncNow = syncNow;
 // Sync between your PCs through your Google Drive's app folder (hidden, only
 // Pelica sees it): a file per chat ("chat-<id>.json"), "profile.json" (your
@@ -55,6 +58,8 @@ const electron_1 = require("electron");
 const google = __importStar(require("./google"));
 /** The settings that travel with the account (the rest belong to this PC). */
 exports.SYNCED = ["userName", "customInstructions", "projects", "memoryOn", "memories", "prompts"];
+/** What Settings → Account can keep off the sync (settings.syncSkip), besides "chats". */
+const GROUPS = { profile: ["userName", "customInstructions"], projects: ["projects"], memory: ["memoryOn", "memories"], prompts: ["prompts"] };
 let stateFile = "";
 let chatsDir = "";
 let st = { synced: {}, deleted: {}, profileAt: 0, lastSync: 0 };
@@ -95,6 +100,14 @@ function noteDelete(id) {
     saveState();
     soon();
 }
+/** Settings → Account changed what's kept off the sync. */
+function skipChanged(was, now) {
+    if (was.some((g) => g in GROUPS && !now.includes(g))) {
+        st.rejoin = true;
+        saveState();
+    }
+    soon(500);
+}
 function noteProfile() {
     st.profileAt = Date.now();
     saveState();
@@ -110,10 +123,10 @@ async function listAll() {
     const out = [];
     let page = "";
     do {
-        const u = `${google.DRIVE}/files?spaces=appDataFolder&pageSize=1000&fields=nextPageToken,files(id,name,appProperties)${page ? `&pageToken=${encodeURIComponent(page)}` : ""}`;
+        const u = `${google.DRIVE}/files?spaces=appDataFolder&pageSize=1000&fields=nextPageToken,files(id,name,size,appProperties)${page ? `&pageToken=${encodeURIComponent(page)}` : ""}`;
         const j = await (await ok(await google.api(u))).json();
         for (const f of j.files || [])
-            out.push({ id: f.id, name: f.name, updated: Number(f.appProperties?.updated || 0) });
+            out.push({ id: f.id, name: f.name, updated: Number(f.appProperties?.updated || 0), size: Number(f.size || 0) });
         page = j.nextPageToken || "";
     } while (page);
     return out;
@@ -134,6 +147,27 @@ const remove = async (id) => {
     if (!r.ok && r.status !== 404)
         await ok(r);
 };
+/** What's in Pelica's folder on Drive. */
+async function usage() {
+    const all = await listAll();
+    return { files: all.length, bytes: all.reduce((n, f) => n + f.size, 0) };
+}
+/** Empties Pelica's folder on Drive (this PC keeps everything). */
+async function wipe() {
+    if (busy)
+        throw new Error("A sync is running. Try again in a moment.");
+    busy = true;
+    if (timer)
+        clearTimeout(timer);
+    try {
+        for (const f of await listAll())
+            await remove(f.id);
+        reset();
+    }
+    finally {
+        busy = false;
+    }
+}
 // ---------- this PC's chats ----------
 const chatFile = (id) => node_path_1.default.join(chatsDir, id + ".json");
 function localChats() {
@@ -215,83 +249,92 @@ async function syncNow() {
             else if (f.name === "deleted.json")
                 deletedFile = f;
         }
-        // deletions, from every PC
-        const remoteDeleted = deletedFile ? (await download(deletedFile.id).catch(() => ({}))).ids || {} : {};
-        const deleted = { ...remoteDeleted };
-        for (const [id, t] of Object.entries(st.deleted))
-            deleted[id] = Math.max(t, deleted[id] || 0);
-        const local = localChats();
-        for (const [id, when] of Object.entries(deleted)) {
-            const here = local.get(id);
-            if (here !== undefined) {
-                // (changed after it was deleted elsewhere: it stays)
-                if (here > when) {
-                    delete deleted[id];
-                    continue;
+        const skip = new Set(hooks.settings().syncSkip || []);
+        if (!skip.has("chats")) {
+            // deletions, from every PC
+            const remoteDeleted = deletedFile ? (await download(deletedFile.id).catch(() => ({}))).ids || {} : {};
+            const deleted = { ...remoteDeleted };
+            for (const [id, t] of Object.entries(st.deleted))
+                deleted[id] = Math.max(t, deleted[id] || 0);
+            const local = localChats();
+            for (const [id, when] of Object.entries(deleted)) {
+                const here = local.get(id);
+                if (here !== undefined) {
+                    // (changed after it was deleted elsewhere: it stays)
+                    if (here > when) {
+                        delete deleted[id];
+                        continue;
+                    }
+                    await electron_1.shell.trashItem(chatFile(id)).catch(() => { });
+                    local.delete(id);
+                    changed.add(id);
                 }
-                await electron_1.shell.trashItem(chatFile(id)).catch(() => { });
-                local.delete(id);
-                changed.add(id);
+                const r = chats.get(id);
+                if (r && r.updated <= when) {
+                    await remove(r.id);
+                    chats.delete(id);
+                }
+                delete st.synced[id];
             }
-            const r = chats.get(id);
-            if (r && r.updated <= when) {
-                await remove(r.id);
+            // chats here: up, down, or both kept
+            for (const [id, updated] of local) {
+                const r = chats.get(id);
+                const base = st.synced[id];
+                if (!r) {
+                    await upload(`chat-${id}.json`, readChat(id), updated);
+                }
+                else if (r.updated === updated) {
+                    // (the same on both sides)
+                }
+                else if (updated > r.updated) {
+                    if (base !== undefined && r.updated > base)
+                        changed.add(keepCopy(await download(r.id)));
+                    await upload(`chat-${id}.json`, readChat(id), updated, r.id);
+                }
+                else {
+                    if (base !== undefined && updated > base)
+                        changed.add(keepCopy(readChat(id)));
+                    writeChat(await download(r.id));
+                    changed.add(id);
+                }
+                st.synced[id] = Math.max(updated, r?.updated || 0);
                 chats.delete(id);
             }
-            delete st.synced[id];
-        }
-        // chats here: up, down, or both kept
-        for (const [id, updated] of local) {
-            const r = chats.get(id);
-            const base = st.synced[id];
-            if (!r) {
-                await upload(`chat-${id}.json`, readChat(id), updated);
-            }
-            else if (r.updated === updated) {
-                // (the same on both sides)
-            }
-            else if (updated > r.updated) {
-                if (base !== undefined && r.updated > base)
-                    changed.add(keepCopy(await download(r.id)));
-                await upload(`chat-${id}.json`, readChat(id), updated, r.id);
-            }
-            else {
-                if (base !== undefined && updated > base)
-                    changed.add(keepCopy(readChat(id)));
+            // chats only on Drive: down
+            for (const [id, r] of chats) {
                 writeChat(await download(r.id));
+                st.synced[id] = r.updated;
                 changed.add(id);
             }
-            st.synced[id] = Math.max(updated, r?.updated || 0);
-            chats.delete(id);
+            // copies kept just now go up next time (soon)
+            // deleted.json: what's new, and nothing older than 90 days
+            const cutoff = Date.now() - 90 * 86400e3;
+            const keep = Object.fromEntries(Object.entries(deleted).filter(([, t]) => t > cutoff));
+            if (JSON.stringify(keep) !== JSON.stringify(remoteDeleted))
+                await upload("deleted.json", { ids: keep }, Date.now(), deletedFile?.id);
+            st.deleted = {};
         }
-        // chats only on Drive: down
-        for (const [id, r] of chats) {
-            writeChat(await download(r.id));
-            st.synced[id] = r.updated;
-            changed.add(id);
-        }
-        // copies kept just now go up next time (soon)
-        // the profile
-        const here = pickProfile(hooks.settings());
-        if (profileFile && (first || profileFile.updated > st.profileAt)) {
+        // the profile, without what's kept off the sync: that's neither sent nor
+        // taken here, and what's on Drive for the other PCs stays as it is
+        const held = new Set(Object.entries(GROUPS).flatMap(([g, keys]) => (skip.has(g) ? keys : [])));
+        const shared = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => !held.has(k)));
+        const here = shared(pickProfile(hooks.settings()));
+        const join = first || !!st.rejoin;
+        if (profileFile && (join || profileFile.updated > st.profileAt)) {
             const there = await download(profileFile.id);
-            const next = first ? joinProfile(here, there) : there;
+            const next = shared(join ? joinProfile(here, shared(there)) : there);
             hooks.apply(next);
             settingsChanged = true;
-            st.profileAt = first ? Date.now() : profileFile.updated;
-            if (first)
-                await upload("profile.json", next, st.profileAt, profileFile.id);
+            st.profileAt = join ? Date.now() : profileFile.updated;
+            if (join)
+                await upload("profile.json", { ...there, ...next }, st.profileAt, profileFile.id);
         }
         else if (!profileFile || st.profileAt > profileFile.updated) {
             st.profileAt ||= Date.now();
-            await upload("profile.json", here, st.profileAt, profileFile?.id);
+            const there = held.size && profileFile ? await download(profileFile.id).catch(() => ({})) : {};
+            await upload("profile.json", { ...there, ...here }, st.profileAt, profileFile?.id);
         }
-        // deleted.json: what's new, and nothing older than 90 days
-        const cutoff = Date.now() - 90 * 86400e3;
-        const keep = Object.fromEntries(Object.entries(deleted).filter(([, t]) => t > cutoff));
-        if (JSON.stringify(keep) !== JSON.stringify(remoteDeleted))
-            await upload("deleted.json", { ids: keep }, Date.now(), deletedFile?.id);
-        st.deleted = {};
+        st.rejoin = false;
         st.lastSync = Date.now();
         saveState();
     }

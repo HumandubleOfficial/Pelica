@@ -15,7 +15,7 @@ const on = (name: string) => (fn: (v: any) => void) => {
 contextBridge.exposeInMainWorld("pelica", {
   win: { minimize: call("win:minimize"), maximize: call("win:maximize"), close: call("win:close"), isMaximized: call("win:isMaximized"), onState: on("win:state"), material: call("win:material") },
   settings: { get: call("settings:get"), set: call("settings:set"), onPushed: on("settings:pushed") },
-  account: { status: call("account:status"), signIn: call("account:signIn"), signOut: call("account:signOut"), syncNow: call("sync:now"), onChanged: on("account:changed"), onSynced: on("sync:changed") },
+  account: { status: call("account:status"), signIn: call("account:signIn"), signOut: call("account:signOut"), syncNow: call("sync:now"), usage: call("account:usage"), wipe: call("account:wipe"), onChanged: on("account:changed"), onSynced: on("sync:changed") },
   signin: { edge: call("signin:edge"), copy: call("signin:copy"), cancel: call("signin:cancel") },
   folder: { pick: call("folder:pick"), open: call("folder:open"), restore: call("folder:restore") },
   chats: { list: call("chats:list"), load: call("chats:load"), save: call("chats:save"), remove: call("chats:delete"), search: call("chats:search"), usage: call("chats:usage"), backup: call("chats:backup"), restore: call("chats:restore"), import: call("chats:import") },

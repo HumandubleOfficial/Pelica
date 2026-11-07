@@ -575,3 +575,27 @@
     display: none;
   }
 }
+
+/* ---------- the same two greys on everything that has its own hover ---------- */
+.user-chip:hover:not(:active),
+.side-foot .user-chip.open:not(:active),
+.tool-sum:hover:not(:active) {
+  background: var(--hover);
+}
+.hf-repo:not(.sel):active,
+.hf-file:active,
+.proj-card:active,
+.proj-row:has(.proj-row-main:active),
+.lib-suggest .chip:not(.on):active {
+  background: var(--press);
+  transition-duration: 0s;
+}
+.settings .set-nav button:not(.sel):active,
+.settings .ghost-btn:active:not(:disabled),
+.mm-row:active,
+.mm-nav:not(.mm-kept):active,
+.mm-tags:active,
+.mm-btn:active {
+  background: var(--set-sel);
+  transition-duration: 0s;
+}

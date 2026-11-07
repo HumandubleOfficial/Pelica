@@ -260,6 +260,12 @@ export interface Settings {
   voiceTalkOver: boolean;
   /** where to look for new versions (a latest.json: web address or path; empty: Pelica's GitHub releases) */
   updateFeed: string;
+  /** the newest version already announced (the title bar's button stays; the note comes once) */
+  updateTold: string;
+  /** what Settings → Account keeps off the sync: chats, projects, memory, prompts, profile */
+  syncSkip: string[];
+  /** the sidebar shows your Google picture (otherwise your first letter) */
+  accountPicture: boolean;
   /** when to check for a new version by itself */
   updateCheck: "start" | "daily" | "off";
   /** also offer previews (GitHub pre-releases) */
@@ -352,6 +358,9 @@ export const DEFAULTS: Settings = {
   voiceRate: 1,
   voiceTalkOver: false,
   updateFeed: "",
+  updateTold: "",
+  syncSkip: [],
+  accountPicture: true,
   updateCheck: "start",
   updatePreview: false,
   updateSkip: "",
@@ -418,6 +427,8 @@ export interface AppState {
   whatsNew: "new" | "all" | null;
   /** a newer version the update feed offers (Settings → Updates) */
   update: import("./lib/bridge").UpdateCheck | null;
+  /** the title bar's update box is open */
+  updatePop: boolean;
   /** an update being fetched and installed (speed: bytes a second) */
   updating: { version: string; phase: "download" | "check" | "start"; got: number; total: number; speed: number } | null;
   /** the Scheduled tasks window */
@@ -499,6 +510,7 @@ export const app = createStore<AppState>({
   settingsTab: "General",
   whatsNew: null,
   update: null,
+  updatePop: false,
   updating: null,
   tasksOpen: false,
   approval: null,

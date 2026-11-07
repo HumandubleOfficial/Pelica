@@ -25,6 +25,10 @@ export interface Bridge {
     signIn(): Promise<AccountStatus>;
     signOut(): Promise<AccountStatus>;
     syncNow(): Promise<AccountStatus>;
+    /** what's in Pelica's hidden Drive folder */
+    usage(): Promise<{ files: number; bytes: number }>;
+    /** empties that folder and stops syncing */
+    wipe(): Promise<AccountStatus>;
     onChanged(fn: () => void): () => void;
     onSynced(fn: (c: { chats: string[]; settings: boolean }) => void): () => void;
   };
